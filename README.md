@@ -27,7 +27,7 @@ stuff from
 [NorMITs Demand](https://github.com/Transport-for-the-North/NorMITs-Demand)
 more widely available and easily accessible.
 
-Contributing
+## Contributing
 CAF.Toolkit happily accepts contributions.
 The best way to contribute to this project is to go to the issues tab and 
 report bugs or submit a feature request. This helps CAF.Core become more 
