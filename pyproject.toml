@@ -3,7 +3,7 @@ requires = ["setuptools>=64.0.0", "versioningit"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "caf.{package_name}"
+name = "caf.core"
 dynamic = ["version"]
 description = "Package Description"
 readme = "README.md"
