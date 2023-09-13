@@ -47,4 +47,9 @@ class TestSegments:
     def test_naming_order(self, basic_segmentation):
         names = basic_segmentation.ind.names
         assert names==['test seg 2', 'test seg 1']
+
+    def test_exclusions(self, excl_segmentation):
+        print(excl_segmentation.ind)
+        assert excl_segmentation.ind==1
+
 # # # FUNCTIONS # # #

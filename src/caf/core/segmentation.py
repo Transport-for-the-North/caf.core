@@ -14,7 +14,7 @@ File purpose:
 from dataclasses import dataclass
 # Third Party
 import pandas as pd
-from caf.toolkit import BaseConfig
+from caf.core.config_base import BaseConfig
 from pydantic import validator
 import numpy as np
 # Local Imports
@@ -39,7 +39,10 @@ class Segment(BaseConfig):
 
     @property
     def exclusion_segs(self):
-        return [seg.seg_name for seg in self.exclusions]
+        if self.exclusions:
+            return [seg.seg_name for seg in self.exclusions]
+        else:
+            return None
 
     @property
     def _exclusions(self):
@@ -52,15 +55,15 @@ class Segment(BaseConfig):
             ind_tuples = []
             for excl in self.exclusions:
                 if excl.seg_name == other_seg:
-                    for other_seg in excl.other_vals:
-                        ind_tuples.append((excl.seg_name, other_seg))
+                    for other in excl.other_vals:
+                        ind_tuples.append((excl.own_val, other))
             drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
             return drop_ind
 
 
 class Segmentation(BaseConfig):
-    segments: set[Segment]
-    naming_order: set[str]
+    segments: list[Segment]
+    naming_order: list[str]
 
     @property
     def names(self):
@@ -88,16 +91,13 @@ class Segmentation(BaseConfig):
         for own_seg in self.segments:
             drop_iterator.remove(own_seg.name)
             for other_seg in drop_iterator:
-                if other_seg in own_seg.exclusion_segs:
-                    dropper = own_seg.drop_indices(other_seg)
-                    df = df.reset_index().set_index([own_seg.name, other_seg])
-                    mask = ~df.index.isin(dropper)
-                    df = df[mask]
+                if own_seg.exclusion_segs:
+                    if other_seg in own_seg.exclusion_segs:
+                        dropper = own_seg.drop_indices(other_seg)
+                        df = df.reset_index().set_index([own_seg.name, other_seg])
+                        mask = ~df.index.isin(dropper)
+                        df = df[mask]
         return df.index
-
-    @property
-    def df(self):
-        return pd.DataFrame(data=self.data, index=self.ind)
 
     def __copy__(self):
         """Returns a copy of this class"""

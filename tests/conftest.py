@@ -43,6 +43,16 @@ def fixture_basic_segmentation(seg_1, seg_2):
     return segmentation.Segmentation(segments=segs,
                                      naming_order=order)
 
+@pytest.fixture(name="excl_segmentation", scope='session')
+def fixture_excl_segmentation(seg_1, seg_2):
+    seg_excl = seg_1.copy()
+    seg_excl.exclusions = [segmentation.Exclusion(seg_name='test seg 2',
+                                                  own_val=1,
+                                                  other_vals=[2,3])]
+    order = ['test seg 2', 'test seg 1']
+    return segmentation.Segmentation(segments=[seg_excl, seg_2],
+                                     naming_order=order)
+
 # # # CLASSES # # #
 
 # # # FUNCTIONS # # #
