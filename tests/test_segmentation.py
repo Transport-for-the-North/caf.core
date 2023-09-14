@@ -43,13 +43,31 @@ def fix_mult():
 
     df = pd.DataFrame(data, index=index, columns=['RandomData'])
 
+@pytest.fixture(scope='session', name='expected_excl_ind')
+def fix_excl_ind():
+
+    return pd.MultiIndex.from_tuples([(1, 1),
+                (2, 1),
+                (2, 2),
+                (2, 3),
+                (3, 1),
+                (3, 2),
+                (3, 3),
+                (4, 1),
+                (4, 2),
+                (4, 3)],
+               names=['test seg 1', 'test seg 2'])
+
 class TestSegments:
-    def test_naming_order(self, basic_segmentation):
+    def test_naming_order(self, basic_segmentation, expected_excl_ind):
         names = basic_segmentation.ind.names
         assert names==['test seg 2', 'test seg 1']
 
-    def test_exclusions(self, excl_segmentation):
-        print(excl_segmentation.ind)
-        assert excl_segmentation.ind==1
+    @pytest.mark.parametrize("segmentation",
+                             ["excl_segmentation", "excl_segmentation_rev"])
+    def test_exclusions(self, segmentation, expected_excl_ind, request):
+        seg = request.getfixturevalue(segmentation)
+        print(seg.ind)
+        assert seg.ind.equals(expected_excl_ind)
 
 # # # FUNCTIONS # # #

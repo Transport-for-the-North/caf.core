@@ -86,17 +86,19 @@ class Segmentation(BaseConfig):
     @property
     def ind(self):
         index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
-        df = pd.DataFrame(index=index).reorder_levels(self.naming_order)
+        df = pd.DataFrame(index=index)
         drop_iterator = self.naming_order.copy()
         for own_seg in self.segments:
-            drop_iterator.remove(own_seg.name)
             for other_seg in drop_iterator:
+                if other_seg==own_seg.name:
+                    pass
                 if own_seg.exclusion_segs:
                     if other_seg in own_seg.exclusion_segs:
                         dropper = own_seg.drop_indices(other_seg)
                         df = df.reset_index().set_index([own_seg.name, other_seg])
                         mask = ~df.index.isin(dropper)
                         df = df[mask]
+        df = df.reorder_levels(self.naming_order)
         return df.index
 
     def __copy__(self):
