@@ -27,21 +27,21 @@ from caf.core import segmentation
 # # # CLASSES # # #
 @pytest.fixture(scope='session', name='multi-index')
 def fix_mult():
-    # Define the index levels
-    level_a = ['A', 'B', 'C', 'D', 'E', 'F']
-    level_b = ['G', 'H', 'I', 'J', 'K', 'L']
-    level_c = ['M', 'N', 'O', 'P', 'Q', 'R']
-    level_d = ['S', 'T', 'U', 'V', 'W', 'X']
+# Define the index levels
+level_a = ['A', 'B', 'C', 'D', 'E', 'F']
+level_b = ['G', 'H', 'I', 'J', 'K', 'L']
+level_c = ['M', 'N', 'O', 'P', 'Q', 'R']
+level_d = ['S', 'T', 'U', 'V', 'W', 'X']
 
-    # Create a MultiIndex
-    index = pd.MultiIndex.from_tuples(
-        [(a, b, c, d) for a, b, c, d in zip(level_a, level_b, level_c, level_d)],
-        names=['a', 'b', 'c', 'd'])
+# Create a MultiIndex
+index = pd.MultiIndex.from_tuples(
+    [(a, b, c, d) for a, b, c, d in zip(level_a, level_b, level_c, level_d)],
+    names=['a', 'b', 'c', 'd'])
 
-    # Create a DataFrame with random data
-    data = np.random.rand(6, 1)
+# Create a DataFrame with random data
+data = np.random.rand(6, 1)
 
-    df = pd.DataFrame(data, index=index, columns=['RandomData'])
+df = pd.DataFrame(data, index=index, columns=['RandomData'])
 
 @pytest.fixture(scope='session', name='expected_excl_ind')
 def fix_excl_ind():

@@ -10,18 +10,56 @@ Other updates made by:
 File purpose:
 
 """
-# Built-Ins
 import enum
-# Third Party
+import pandas as pd
+from caf.core.config_base import BaseConfig
+import numpy as np
+from pathlib import Path
+from dataclasses import dataclass
 
-# Local Imports
-# pylint: disable=import-error,wrong-import-position
-# Local imports here
-from caf.core.segmentation import Segment, Segmentation
-# pylint: enable=import-error,wrong-import-position
+
 
 # # # CONSTANTS # # #
 # # # CLASSES # # #
+@dataclass
+class Exclusion:
+    seg_name: str
+    own_val: int
+    other_vals: set[int]
+
+    def build_index(self):
+        tups = [(self.own_val, other) for other in self.other_vals]
+        return pd.MultiIndex.from_tuples(tups)
+
+
+class Segment(BaseConfig):
+    name: str
+    values: dict[int, str]
+    exclusions: list[Exclusion] = None
+
+    @property
+    def exclusion_segs(self):
+        if self.exclusions:
+            return [seg.seg_name for seg in self.exclusions]
+        else:
+            return None
+
+    @property
+    def _exclusions(self):
+        return {excl.seg_name: excl for excl in self.exclusions}
+
+    def drop_indices(self, other_seg: str):
+        if other_seg not in self.exclusion_segs:
+            return None
+        else:
+            ind_tuples = []
+            for excl in self.exclusions:
+                if excl.seg_name == other_seg:
+                    for other in excl.other_vals:
+                        ind_tuples.append((excl.own_val, other))
+            drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
+            return drop_ind
+
 class SegmentsSuper(enum.Enum):
     PURPOSE = 'p'
     TIMEPERIOD = 'tp'
@@ -30,17 +68,34 @@ class SegmentsSuper(enum.Enum):
     SOC = 'soc'
     SIC = 'sic'
     CA = 'ca'
+    TFN_AT = 'tfn_at'
+    USERCLASS = 'uc'
 
-    def get_segment(self):
+
+    def get_segment(self, subset: list[int]=None):
         match self:
             case SegmentsSuper.PURPOSE:
-                return Segment(name='purpose',
-                               values={'HB Work': 1, 'HB Employers Business (EB)': 2, 'HB Education': 3, 'HB Shopping': 4, 'HB Personal Business (PB)': 5, 'HB Recreation / Social': 6, 'HB Visiting friends and relatives': 7, 'HB Holiday / Day trip': 8, 'NHB Work': 11, 'NHB Employers Business (EB)': 12, 'NHB Education': 13, 'NHB Shopping': 14, 'NHB Personal Business (PB)': 15, 'NHB Recreation / Social': 16, 'NHB Holiday / Day trip': 18}
-                               )
+                segmentation = Segment(name=self.value,
+                                       values={1: 'HB Work', 2: 'HB Employers Business (EB)', 3: 'HB Education', 4: 'HB Shopping', 5: 'HB Personal Business (PB)', 6: 'HB Recreation / Social', 7: 'HB Visiting friends and relatives', 8: 'HB Holiday / Day trip', 11: 'NHB Work', 12: 'NHB Employers Business (EB)', 13: 'NHB Education', 14: 'NHB Shopping', 15: 'NHB Personal Business (PB)', 16: 'NHB Recreation / Social', 18: 'NHB Holiday / Day trip'})
             case SegmentsSuper.TIMEPERIOD:
-                return Segment(name='time period',
-                               values={'Weekday AM peak period (0700 - 0959)': 1, 'Weekday Inter peak period (1000 - 1559)': 2, 'Weekday PM peak period (1600 - 1859)': 3, 'Weekday Off peak (0000 - 0659 and 1900 - 2359)': 4, 'Saturdays (all times of day)': 5, 'Sundays (all times of day)': 6, 'Average Weekday': 7, 'Average Day': 8})
+                segmentation = Segment(name=self.value,
+                               values={1: 'Weekday AM peak period (0700 - 0959)', 2: 'Weekday Inter peak period (1000 - 1559)', 3: 'Weekday PM peak period (1600 - 1859)', 4: 'Weekday Off peak (0000 - 0659 and 1900 - 2359)', 5: 'Saturdays (all times of day)', 6: 'Sundays (all times of day)', 7: 'Average Weekday', 8: 'Average Day'})
             case SegmentsSuper.MODE:
-                return Segment(name='mode',
-                               values={'Walk': 1, 'Cycle': 2, 'Car driver': 3, 'Car passenger': 4, 'Bus / Coach': 5, 'Rail / underground': 6})
+                segmentation = Segment(name=self.value,
+                               values={1: 'Walk', 2: 'Cycle', 3: 'Car driver', 4: 'Car passenger', 5: 'Bus / Coach', 6: 'Rail / underground'})
+            case SegmentsSuper.GENDER:
+                segmentation = Segment(name=self.value,
+                               values={1: 'Child', 2: 'Male', 3: 'Female'},
+                                       exclusions=[Exclusion(seg_name='g',
+                                                             own_val=1,
+                                                             other_vals=[2,3,4])])
+            case SegmentsSuper.SOC:
+                segmentation = Segment(name=self.value,
+                               values={1: 'High Skilled', 2: 'High Skilled', 3: 'High Skilled',
+                                       4: 'Skilled', 5: 'Skilled', 6: 'Skilled',
+                                       7: 'Low Skilled', 8: 'Low Skilled', 9: 'Low Skilled'})
+        if subset:
+            segmentation.value = {i: j for i, j in segmentation.value.items() if i in subset}
+        return segmentation
+
 # # # FUNCTIONS # # #

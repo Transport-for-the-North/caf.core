@@ -24,17 +24,12 @@ from caf.core import segmentation, segments
 @pytest.fixture(name="seg_1", scope='session')
 def fixture_seg_1():
     return segmentation.Segment(name='test seg 1',
-                                values={'A': 1,
-                                        'B': 2,
-                                        'C': 3,
-                                        'D': 4})
+                                values={1: 'A', 2: 'B', 3: 'C', 4: 'D'})
 
 @pytest.fixture(name="seg_2", scope='session')
 def fixture_seg_2():
     return segmentation.Segment(name='test seg 2',
-                                values={'X': 1,
-                                        'Y': 2,
-                                        'Z': 3})
+                                values={1: 'X', 2: 'Y', 3: 'Z'})
 
 @pytest.fixture(name="basic_segmentation", scope='session')
 def fixture_basic_segmentation(seg_1, seg_2):
