@@ -23,16 +23,31 @@ from dataclasses import dataclass
 # # # CLASSES # # #
 @dataclass
 class Exclusion:
+    """
+    seg_name: Name of the other segment this exclusion applies to
+    own_val: The value for self segmentation which has exclusions in other
+    other_vals: Values in other segmentation incompatible with 'own_val'.
+    """
     seg_name: str
     own_val: int
     other_vals: set[int]
 
     def build_index(self):
+        """
+        Returns an index formed of the exclusions.
+        """
         tups = [(self.own_val, other) for other in self.other_vals]
         return pd.MultiIndex.from_tuples(tups)
 
 
 class Segment(BaseConfig):
+    """
+    Class containing info on a Segment, which combiined with other Segments form
+    a segmentation.
+
+    Parameters
+    ----------
+    """
     name: str
     values: dict[int, str]
     exclusions: list[Exclusion] = None
@@ -86,9 +101,9 @@ class SegmentsSuper(enum.Enum):
             case SegmentsSuper.GENDER:
                 segmentation = Segment(name=self.value,
                                values={1: 'Child', 2: 'Male', 3: 'Female'},
-                                       exclusions=[Exclusion(seg_name='g',
+                                       exclusions=[Exclusion(seg_name=SegmentsSuper.SOC,
                                                              own_val=1,
-                                                             other_vals=[2,3,4])])
+                                                             other_vals=[1, 2, 3])])
             case SegmentsSuper.SOC:
                 segmentation = Segment(name=self.value,
                                values={1: 'High Skilled', 2: 'High Skilled', 3: 'High Skilled',

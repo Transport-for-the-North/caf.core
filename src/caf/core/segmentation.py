@@ -31,39 +31,57 @@ from caf.core.segments import Segment, SegmentsSuper
 
 # # # CLASSES # # #
 class SegmentationInput(BaseConfig):
+    """
+    segments: list of segments, stored as Segment classes.
+    naming_order: The order segment names will appear in segmentations
+    """
     segments: list[Segment]
     naming_order: list[str]
 
 
 class Segmentation:
+    """
+    Segmentation class for handling segmentation objects.
+
+    Parameters
+    ----------
+    input: Instance of SegmentationInput. See that class for details.
+    """
     def __init__(self, input: SegmentationInput):
         self.segments = input.segments
         self.naming_order = input.naming_order
 
     @property
     def seg_dict(self):
+        """
+        Method to access segments in dict form.
+        """
         return {seg.name: seg for seg in self.segments}
 
     @property
     def names(self):
+        """
+        Returns the names of all segments.
+        """
         return [seg.name for seg in self.segments]
 
     @property
     def seg_descriptions(self):
+        """
+        Returns a list of segment descriptions.
+        """
         return [seg.values.values() for seg in self.segments]
 
     @property
     def seg_vals(self):
         return [seg.values.keys() for seg in self.segments]
 
-    # @validator('naming_order')
-    # def names_in_segments(cls, v: set[str]):
-    #     if v != cls.names:
-    #         raise ValueError(f"The names in naming_order do not match the names of the segments.")
-    #     return v
-
     @property
     def ind(self):
+        """
+        Returns a pandas MultiIndex of the segmentation. This is by default just a product
+        of all segments given, taking exclusions into account if any exist between segments.
+        """
         index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
         df = pd.DataFrame(index=index)
         drop_iterator = self.naming_order.copy()
@@ -81,12 +99,26 @@ class Segmentation:
         return df.index
 
     @classmethod
-    def __build__seg(
+    def _build_seg(
             cls,
             segs: list[str],
             naming_order: list[str],
             custom_segments: list[Segment] = None,
     ):
+        """
+        Internal method to build a segmentation from inputs.
+
+        Parameters
+        ----------
+        segs: list of segment names.
+        naming_order: Ordered list of segment names.
+        custom_segments: List of fully defined segments which don't exist in the SegmentsSuper
+        enum class
+
+        Returns
+        -------
+        A segmentation built from these inputs.
+        """
         segments = []
         for seg in segs:
             try:
@@ -102,7 +134,24 @@ class Segmentation:
         return cls(segminput)
 
     @classmethod
-    def load_segmentation(cls, source: Union[Path, pd.DataFrame], segs=None, naming_order=None, custom_segs=None):
+    def load_segmentation(cls, source: Union[Path, pd.DataFrame], segs: list[str] = None, naming_order: list[str] = None, custom_segs=None):
+        """
+        Load a segmentation from either a path to a csv, or a dataframe. This could either be
+        purely a segmentation, or data with a segmentation index.
+
+        Parameters
+        ----------
+        source: Either a path to a csv containing a segmentation or a dataframe containing a segmentation.
+        If source is a dataframe the segmentation should not form the index.
+        segs: A list of strings, which must match enumerations in SegmentsSuper. If this isn't
+        provided then it will default to the column names in 'source'
+        naming_order: The order for the segmentation. This will default to segs if not provided.
+        custom_segs: Optional list of Segment objects if segments not in SegmentsSuper
+
+        Returns
+        -------
+        Segmentation class
+        """
         if isinstance(source, Path):
             df = pd.read_csv(source)
         else:
@@ -111,7 +160,7 @@ class Segmentation:
             segs = list(df.columns)
         if naming_order is None:
             naming_order = segs
-        built_segmentation = cls.__build__seg(segs, naming_order, custom_segs)
+        built_segmentation = cls._build_seg(segs, naming_order, custom_segs)
         read_index = df.set_index(naming_order).index
         built_index = built_segmentation.ind
         if built_index.names != read_index.names:
@@ -164,7 +213,7 @@ class Segmentation:
         """Overrides the default implementation"""
         return not self.__eq__(other)
 
-    def __mul__(self, other, data_self: np.array, data_other: np.array):
+    def _mul_div_join(self, other, data_self: np.array, data_other: np.array):
         self_col_length = data_self.shape[1]
         other_col_length = data_other.shape[1]
         overlap = [i for i in other.segments if i in self.segments]
@@ -187,7 +236,6 @@ class Segmentation:
             joined.set_index(combindex, inplace=True)
             df_self = joined["data"]
             df_other = joined.drop("data", axis=1)
-            out = df_other * df_self
         elif (self_col_length != 1) & (other_col_length == 1):
             df_self = pd.DataFrame(
                 data=data_self, index=self.ind, columns=range(self_col_length)
@@ -199,7 +247,6 @@ class Segmentation:
             joined.set_index(combindex, inplace=True)
             df_other = joined["data"]
             df_self = joined.drop("data", axis=1)
-            out = df_self * df_other
         else:
             df_self = pd.DataFrame(
                 data=data_self, index=self.ind, columns=range(self_col_length)
@@ -213,10 +260,12 @@ class Segmentation:
             joined.set_index(combindex, inplace=True)
             df_self = joined[[col for col in joined.columns if col.endswith("_self")]]
             df_other = joined[[col for col in joined.columns if col.endswith("_other")]]
-            out = df_self * df_other
 
-        return out
+        return df_self, df_other
 
+    def __mul__(self, other, data_self, data_other):
+        df_self, df_other = self._mul_div_join(self, other, data_self, data_other)
+        return df_self * df_other
 
 
 
