@@ -13,6 +13,7 @@ File purpose:
 # Built-Ins
 import warnings
 from typing import Union
+
 # Third Party
 import pandas as pd
 from caf.core.config_base import BaseConfig
@@ -35,6 +36,7 @@ class SegmentationInput(BaseConfig):
     segments: list of segments, stored as Segment classes.
     naming_order: The order segment names will appear in segmentations
     """
+
     segments: list[Segment]
     naming_order: list[str]
 
@@ -47,6 +49,7 @@ class Segmentation:
     ----------
     input: Instance of SegmentationInput. See that class for details.
     """
+
     def __init__(self, input: SegmentationInput):
         self.segments = input.segments
         self.naming_order = input.naming_order
@@ -100,10 +103,10 @@ class Segmentation:
 
     @classmethod
     def _build_seg(
-            cls,
-            segs: list[str],
-            naming_order: list[str],
-            custom_segments: list[Segment] = None,
+        cls,
+        segs: list[str],
+        naming_order: list[str],
+        custom_segments: list[Segment] = None,
     ):
         """
         Internal method to build a segmentation from inputs.
@@ -134,7 +137,13 @@ class Segmentation:
         return cls(segminput)
 
     @classmethod
-    def load_segmentation(cls, source: Union[Path, pd.DataFrame], segs: list[str] = None, naming_order: list[str] = None, custom_segs=None):
+    def load_segmentation(
+        cls,
+        source: Union[Path, pd.DataFrame],
+        segs: list[str] = None,
+        naming_order: list[str] = None,
+        custom_segs=None,
+    ):
         """
         Load a segmentation from either a path to a csv, or a dataframe. This could either be
         purely a segmentation, or data with a segmentation index.
@@ -173,24 +182,35 @@ class Segmentation:
             if read_level == built_level:
                 continue
             if read_level.issubset(built_level):
-                warnings.warn(f"Read in level {name} is a subset of the segment. If this was not"
-                              f" expected check the input segmentation.")
-                built_segmentation.seg_dict[name].values = {i: j for i, j in built_segmentation.seg_dict[name].values.items() if i in read_level}
-                temp_df = pd.DataFrame(index = built_index, columns=[0]).reset_index().set_index(name)
+                warnings.warn(
+                    f"Read in level {name} is a subset of the segment. If this was not"
+                    f" expected check the input segmentation."
+                )
+                built_segmentation.seg_dict[name].values = {
+                    i: j
+                    for i, j in built_segmentation.seg_dict[name].values.items()
+                    if i in read_level
+                }
+                temp_df = (
+                    pd.DataFrame(index=built_index, columns=[0]).reset_index().set_index(name)
+                )
                 temp_df = temp_df.loc[read_level]
                 built_index = temp_df.reset_index().set_index(naming_order).index
             else:
-                raise ValueError(f'The segment for {name} does not match the inbuilt definition.'
-                                 f'Check for mistakes in the read in segmentation, or redefine the'
-                                 f'segment with a different name.')
+                raise ValueError(
+                    f"The segment for {name} does not match the inbuilt definition."
+                    f"Check for mistakes in the read in segmentation, or redefine the"
+                    f"segment with a different name."
+                )
         if read_index.equal_levels(built_index):
             return built_segmentation
         else:
-            raise ValueError("The read in segmentation does not match the given parameters. The segment names"
-                             " are correct, but segment values don't match. This could be due to an incompatibility"
-                             " between segments which isn't reflected in the loaded in segmentation, or it could be"
-                             " an out of date in built segmentation in the caf.core package.")
-
+            raise ValueError(
+                "The read in segmentation does not match the given parameters. The segment names"
+                " are correct, but segment values don't match. This could be due to an incompatibility"
+                " between segments which isn't reflected in the loaded in segmentation, or it could be"
+                " an out of date in built segmentation in the caf.core package."
+            )
 
     def __copy__(self):
         """Returns a copy of this class"""
@@ -266,19 +286,6 @@ class Segmentation:
     def __mul__(self, other, data_self, data_other):
         df_self, df_other = self._mul_div_join(self, other, data_self, data_other)
         return df_self * df_other
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # # # FUNCTIONS # # #
