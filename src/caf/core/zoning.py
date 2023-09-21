@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Tuple, Union, Optional
 # Third Party
 import numpy as np
 import pandas as pd
+import caf.toolkit as ctk
 
 # Local Imports
 
@@ -98,6 +99,7 @@ class ZoningSystem:
     def __init__(self,
                  name: str,
                  unique_zones: np.ndarray,
+                 metadata: ZoningSystemMetaData,
                  zone_descriptions: Optional[np.ndarray] = None,
                  internal_zones: Optional[np.ndarray] = None,
                  external_zones: Optional[np.ndarray] = None,
@@ -131,6 +133,7 @@ class ZoningSystem:
         self._col_name = self._base_col_name % name
         self._unique_zones = np.sort(unique_zones)
         self._n_zones = len(self.unique_zones)
+        self._metadata = metadata
 
         # Validate and assign the optional arguments
         self._internal_zones = None
@@ -266,55 +269,42 @@ class ZoningSystem:
 
     def _get_translation_definition(self,
                                     other: ZoningSystem,
-                                    weighting: str = None,
+                                    weighting: str = "spatial",
+                                    trans_cache: Path = Path(r"I:\Data\Zone Translations\cache")
                                     ) -> pd.DataFrame:
         """
-        Returns a long dataframe defining how to translate from self to other.
+        Returns a space generate zone translation between self and other.
         """
         # Init
-        home_dir = self._translation_dir
-        base_fname = '%s_to_%s_%s.csv'
-        weight_name = self._get_weighting_suffix(weighting)
+        home_dir = trans_cache
+        names = sorted([self.name, other.name])
+        folder = f"{names[0]}_{names[1]}"
+        file = f"{names[0]}_to_{names[1]}_{weighting}"
 
         # Try find a translation
-        fname = base_fname % (self.name, other.name, weight_name)
-        try:
-            file_path = file_ops.find_filename(os.path.join(home_dir, fname))
-        except FileNotFoundError:
-            file_path = None
-
-        # If not found yet, try flipping columns
-        if file_path is None:
-            fname = base_fname % (other.name, self.name, weight_name)
+        if (home_dir / folder).is_dir():
             try:
-                file_path = file_ops.find_filename(os.path.join(home_dir, fname))
-            except FileNotFoundError:
-                file_path = None
+                trans = pd.read_csv(home_dir / folder / file, index_col=[0, 1])
+            except FileNotFoundError as error:
+                raise FileNotFoundError("A translation for this weighting has not been found, but the folder "
+                            "exists so there is probably a translation with a different weighting. "
+                            f"Files in folder are : {os.listdir(home_dir / folder)}. Please choose"
+                            f" one of these or generate your own translation using caf.space.") from error
+        else:
+            LOG.warning("A translation for these zones does not exist. Trying to generate a "
+                        "translation using caf.space. This will be spatial regardless of the "
+                        "input weighting. For a different weighting make your own.")
+            try:
+                import caf.space as cs
+            except ModuleNotFoundError:
+                raise ImportError("caf.space is not installed in this environment. A translation"
+                                  " cannot be found or generated.")
+            zone_1 = cs.TransZoneSystemInfo(name=self.name, shapefile=self._metadata.shapefile_path, id_col=self._metadata.shapefile_id_col)
+            zone_2 = cs.TransZoneSystemInfo(name=other.name, shapefile=other._metadata.shapefile_path, id_col=other._metadata.shapefile_id_col)
+            conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2)
+            trans = cs.ZoneTranslation(conf).spatial_translation()
 
-        # If not found again, we don't know what to do
-        if file_path is None:
-            raise ZoningError(
-                f"Cannot translate '{self.name}' into '{other.name}' "
-                f"using the weighting {weight_name}. No definition for "
-                f"the translation exists."
-            )
-
-        # Must exist if we are here, read in
-        df = file_ops.read_df(file_path)
-
-        # Assume index col is weights
-        trans_col = self._translate_base_trans_col % (self.name, other.name)
-        df[trans_col] = df[trans_col].astype(np.float64)
-
-        # Keep only the columns we need
-        index_cols = [
-            self._translate_base_zone_col % self.name,
-            self._translate_base_zone_col % other.name,
-            trans_col
-        ]
-        df = pd_utils.reindex_cols(df, index_cols)
-        self._check_translation_zones(other, df, *index_cols[:2])
-        return df
+        return trans
 
     def _check_translation_zones(self,
                                  other: ZoningSystem,
