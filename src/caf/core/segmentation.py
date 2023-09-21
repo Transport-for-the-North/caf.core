@@ -49,6 +49,7 @@ class Segmentation:
     ----------
     input: Instance of SegmentationInput. See that class for details.
     """
+    _time_period_segment_name = "tp"
 
     def __init__(self, input: SegmentationInput):
         self.segments = input.segments
@@ -100,6 +101,17 @@ class Segmentation:
                         df = df[mask]
         df = df.reorder_levels(self.naming_order)
         return df.index
+
+    def has_time_period_segments(self) -> bool:
+        """Checks whether this segmentation has time period segmentation
+
+        Returns
+        -------
+        has_time_period_segments:
+            True if there is a time_period segment in this segmentation,
+            False otherwise
+        """
+        return self._time_period_segment_name in self.naming_order
 
     @classmethod
     def _build_seg(
@@ -170,7 +182,10 @@ class Segmentation:
         if naming_order is None:
             naming_order = segs
         built_segmentation = cls._build_seg(segs, naming_order, custom_segs)
-        read_index = df.set_index(naming_order).index
+        if df.index.names == naming_order:
+            read_index = df.index
+        else:
+            read_index = pd.MultiIndex.from_frame(df[naming_order])
         built_index = built_segmentation.ind
         if built_index.names != read_index.names:
             raise ValueError("The read in segmentation does not match the given parameters")
