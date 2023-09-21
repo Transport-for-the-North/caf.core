@@ -33,7 +33,7 @@ import caf.toolkit as ctk
 # Local Imports
 
 
-LOG = nd_log.get_logger(__name__)
+LOG = logging.get_logger(__name__)
 
 
 class ZoningSystem:
@@ -55,8 +55,6 @@ class ZoningSystem:
     n_zones:
         The number of zones in this zoning system
     """
-    # Constants
-    __version__ = nd.__version__
 
     _zoning_system_import_fname = "zoning_systems"
     _base_col_name = "%s_zone_id"
@@ -99,7 +97,7 @@ class ZoningSystem:
     def __init__(self,
                  name: str,
                  unique_zones: np.ndarray,
-                 metadata: ZoningSystemMetaData,
+                 metadata: Union[ZoningSystemMetaData, PathLike] = None,
                  zone_descriptions: Optional[np.ndarray] = None,
                  internal_zones: Optional[np.ndarray] = None,
                  external_zones: Optional[np.ndarray] = None,
@@ -133,7 +131,10 @@ class ZoningSystem:
         self._col_name = self._base_col_name % name
         self._unique_zones = np.sort(unique_zones)
         self._n_zones = len(self.unique_zones)
-        self._metadata = metadata
+        if isinstance(metadata, PathLike):
+            self._metadata - ZoningSystemMetaData.load_yaml(metadata)
+        else:
+            self._metadata = metadata
 
         # Validate and assign the optional arguments
         self._internal_zones = None
@@ -290,7 +291,7 @@ class ZoningSystem:
                             "exists so there is probably a translation with a different weighting. "
                             f"Files in folder are : {os.listdir(home_dir / folder)}. Please choose"
                             f" one of these or generate your own translation using caf.space.") from error
-        else:
+        elif (self._metadata is not None) | (other._metadata is not None):
             LOG.warning("A translation for these zones does not exist. Trying to generate a "
                         "translation using caf.space. This will be spatial regardless of the "
                         "input weighting. For a different weighting make your own.")
@@ -303,7 +304,8 @@ class ZoningSystem:
             zone_2 = cs.TransZoneSystemInfo(name=other.name, shapefile=other._metadata.shapefile_path, id_col=other._metadata.shapefile_id_col)
             conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2)
             trans = cs.ZoneTranslation(conf).spatial_translation()
-
+        else:
+            raise NotImplementedError("")
         return trans
 
     def _check_translation_zones(self,
@@ -374,7 +376,7 @@ class ZoningSystem:
 
         # Get a numpy array to define the translation
         translation_df = self._get_translation_definition(other, weighting)
-        translation = pd_utils.long_to_wide_infill(
+        translation = ctk.pandas_utils.long_to_wide_infill(
             df=translation_df,
             index_col=self._translate_base_zone_col % self.name,
             columns_col=self._translate_base_zone_col % other.name,
