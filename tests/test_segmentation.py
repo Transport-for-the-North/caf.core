@@ -88,7 +88,7 @@ class TestBuild:
         built = request.getfixturevalue(built)
         expected = request.getfixturevalue(expected)
         assert built == expected
-        
+
 
 
 # # # FUNCTIONS # # #
