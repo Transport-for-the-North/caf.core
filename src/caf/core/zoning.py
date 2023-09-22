@@ -366,7 +366,7 @@ class ZoningSystem:
 
         return translation.values
 
-    def save(self, path: PathLike):
+    def save(self, path: PathLike, mode: str):
         """
 
         """
@@ -382,14 +382,20 @@ class ZoningSystem:
             save_df['descriptions'] = self.zone_descriptions
         #TODO decide whether to save to the same hdf file as data with a different key
         #TODO or to a separate csv in the same folder
-        with pd.HDFStore(out_path / 'DVector.h5') as store:
-            store['zoning'] = save_df
+        if mode.lower() == 'hdf':
+            with pd.HDFStore(out_path / 'DVector.h5') as store:
+                store['zoning'] = save_df
+        elif mode.lower() == 'csv':
+            save_df.to_csv(out_path / 'zoning.csv')
+        else:
+            raise ValueError("Mode can only be 'hdf' or 'csv', not "
+                             f"{mode}.")
         self._metadata.save_yaml(out_path / 'zoning_meta.yml')
 
 
 
     @classmethod
-    def load(cls, in_path: PathLike):
+    def load(cls, in_path: PathLike, mode: str):
         """Creates a ZoningSystem instance from path_or_instance_dict
 
         If path_or_instance_dict is a path, the file is loaded in and
@@ -403,14 +409,21 @@ class ZoningSystem:
         path_or_instance_dict:
             Path to read the data in from.
         """
+
         #make sure in_path is a Path
         in_path = Path(in_path)
         # If this file exists the zoning should be in the hdf and vice versa
         if ~os.path.isfile(in_path / "metadata.yml"):
             return None
         zoning_meta = ZoningSystemMetaData.load_yaml(in_path / "zoning_meta.yml")
-        store = pd.HDFStore(in_path / "DVector.hdf")
-        zoning = store['zoning']
+        if mode.lower() == 'hdf':
+            with pd.HDFStore(in_path / "DVector.hdf", 'r') as store:
+                zoning = store['zoning']
+        elif mode.lower() == 'csv':
+            zoning = pd.read_csv(in_path / "zoning.csv")
+        else:
+            raise ValueError("Mode can only be 'hdf' or 'csv', not "
+                             f"{mode}.")
         int_zones = None
         ext_zones = None
         descriptions = None
