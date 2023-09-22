@@ -13,7 +13,7 @@ File purpose:
 # Built-Ins
 import warnings
 from typing import Union
-
+from os import PathLike
 # Third Party
 import pandas as pd
 from caf.core.config_base import BaseConfig
@@ -37,7 +37,8 @@ class SegmentationInput(BaseConfig):
     naming_order: The order segment names will appear in segmentations
     """
 
-    segments: list[Segment]
+    enum_segments: list[SegmentsSuper]
+    custom_segments: list[Segment]
     naming_order: list[str]
 
 
@@ -52,7 +53,9 @@ class Segmentation:
     _time_period_segment_name = "tp"
 
     def __init__(self, input: SegmentationInput):
-        self.segments = input.segments
+        self.input = input
+        enum_segments = [SegmentsSuper(string).get_segment() for string in input.enum_segments]
+        self.segments = input.custom_segments + enum_segments
         self.naming_order = input.naming_order
 
     @property
@@ -226,6 +229,15 @@ class Segmentation:
                 " between segments which isn't reflected in the loaded in segmentation, or it could be"
                 " an out of date in built segmentation in the caf.core package."
             )
+
+    def save(self, out_path: PathLike):
+        self.input.save_yaml(out_path)
+
+    @classmethod
+    def load(cls, in_path: PathLike):
+        input = SegmentationInput.load_yaml(in_path)
+        return cls(input)
+
 
     def __copy__(self):
         """Returns a copy of this class"""

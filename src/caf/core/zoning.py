@@ -97,7 +97,7 @@ class ZoningSystem:
     def __init__(self,
                  name: str,
                  unique_zones: np.ndarray,
-                 metadata: Union[ZoningSystemMetaData, PathLike] = None,
+                 metadata: Union[ZoningSystemMetaData, PathLike],
                  zone_descriptions: Optional[np.ndarray] = None,
                  internal_zones: Optional[np.ndarray] = None,
                  external_zones: Optional[np.ndarray] = None,
@@ -132,36 +132,14 @@ class ZoningSystem:
         self._unique_zones = np.sort(unique_zones)
         self._n_zones = len(self.unique_zones)
         if isinstance(metadata, PathLike):
-            self._metadata - ZoningSystemMetaData.load_yaml(metadata)
+            self._metadata = ZoningSystemMetaData.load_yaml(metadata)
         else:
             self._metadata = metadata
 
         # Validate and assign the optional arguments
-        self._internal_zones = None
-        self._external_zones = None
-        self._zone_descriptions = None
-
-        if internal_zones is not None:
-            extra_internal_zones = set(internal_zones) - set(unique_zones)
-            if len(extra_internal_zones) > 0:
-                raise ValueError(
-                    "Not all of the given values for internal zones are also "
-                    "defined in the zoning system unique zones. Check the zones "
-                    "definition file for the following zones:\n"
-                    f"{extra_internal_zones}"
-                )
-            self._internal_zones = internal_zones
-
-        if external_zones is not None:
-            extra_external_zones = set(external_zones) - set(unique_zones)
-            if len(extra_external_zones) > 0:
-                raise ValueError(
-                    "Not all of the given values for internal zones are also "
-                    "defined in the zoning system unique zones. Check the zones "
-                    "definition file for the following zones:\n"
-                    f"{extra_external_zones}"
-                )
-            self._external_zones = external_zones
+        self._internal_zones = internal_zones
+        self._external_zones = external_zones
+        self._zone_descriptions = zone_descriptions
 
         if zone_descriptions is not None:
             if zone_descriptions.shape != unique_zones.shape:
@@ -388,42 +366,30 @@ class ZoningSystem:
 
         return translation.values
 
-    def save(self, path: PathLike = None) -> Union[None, Dict[str, Any]]:
-        """Converts ZoningSystem into an instance dict and saves to disk
-
-        The instance_dict contains just enough information to be able to
-        recreate this instance of the class when 'load()' is called.
-        Use `load()` to load in the written out file or instance_dict.
-
-        Parameters
-        ----------
-        path:
-            Path to output file to save.
-
-        Returns
-        -------
-        none_or_instance_dict:
-            If path is set, None is returned.
-            If path is not set, the instance dict that would otherwise
-            be sent to disk is returned.
+    def save(self, path: PathLike):
         """
-        # Create a dictionary of objects needed to recreate this instance
-        instance_dict = {
-            "name": self._name,
-            "unique_zones": self._unique_zones,
-            "internal_zones": self._internal_zones,
-            "external_zones": self._external_zones,
-        }
 
-        # Write out to disk and compress
-        if path is not None:
-            compress.write_out(instance_dict, path)
-            return None
+        """
+        out_path = Path(path)
+        save_df = pd.DataFrame(data=self.unique_zones, columns=['zones'])
+        if self._internal_zones is not None:
+            internal = pd.Series(self.internal_zones)
+            save_df['internal'] = save_df['zones'].isin(internal)
+        if self._external_zones is not None:
+            external = pd.Series(self.external_zones)
+            save_df['external'] = save_df['zones'].isin(external)
+        if self._zone_descriptions is not None:
+            save_df['descriptions'] = self.zone_descriptions
+        #TODO decide whether to save to the same hdf file as data with a different key
+        #TODO or to a separate csv in the same folder
+        with pd.HDFStore(out_path / 'DVector.h5') as store:
+            store['zoning'] = save_df
+        self._metadata.save_yaml(out_path / 'zoning_meta.yml')
 
-        return instance_dict
 
-    @staticmethod
-    def load(path_or_instance_dict: Union[PathLike, Dict[str, Any]]) -> ZoningSystem:
+
+    @classmethod
+    def load(cls, in_path: PathLike):
         """Creates a ZoningSystem instance from path_or_instance_dict
 
         If path_or_instance_dict is a path, the file is loaded in and
@@ -437,21 +403,31 @@ class ZoningSystem:
         path_or_instance_dict:
             Path to read the data in from.
         """
-        # Read in the file if needed
-        if isinstance(path_or_instance_dict, dict):
-            instance_dict = path_or_instance_dict
-        else:
-            instance_dict = compress.read_in(path_or_instance_dict)
+        #make sure in_path is a Path
+        in_path = Path(in_path)
+        # If this file exists the zoning should be in the hdf and vice versa
+        if ~os.path.isfile(in_path / "metadata.yml"):
+            return None
+        zoning_meta = ZoningSystemMetaData.load_yaml(in_path / "zoning_meta.yml")
+        store = pd.HDFStore(in_path / "DVector.hdf")
+        zoning = store['zoning']
+        int_zones = None
+        ext_zones = None
+        descriptions = None
+        if 'internal' in zoning.columns:
+            int_zones = zoning.loc[zoning['internal'], 'zones'].values
+        if 'external' in zoning.columns:
+            ext_zones = zoning.loc[zoning['external'], 'zones'].values
+        if 'descriptions' in zoning.columns:
+            descriptions = zoning['descriptions'].values
 
-        # Validate we have a dictionary
-        if not isinstance(instance_dict, dict):
-            raise ValueError(
-                f"Expected instance_dict to be a dictionary. Got "
-                f"{type(instance_dict)} instead"
-            )
-
-        # Instantiate a new object
-        return ZoningSystem(**instance_dict)
+        return cls(name=zoning_meta.name,
+                   unique_zones=zoning['zones'].values,
+                   metadata=zoning_meta,
+                   internal_zones=int_zones,
+                   external_zones=ext_zones,
+                   descriptions=descriptions
+                   )
 
     def get_metadata(self) -> ZoningSystemMetaData:
         """
@@ -464,16 +440,6 @@ class ZoningSystem:
                                    'metadata.yml')
         metadata = ZoningSystemMetaData.load_yaml(import_home)
         return metadata
-
-
-class ZoningError(nd.NormitsDemandError):
-    """
-    Exception for all errors that occur around zone management
-    """
-
-    def __init__(self, message=None):
-        self.message = message
-        super().__init__(self.message)
 
 
 class BalancingZones:
@@ -900,9 +866,10 @@ def get_zoning_system(name: str) -> ZoningSystem:
     )
 
 
-class ZoningSystemMetaData(BaseConfig):
+class ZoningSystemMetaData(ctk.BaseConfig):
     """
     Class to store metadata relating to zoning systems in normits_demand
     """
-    shapefile_id_col: str
-    shapefile_path: Path
+    name: str
+    shapefile_id_col: Optional[str]
+    shapefile_path: Optional[Path]
