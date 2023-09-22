@@ -17,6 +17,7 @@ import operator
 from typing import Union, Optional, Any
 import os
 from os import PathLike
+from pathlib import Path
 # Third Party
 import pandas as pd
 import numpy as np
@@ -227,21 +228,20 @@ class DVector:
                  val_col: Optional[str] = None,
                  df_naming_conversion: Optional[str] = None,
                  df_chunk_size: Optional[int] = None,
-                 infill: Optional[Any] = 0,
                  process_count: Optional[int] = -2,
                  ) -> None:
 
         if zoning_system is not None:
             if not isinstance(zoning_system, ZoningSystem):
                 raise ValueError(
-                    "Given zoning_system is not a nd.core.ZoningSystem object."
+                    "Given zoning_system is not a caf.core.ZoningSystem object."
                     "Got a %s object instead."
                     % type(zoning_system)
                 )
 
         if not isinstance(segmentation, Segmentation):
             raise ValueError(
-                "Given segmentation is not a nd.core.SegmentationLevel object."
+                "Given segmentation is not a caf.core.SegmentationLevel object."
                 "Got a %s object instead."
                 % type(segmentation)
             )
@@ -270,8 +270,7 @@ class DVector:
             self._data = self._dataframe_to_dvec(import_data, self.segmentation, val_col)
         elif isinstance(import_data, dict):
             self._data = self._old_to_new_dvec(
-                import_data=import_data,
-                infill=infill,
+                import_data=import_data
             )
         else:
             raise NotImplementedError(
@@ -315,6 +314,7 @@ class DVector:
         Returns a list of valid strings to pass for time_format
         """
         return [x.value for x in TimeFormat]
+
     def _validate_time_format(self,
                               time_format: Union[str, TimeFormat],
                               ) -> TimeFormat:
@@ -421,7 +421,40 @@ class DVector:
             dict_list.append(row_dict)
         ind = pd.MultiIndex.from_frame(pd.DataFrame(dict_list))
         return pd.DataFrame(data=data, index=ind, columns=zoning)
-    
+
+    def save(self, out_path: PathLike):
+        """
+        Method to save the DVector
+
+        DVector will be saved to a folder containing an hdf file and yaml files
+
+        Parameters
+        ----------
+        out_path: Path to the folder to save the DVector in. This folder will be
+        generated if it doesn't exist but parents will not be.
+
+        Returns
+        -------
+        None
+        """
+        out_path = Path(out_path)
+        out_path.mkdir(exist_ok=True, parents=False)
+        with pd.HDFStore(out_path / 'DVector.h5', 'w') as hdf_store:
+            hdf_store['data'] = self._data
+        if self.zoning_system is not None:
+            self.zoning_system.save(out_path)
+        self.segmentation.save(out_path / 'segmentation_meta.yml')
+
+    @classmethod
+    def load(cls, in_path: PathLike):
+        in_path = Path(in_path)
+        with pd.HDFStore(in_path / 'DVector.h5', 'r') as hdf_store:
+            data = hdf_store['data']
+        zoning = ZoningSystem.load(in_path)
+        segmentation_input = Segmentation.load(in_path / 'segmentation_meta.yml')
+        segmentation = Segmentation(segmentation_input)
+        return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
+
     def translate_zoning(self,
                          new_zoning: ZoningSystem,
                          weighting: str = None,
