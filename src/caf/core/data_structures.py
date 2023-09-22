@@ -267,10 +267,7 @@ class DVector:
 
         # Try to convert the given data into DVector format
         if isinstance(import_data, pd.DataFrame):
-            # validate segmentation of incoming data
-            loaded_seg = Segmentation.load_segmentation(source=import_data, segs=segmentation.names, naming_order=segmentation.naming_order)
-
-            self._data = pd.DataFrame(data=import_data.data, index=loaded_seg.ind, )
+            self._data = self._dataframe_to_dvec(import_data, self.segmentation, val_col)
         elif isinstance(import_data, dict):
             self._data = self._old_to_new_dvec(
                 import_data=import_data,
@@ -382,107 +379,49 @@ class DVector:
 
         return return_val
     def _dataframe_to_dvec(self,
-                           df: pd.DataFrame,
-                           zone_col: str,
+                           import_data: pd.DataFrame,
+                           segmentation: Segmentation,
                            val_col: str,
-                           segment_naming_conversion: str,
-                           infill: Any,
                            ):
         """
-        Converts a pandas dataframe into dvec.data internal structure
-
-        While converting, will:
-        - Make sure that any missing segment/zone combinations are infilled
-          with infill
-        - Make sure only one value exist for each segment/zone combination
+        Make sure an input dataframe is in the right format and contains to correct zones and
+        segmentation
         """
         # Init columns depending on if we have zones
-        required_cols = self.segmentation.naming_order + [self._val_col]
-        sort_cols = [self._segment_col]
-
-        # Add zoning if we need it
+        loaded_seg = Segmentation.load_segmentation(source=import_data, segs=segmentation.names,
+                                                    naming_order=segmentation.naming_order)
+        if isinstance(import_data.index, pd.MultiIndex):
+            if import_data.index.names != loaded_seg.naming_order:
+                import_data.reset_index(inplace=True)
+        import_data.set_index(loaded_seg.naming_order, inplace=True)
         if self.zoning_system is not None:
-            required_cols += [self._zone_col]
-            sort_cols += [self._zone_col]
-
-        # ## VALIDATE AND CONVERT THE GIVEN DATAFRAME ## #
-        # Rename import_data columns to internal names
-        rename_dict = {zone_col: self._zone_col, val_col: self._val_col}
-        df = df.rename(columns=rename_dict)
-
-        # Rename the segment columns if needed
-        if segment_naming_conversion is not None:
-            df = self.segmentation.rename_segment_cols(df, segment_naming_conversion)
-            # Set to None so the columns aren't renamed again in `create_segement_col`
-            segment_naming_conversion = None
-
-        # Make sure we don't have any extra columns
-        extra_cols = set(list(df)) - set(required_cols)
-        if len(extra_cols) > 0:
-            raise ValueError(
-                "Found extra columns in the given DataFrame than needed. The "
-                "given DataFrame should only contain val_col, "
-                "segmentation_cols, and the zone_col (where applicable).\n"
-                "Expected: %s\n"
-                "Found the following extra columns: %s"
-                % (required_cols, extra_cols)
-            )
-
-        # Add the segment column - drop the individual cols
-        df[self._segment_col] = self.segmentation.create_segment_col(
-            df=df,
-            naming_conversion=segment_naming_conversion
-        )
-        df = df.drop(columns=self.segmentation.naming_order)
-
-        # Sort by the segment columns for MP speed
-        df = df.sort_values(by=sort_cols)
-
-        # ## MULTIPROCESSING SETUP ## #
-        # If the dataframe is smaller than the chunk size, evenly split across cores
-        if len(df) < self._df_chunk_size * self.process_count:
-            chunk_size = math.ceil(len(df) / self.process_count)
+            if set(import_data.columns) != set(self.zoning_system.unique_zones):
+                raise ImportError(
+                    "The input dataframe does not contain columns matching the zoning system given")
         else:
-            chunk_size = self._df_chunk_size
+            import_data.columns = [val_col]
 
-        # setup a pbar
-        pbar_kwargs = {
-            'desc': "Converting df to dvec",
-            'unit': "segment",
-            'disable': (not self._debugging_mp_code),
-            'total': math.ceil(len(df) / chunk_size),
-        }
+        return import_data
 
-        # ## MULTIPROCESS THE DATA CONVERSION ## #
-        # Build a list of arguments
-        kwarg_list = list()
-        for df_chunk in pd_utils.chunk_df(df, chunk_size):
-            kwarg_list.append({'df_chunk': df_chunk})
-
-        # Call across multiple threads
-        data_chunks = multiprocessing.multiprocess(
-            fn=self._dataframe_to_dvec_internal,
-            kwargs=kwarg_list,
-            process_count=self.process_count,
-            pbar_kwargs=pbar_kwargs,
-        )
-        data = du.sum_dict_list(data_chunks)
-
-        # ## MAKE SURE DATA CONTAINS ALL SEGMENTS ##
-        # find the segments which arent in there
-        not_in = set(self.segmentation.segment_names) - data.keys()
-
-        # Figure out what the default value should be
-        if self.zoning_system is None:
-            default_val = infill
-        else:
-            default_val = np.array([infill] * self.zoning_system.n_zones)
-
-        # Infill the missing segments
-        for name in not_in:
-            data[name] = copy.copy(default_val)
-
-        return data
+    def _old_to_new_dvec(self,
+                         import_data: dict,
+                         ):
+        """
+        Converts the old format of DVector into the new - this only applies to the new dataframe.
+        """
+        zoning = import_data['zoning_system']['unique_zones']
+        data = import_data['data'].values()
+        segmentation = import_data['data'].keys()
+        naming_order = import_data['segmentation']['naming_order']
+        # Convert list of segmentations into multiindex
+        dict_list = []
+        for string in segmentation:
+            int_list = [int(x) for x in string.split('_')]
+            row_dict = {naming_order[i]: value for i, value in enumerate(int_list)}
+            dict_list.append(row_dict)
+        ind = pd.MultiIndex.from_frame(pd.DataFrame(dict_list))
+        return pd.DataFrame(data=data, index=ind, columns=zoning)
+    
     def translate_zoning(self,
                          new_zoning: ZoningSystem,
                          weighting: str = None,
