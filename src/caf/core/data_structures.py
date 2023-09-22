@@ -486,8 +486,8 @@ class DVector:
                 % type(new_zoning)
             )
 
-        if self.zoning_system.name is None:
-            raise nd.NormitsDemandError(
+        if self.zoning_system is None:
+            raise ValueError(
                 "Cannot translate the zoning system of a DVector that does "
                 "not have a zoning system to begin with."
             )
@@ -498,6 +498,14 @@ class DVector:
 
         # Get translation
         translation = self.zoning_system.translate(new_zoning, weighting)
+
+        translated = ctk.translation.pandas_multi_column_translation(self._data.transpose(),
+                                                        translation,
+                                                        from_col=f"{self.zoning_system.name}_id",
+                                                        to_col=f"{new_zoning.name}_id",
+                                                        factors_col=f"{self.zoning_system.name}_to_{new_zoning.name}")
+
+        translated = translated.transpose()
 
         # ## MULTIPROCESS ## #
         # Define the chunk size
@@ -546,4 +554,10 @@ class DVector:
             import_data=dvec_data,
             process_count=self.process_count,
         )
+
+    def copy(self):
+        return DVector(segmentation=self._segmentation.copy(),
+                       zoning_system=self._zoning_system.copy(),
+                       import_data=self._data.copy()
+                   )
 # # # FUNCTIONS # # #

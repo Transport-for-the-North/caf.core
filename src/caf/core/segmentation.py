@@ -260,6 +260,9 @@ class Segmentation:
         """Overrides the default implementation"""
         return not self.__eq__(other)
 
+    def copy(self):
+        return Segmentation(input=self.input.copy())
+
     def _mul_div_join(self, other, data_self: np.array, data_other: np.array):
         self_col_length = data_self.shape[1]
         other_col_length = data_other.shape[1]

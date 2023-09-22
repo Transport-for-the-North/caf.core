@@ -33,7 +33,7 @@ import caf.toolkit as ctk
 # Local Imports
 
 
-LOG = logging.get_logger(__name__)
+LOG = logging.getlogger(__name__)
 
 
 class ZoningSystem:
@@ -172,7 +172,7 @@ class ZoningSystem:
     def zone_descriptions(self) -> np.ndarray:
         """A numpy array of the unique zone names in order"""
         if self._zone_descriptions is None:
-            raise ZoningError(
+            raise ValueError(
                 f"No definition for zone descriptions has been set for this "
                 f"zoning system. Name: {self.name}"
             )
@@ -192,7 +192,7 @@ class ZoningSystem:
     def internal_zones(self) -> np.ndarray:
         """A numpy array of the internal zones in order"""
         if self._internal_zones is None:
-            raise ZoningError(
+            raise ValueError(
                 f"No definition for internal zones has been set for this "
                 f"zoning system. Name: {self.name}"
             )
@@ -202,7 +202,7 @@ class ZoningSystem:
     def external_zones(self) -> np.ndarray:
         """A numpy array of the external zones in order"""
         if self._external_zones is None:
-            raise ZoningError(
+            raise ValueError(
                 f"No definition for external zones has been set for this "
                 f"zoning system. Name: {self.name}"
             )
@@ -236,7 +236,7 @@ class ZoningSystem:
 
     def __len__(self) -> int:
         """Get the length of the zoning system"""
-        return len(self.unique_zones)
+        return self._n_zones
 
     def _get_weighting_suffix(self, weighting: str = None) -> str:
         """
@@ -308,7 +308,11 @@ class ZoningSystem:
         """Returns a copy of this class"""
         return ZoningSystem(
             name=self.name,
-            unique_zones=self.unique_zones.copy(),
+            unique_zones=self._unique_zones.copy(),
+            internal_zones=self._internal_zones.copy(),
+            external_zones=self._external_zones.copy(),
+            zone_descriptions=self._zone_descriptions.copy(),
+            metadata=self._metadata.copy()
         )
 
     def translate(self,
@@ -344,12 +348,6 @@ class ZoningSystem:
             raise ValueError(
                 f"other is not the correct type. Expected ZoningSystem, got "
                 f"{type(other)}"
-            )
-
-        if weighting not in self.possible_weightings:
-            raise ValueError(
-                f"{weighting} is not a valid weighting for a translation. "
-                f"Expected one of: {self.possible_weightings}"
             )
 
         # Get a numpy array to define the translation
