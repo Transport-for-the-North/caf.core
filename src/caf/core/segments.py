@@ -91,6 +91,9 @@ class SegmentsSuper(enum.Enum):
     TFN_AT = "tfn_at"
     USERCLASS = "uc"
 
+    @property
+    def values(self):
+        return  [e.value for e in self]
     def get_segment(self, subset: list[int] = None):
         match self:
             case SegmentsSuper.PURPOSE:

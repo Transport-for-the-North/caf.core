@@ -12,7 +12,7 @@ File purpose:
 """
 # Built-Ins
 import warnings
-from typing import Union
+from typing import Union, Optional
 from os import PathLike
 
 # Third Party
@@ -20,7 +20,7 @@ import pandas as pd
 from caf.core.config_base import BaseConfig
 import numpy as np
 from pathlib import Path
-
+from pydantic import validator
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
@@ -39,8 +39,24 @@ class SegmentationInput(BaseConfig):
     """
 
     enum_segments: list[SegmentsSuper]
-    custom_segments: list[Segment]
+    subsets: Optional[dict[SegmentsSuper, list[int]]]
+    custom_segments: Optional[list[Segment]]
     naming_order: list[str]
+
+    @validator("custom_segments")
+    def no_copied_names(cls, val):
+        if val is None:
+            return val
+        for seg in val:
+            if seg.name in SegmentsSuper.values:
+                raise ValueError ("There is already a segment defined with name "
+                                  f"{seg.name}. Segment names must be unique "
+                                  "even if the existing segment isn't in this "
+                                  "segmentation. This error is raised on the "
+                                  "first occurrence so it is possible there is "
+                                  "more than one clash. 'caf.core.SegmentsSuper.values' "
+                                  "will list all existing segment names.")
+        return val
 
 
 class Segmentation:
@@ -56,7 +72,17 @@ class Segmentation:
 
     def __init__(self, input: SegmentationInput):
         self.input = input
-        enum_segments = [SegmentsSuper(string).get_segment() for string in input.enum_segments]
+        # unpack enum segments, applying subsets if necessary
+        if input.subsets is None:
+            enum_segments = [SegmentsSuper(string).get_segment() for string in input.enum_segments]
+        else:
+            enum_segments = []
+            for seg in input.enum_segments:
+                if seg in input.subsets.keys():
+                    segment = SegmentsSuper(seg).get_segment(subset=input.subsets[seg])
+                else:
+                    segment = SegmentsSuper(seg).get_segment()
+                enum_segments.append(segment)
         self.segments = input.custom_segments + enum_segments
         self.naming_order = input.naming_order
 
@@ -105,6 +131,7 @@ class Segmentation:
                         mask = ~df.index.isin(dropper)
                         df = df[mask]
         df = df.reorder_levels(self.naming_order)
+
         return df.index
 
     def has_time_period_segments(self) -> bool:
@@ -256,6 +283,40 @@ class Segmentation:
             return False
 
         return True
+
+    @staticmethod
+    def ordered_set(list_1, list_2):
+        """Takes in two lists and combines them, removing duplicates but
+         preserving order."""
+        combined_list = list_1 + list_2
+        unique_list = []
+        for item in combined_list:
+            if item not in unique_list:
+                unique_list.append(item)
+        return unique_list
+    def __add__(self, other):
+        enum_in = set(self.input.enum_segments + other.input.enum_segments)
+        cust_in = set(self.input.custom_segments + other.input.custom_segments)
+        if (self.input.subsets is not None) & (other.input.subsets is not None):
+            subsets = self.input.subsets
+            subsets.update(other.input.subsets)
+        elif self.input.subsets is not None:
+            subsets = self.input.subsets
+        # At this point other.input.subsets could either be a subset, or could be None
+        # Either are fine
+        else:
+            subsets = other.input.subsets
+        naming_order = self.ordered_set(self.naming_order, other.naming_order)
+        input = SegmentationInput(enum_segments=enum_in,
+                                  subsets=subsets,
+                                  custom_segments=cust_in,
+                                  naming_order=naming_order)
+        return Segmentation(input)
+
+
+    def overlap(self, other):
+        """Check the overlap in segments between two segmentations"""
+        return [seg for seg in self.names if seg in other.names]
 
     def __ne__(self, other) -> bool:
         """Overrides the default implementation"""

@@ -520,5 +520,59 @@ class DVector:
             import_data=self._data.copy(),
         )
 
+    def overlap(self, other):
+        overlap = self.segmentation.overlap(other.segmentation)
+        if overlap == []:
+            raise NotImplementedError("There are no common segments between the "
+                                      "two DVectors so this operation is not "
+                                      "possible.")
+
+    def _generic_dunder(self, other, method):
+        # Make sure the two DVectors have overlapping indices
+        self.overlap(other)
+        # for the same zoning a simple * gives the desired result
+        # This drops any nan values (intersecting index level but missing val)
+        if self.zoning_system == other.zoning_system:
+            prod = method(self._data, other._data)
+        # For a dataframe by a series the mul is broadcast across
+        # for this to work axis needs to be set to 'index'
+        elif self.zoning_system is None:
+            prod = method(other._data, self._data.squeeze(), axis='index')
+        elif other.zoning_system is None:
+            prod = method(self._data, other._data.squeeze(), axis='index')
+        # Different zonings raise an error rather than trying to translate
+        else:
+            raise NotImplementedError("The two DVectors have different zonings. "
+                                      "To multiply them, one must be translated "
+                                      "to match the other.")
+        # Index unchanged, aside from possible order. Segmentation remained the same
+        if prod.index.equal_levels(self._data.index):
+            return DVector(segmentation=self.segmentation,
+                           import_data=prod,
+                           zoning_system=self.zoning_system)
+        # Index changed so the segmentation has changed. Segmentation should equal
+        # the addition of the two segmentations (see __add__ method in segmentation)
+        else:
+            new_seg = self.segmentation + other.segmentation
+            return DVector(segmentation=new_seg,
+                           import_data=prod,
+                           zoning_system=self.zoning_system)
+    def __mul__(self, other):
+        """Multiply dunder method for DVector"""
+        return self._generic_dunder(other, pd.DataFrame.mul)
+
+    def __add__(self, other):
+        """Add dunder method for DVector"""
+        return self._generic_dunder(other, pd.DataFrame.add)
+
+    def __sub__(self, other):
+        """Subtract dunder method for DVector"""
+        return self._generic_dunder(other, pd.DataFrame.sub)
+
+    def __truediv__(self, other):
+        """Division dunder method for DVector"""
+        return self._generic_dunder(other, pd.DataFrame.div)
+
+
 
 # # # FUNCTIONS # # #
