@@ -5,6 +5,7 @@
 import json
 from pathlib import Path
 import functools
+
 # pylint: disable=import-error
 import pydantic
 import strictyaml
@@ -141,6 +142,7 @@ def _remove_none_dict(data: dict) -> dict:
 
     return filtered
 
+
 def combine_dict_list(
     dict_list,
     operation,
@@ -163,6 +165,7 @@ def combine_dict_list(
     summed_dict:
         A single dictionary of all the dicts in dict_list summed together.
     """
+
     # Define the accumulator function to call in functools.reduce
     def reducer(accumulator, item):
         for key, value in item.items():

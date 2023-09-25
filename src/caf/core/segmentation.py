@@ -14,6 +14,7 @@ File purpose:
 import warnings
 from typing import Union
 from os import PathLike
+
 # Third Party
 import pandas as pd
 from caf.core.config_base import BaseConfig
@@ -50,6 +51,7 @@ class Segmentation:
     ----------
     input: Instance of SegmentationInput. See that class for details.
     """
+
     _time_period_segment_name = "tp"
 
     def __init__(self, input: SegmentationInput):
@@ -237,7 +239,6 @@ class Segmentation:
     def load(cls, in_path: PathLike):
         input = SegmentationInput.load_yaml(in_path)
         return cls(input)
-
 
     def __copy__(self):
         """Returns a copy of this class"""

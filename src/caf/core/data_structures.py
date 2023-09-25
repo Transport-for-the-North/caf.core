@@ -11,6 +11,7 @@ File purpose:
 
 """
 from __future__ import annotations
+
 # Built-Ins
 import enum
 import operator
@@ -18,13 +19,16 @@ from typing import Union, Optional, Any
 import os
 from os import PathLike
 from pathlib import Path
+
 # Third Party
 import pandas as pd
 import numpy as np
 import caf.toolkit as ctk
+
 # Local Imports
 from segmentation import Segmentation
 from zoning import ZoningSystem
+
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
 
@@ -32,12 +36,13 @@ from zoning import ZoningSystem
 
 # # # CONSTANTS # # #
 
+
 # # # CLASSES # # #
 @enum.unique
 class TimeFormat(enum.Enum):
-    AVG_WEEK = 'avg_week'
-    AVG_DAY = 'avg_day'
-    AVG_HOUR = 'avg_hour'
+    AVG_WEEK = "avg_week"
+    AVG_DAY = "avg_day"
+    AVG_HOUR = "avg_hour"
 
     @staticmethod
     def _valid_time_formats() -> list[str]:
@@ -94,12 +99,12 @@ class TimeFormat(enum.Enum):
     @staticmethod
     def _day_to_hour_factors() -> dict[int, float]:
         return {
-            1: 1/3,
-            2: 1/6,
-            3: 1/3,
-            4: 1/12,
-            5: 1/24,
-            6: 1/24,
+            1: 1 / 3,
+            2: 1 / 6,
+            3: 1 / 3,
+            4: 1 / 12,
+            5: 1 / 24,
+            6: 1 / 24,
         }
 
     @staticmethod
@@ -137,8 +142,7 @@ class TimeFormat(enum.Enum):
             raise ValueError(
                 "The given time_format is not valid.\n"
                 "\tGot: %s\n"
-                "\tExpected one of: %s"
-                % (value, TimeFormat._valid_time_formats())
+                "\tExpected one of: %s" % (value, TimeFormat._valid_time_formats())
             )
 
         # Convert into a TimeFormat constant
@@ -156,9 +160,10 @@ class TimeFormat(enum.Enum):
             )
         return return_val
 
-    def get_conversion_factors(self,
-                               to_time_format: TimeFormat,
-                               ) -> dict[int, float]:
+    def get_conversion_factors(
+        self,
+        to_time_format: TimeFormat,
+    ) -> dict[int, float]:
         """Get the conversion factors for each time period
 
         Get a dictionary of the values to multiply each time period by
@@ -191,9 +196,7 @@ class TimeFormat(enum.Enum):
             )
 
         if to_time_format == self:
-            raise ValueError(
-                "Cannot get the conversion factors when converting to self."
-            )
+            raise ValueError("Cannot get the conversion factors when converting to self.")
 
         # Figure out which function to call
         if self == TimeFormat.AVG_WEEK and to_time_format == TimeFormat.AVG_DAY:
@@ -216,43 +219,36 @@ class TimeFormat(enum.Enum):
 
         return factors_fn()
 
+
 class DVector:
     _chunk_size = 1000
-    _val_col = 'val'
-    def __init__(self,
-                 segmentation: Segmentation,
-                 import_data: Union[pd.DataFrame, PathLike],
-                 zoning_system: Optional[ZoningSystem] = None,
-                 time_format: Optional[Union[str, TimeFormat]] = None,
-                 zone_col: Optional[str] = None,
-                 val_col: Optional[str] = None,
-                 df_naming_conversion: Optional[str] = None,
-                 df_chunk_size: Optional[int] = None,
-                 process_count: Optional[int] = -2,
-                 ) -> None:
+    _val_col = "val"
 
+    def __init__(
+        self,
+        segmentation: Segmentation,
+        import_data: Union[pd.DataFrame, PathLike],
+        zoning_system: Optional[ZoningSystem] = None,
+        time_format: Optional[Union[str, TimeFormat]] = None,
+        zone_col: Optional[str] = None,
+        val_col: Optional[str] = None,
+    ) -> None:
         if zoning_system is not None:
             if not isinstance(zoning_system, ZoningSystem):
                 raise ValueError(
                     "Given zoning_system is not a caf.core.ZoningSystem object."
-                    "Got a %s object instead."
-                    % type(zoning_system)
+                    "Got a %s object instead." % type(zoning_system)
                 )
 
         if not isinstance(segmentation, Segmentation):
             raise ValueError(
                 "Given segmentation is not a caf.core.SegmentationLevel object."
-                "Got a %s object instead."
-                % type(segmentation)
+                "Got a %s object instead." % type(segmentation)
             )
 
         self._zoning_system = zoning_system
         self._segmentation = segmentation
         self._time_format = self._validate_time_format(time_format)
-        self._df_chunk_size = self._chunk_size if df_chunk_size is None else df_chunk_size
-
-        # Define multiprocessing arguments
-        self.process_count = process_count
 
         if self.process_count == 0:
             self._chunk_divider = 1
@@ -269,13 +265,10 @@ class DVector:
         if isinstance(import_data, pd.DataFrame):
             self._data = self._dataframe_to_dvec(import_data, self.segmentation, val_col)
         elif isinstance(import_data, dict):
-            self._data = self._old_to_new_dvec(
-                import_data=import_data
-            )
+            self._data = self._old_to_new_dvec(import_data=import_data)
         else:
             raise NotImplementedError(
-                "Don't know how to deal with anything other than: "
-                "pandas DF, or dict"
+                "Don't know how to deal with anything other than: " "pandas DF, or dict"
             )
 
     # SETTERS AND GETTERS
@@ -315,9 +308,10 @@ class DVector:
         """
         return [x.value for x in TimeFormat]
 
-    def _validate_time_format(self,
-                              time_format: Union[str, TimeFormat],
-                              ) -> TimeFormat:
+    def _validate_time_format(
+        self,
+        time_format: Union[str, TimeFormat],
+    ) -> TimeFormat:
         """Validate the time format is a valid value
 
         Parameters
@@ -344,9 +338,10 @@ class DVector:
                     "not been defined.\n"
                     "\tTime periods segment name: %s\n"
                     "\tValid time_format values: %s"
-                    % (self.segmentation._time_period_segment_name,
-                       self._valid_time_formats(),
-                       )
+                    % (
+                        self.segmentation._time_period_segment_name,
+                        self._valid_time_formats(),
+                    )
                 )
 
         # If None or TimeFormat, that's fine
@@ -359,8 +354,7 @@ class DVector:
             raise ValueError(
                 "The given time_format is not valid.\n"
                 "\tGot: %s\n"
-                "\tExpected one of: %s"
-                % (time_format, self._valid_time_formats())
+                "\tExpected one of: %s" % (time_format, self._valid_time_formats())
             )
 
         # Convert into a TimeFormat constant
@@ -378,18 +372,21 @@ class DVector:
             )
 
         return return_val
-    def _dataframe_to_dvec(self,
-                           import_data: pd.DataFrame,
-                           segmentation: Segmentation,
-                           val_col: str,
-                           ):
+
+    def _dataframe_to_dvec(
+        self,
+        import_data: pd.DataFrame,
+        segmentation: Segmentation,
+        val_col: str,
+    ):
         """
         Make sure an input dataframe is in the right format and contains to correct zones and
         segmentation
         """
         # Init columns depending on if we have zones
-        loaded_seg = Segmentation.load_segmentation(source=import_data, segs=segmentation.names,
-                                                    naming_order=segmentation.naming_order)
+        loaded_seg = Segmentation.load_segmentation(
+            source=import_data, segs=segmentation.names, naming_order=segmentation.naming_order
+        )
         if isinstance(import_data.index, pd.MultiIndex):
             if import_data.index.names != loaded_seg.naming_order:
                 import_data.reset_index(inplace=True)
@@ -397,26 +394,28 @@ class DVector:
         if self.zoning_system is not None:
             if set(import_data.columns) != set(self.zoning_system.unique_zones):
                 raise ImportError(
-                    "The input dataframe does not contain columns matching the zoning system given")
+                    "The input dataframe does not contain columns matching the zoning system given"
+                )
         else:
             import_data.columns = [val_col]
 
         return import_data
 
-    def _old_to_new_dvec(self,
-                         import_data: dict,
-                         ):
+    def _old_to_new_dvec(
+        self,
+        import_data: dict,
+    ):
         """
         Converts the old format of DVector into the new - this only applies to the new dataframe.
         """
-        zoning = import_data['zoning_system']['unique_zones']
-        data = import_data['data'].values()
-        segmentation = import_data['data'].keys()
-        naming_order = import_data['segmentation']['naming_order']
+        zoning = import_data["zoning_system"]["unique_zones"]
+        data = import_data["data"].values()
+        segmentation = import_data["data"].keys()
+        naming_order = import_data["segmentation"]["naming_order"]
         # Convert list of segmentations into multiindex
         dict_list = []
         for string in segmentation:
-            int_list = [int(x) for x in string.split('_')]
+            int_list = [int(x) for x in string.split("_")]
             row_dict = {naming_order[i]: value for i, value in enumerate(int_list)}
             dict_list.append(row_dict)
         ind = pd.MultiIndex.from_frame(pd.DataFrame(dict_list))
@@ -439,26 +438,27 @@ class DVector:
         """
         out_path = Path(out_path)
         out_path.mkdir(exist_ok=True, parents=False)
-        with pd.HDFStore(out_path / 'DVector.h5', 'w') as hdf_store:
-            hdf_store['data'] = self._data
+        with pd.HDFStore(out_path / "DVector.h5", "w") as hdf_store:
+            hdf_store["data"] = self._data
         if self.zoning_system is not None:
             self.zoning_system.save(out_path)
-        self.segmentation.save(out_path / 'segmentation_meta.yml')
+        self.segmentation.save(out_path / "segmentation_meta.yml")
 
     @classmethod
     def load(cls, in_path: PathLike):
         in_path = Path(in_path)
-        with pd.HDFStore(in_path / 'DVector.h5', 'r') as hdf_store:
-            data = hdf_store['data']
+        with pd.HDFStore(in_path / "DVector.h5", "r") as hdf_store:
+            data = hdf_store["data"]
         zoning = ZoningSystem.load(in_path)
-        segmentation_input = Segmentation.load(in_path / 'segmentation_meta.yml')
+        segmentation_input = Segmentation.load(in_path / "segmentation_meta.yml")
         segmentation = Segmentation(segmentation_input)
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
 
-    def translate_zoning(self,
-                         new_zoning: ZoningSystem,
-                         weighting: str = None,
-                         ) -> DVector:
+    def translate_zoning(
+        self,
+        new_zoning: ZoningSystem,
+        weighting: str = None,
+    ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
         DVector.
@@ -482,8 +482,7 @@ class DVector:
         if not isinstance(new_zoning, ZoningSystem):
             raise ValueError(
                 "new_zoning is not the correct type. "
-                "Expected ZoningSystem, got %s"
-                % type(new_zoning)
+                "Expected ZoningSystem, got %s" % type(new_zoning)
             )
 
         if self.zoning_system is None:
@@ -499,65 +498,27 @@ class DVector:
         # Get translation
         translation = self.zoning_system.translate(new_zoning, weighting)
 
-        translated = ctk.translation.pandas_multi_column_translation(self._data.transpose(),
-                                                        translation,
-                                                        from_col=f"{self.zoning_system.name}_id",
-                                                        to_col=f"{new_zoning.name}_id",
-                                                        factors_col=f"{self.zoning_system.name}_to_{new_zoning.name}")
-
-        translated = translated.transpose()
-
-        # ## MULTIPROCESS ## #
-        # Define the chunk size
-        total = len(self._data)
-        chunk_size = math.ceil(total / self._chunk_divider)
-
-        # Make sure the chunks aren't too small
-        if chunk_size < self._translate_zoning_min_chunk_size:
-            chunk_size = self._translate_zoning_min_chunk_size
-
-        # Define the kwargs
-        kwarg_list = list()
-        for keys_chunk in du.chunk_list(self._data.keys(), chunk_size):
-            # Calculate subsets of self.data to avoid locks between processes
-            self_data_subset = {k: self._data[k] for k in keys_chunk}
-
-            # Assign to a process
-            kwarg_list.append({
-                'self_data': self_data_subset,
-                'translation': translation.copy(),
-            })
-
-        # Define pbar
-        pbar_kwargs = {
-            'desc': "Translating",
-            'disable': not self._debugging_mp_code,
-        }
-
-        # Run across processes
-        data_chunks = multiprocessing.multiprocess(
-            fn=self._translate_zoning_internal,
-            kwargs=kwarg_list,
-            process_count=self.process_count,
-            pbar_kwargs=pbar_kwargs,
+        translated = ctk.translation.pandas_multi_column_translation(
+            self._data.transpose(),
+            translation,
+            from_col=f"{self.zoning_system.name}_id",
+            to_col=f"{new_zoning.name}_id",
+            factors_col=f"{self.zoning_system.name}_to_{new_zoning.name}",
         )
-
-        # Combine all computation chunks into one
-        dvec_data = dict.fromkeys(self._data.keys())
-        for chunk in data_chunks:
-            dvec_data.update(chunk)
 
         return DVector(
             zoning_system=new_zoning,
             segmentation=self.segmentation,
             time_format=self.time_format,
-            import_data=dvec_data,
-            process_count=self.process_count,
+            import_data=translated.transpose(),
         )
 
     def copy(self):
-        return DVector(segmentation=self._segmentation.copy(),
-                       zoning_system=self._zoning_system.copy(),
-                       import_data=self._data.copy()
-                   )
+        return DVector(
+            segmentation=self._segmentation.copy(),
+            zoning_system=self._zoning_system.copy(),
+            import_data=self._data.copy(),
+        )
+
+
 # # # FUNCTIONS # # #
