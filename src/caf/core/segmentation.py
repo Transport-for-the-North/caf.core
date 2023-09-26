@@ -39,24 +39,52 @@ class SegmentationInput(BaseConfig):
     """
 
     enum_segments: list[SegmentsSuper]
-    subsets: Optional[dict[SegmentsSuper, list[int]]]
+    subsets: Optional[dict[str, list[int]]]
     custom_segments: Optional[list[Segment]]
     naming_order: list[str]
 
-    @validator("custom_segments")
-    def no_copied_names(cls, val):
-        if val is None:
-            return val
-        for seg in val:
-            if seg.name in SegmentsSuper.values:
-                raise ValueError ("There is already a segment defined with name "
-                                  f"{seg.name}. Segment names must be unique "
-                                  "even if the existing segment isn't in this "
-                                  "segmentation. This error is raised on the "
-                                  "first occurrence so it is possible there is "
-                                  "more than one clash. 'caf.core.SegmentsSuper.values' "
-                                  "will list all existing segment names.")
-        return val
+    @validator("subsets")
+    def enums(cls, v, values):
+        if v is None:
+            return v
+        for seg in v.keys():
+            if SegmentsSuper(seg) not in values["enum_segments"]:
+                raise ValueError(f"{v} is not a valid segment  "
+                                 ", and so can't be a subset value.")
+        return v
+
+    # @validator("custom_segments")
+    # def no_copied_names(cls, v):
+    #     for seg in v:
+    #         if seg.name in SegmentsSuper.values():
+    #             raise ValueError("There is already a segment defined with name "
+    #                               f"{seg.name}. Segment names must be unique "
+    #                               "even if the existing segment isn't in this "
+    #                               "segmentation. This error is raised on the "
+    #                               "first occurrence so it is possible there is "
+    #                               "more than one clash. 'caf.core.SegmentsSuper.values' "
+    #                               "will list all existing segment names.")
+    #     return v
+
+    @validator("naming_order")
+    def names_match_segments(cls, v, values):
+        seg_names = [i.value for i in values["enum_segments"]]
+        if values["custom_segments"] is not None:
+            seg_names += [i.name for i in values["custom_segments"]]
+        if set(seg_names) != set(v):
+            raise ValueError("Names provided for naming_order do not match names"
+                             " in segments")
+        return v
+
+    @property
+    def _custom_segments(self):
+        if self.custom_segments is None:
+            return []
+        return self.custom_segments
+
+    @property
+    def _enum_segments(self):
+        return self.enum_segments
 
 
 class Segmentation:
@@ -83,7 +111,7 @@ class Segmentation:
                 else:
                     segment = SegmentsSuper(seg).get_segment()
                 enum_segments.append(segment)
-        self.segments = input.custom_segments + enum_segments
+        self.segments = input._custom_segments + enum_segments
         self.naming_order = input.naming_order
 
     @property
@@ -296,7 +324,10 @@ class Segmentation:
         return unique_list
     def __add__(self, other):
         enum_in = set(self.input.enum_segments + other.input.enum_segments)
-        cust_in = set(self.input.custom_segments + other.input.custom_segments)
+        cust_in = self.input._custom_segments
+        for seg in other.input._custom_segments:
+            if seg.name not in [i.name for i in cust_in]:
+                cust_in.append(seg)
         if (self.input.subsets is not None) & (other.input.subsets is not None):
             subsets = self.input.subsets
             subsets.update(other.input.subsets)
