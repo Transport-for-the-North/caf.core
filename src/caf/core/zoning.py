@@ -127,19 +127,18 @@ class ZoningSystem:
             be contained in unique_zones.
         """
         # Init
-        self._name = name
-        self._col_name = self._base_col_name % name
-        self._unique_zones = unique_zones
-        self._n_zones = len(self.unique_zones)
+        self.name = name
+        self.unique_zones = unique_zones
+        self.n_zones = len(self.unique_zones)
         if isinstance(metadata, PathLike):
-            self._metadata = ZoningSystemMetaData.load_yaml(metadata)
+            self.metadata = ZoningSystemMetaData.load_yaml(metadata)
         else:
-            self._metadata = metadata
+            self.metadata = metadata
 
         # Validate and assign the optional arguments
-        self._internal_zones = internal_zones
-        self._external_zones = external_zones
-        self._zone_descriptions = zone_descriptions
+        self.internal_zones = internal_zones
+        self.external_zones = external_zones
+        self.zone_descriptions = zone_descriptions
 
         # if zone_descriptions is not None:
         #     if zone_descriptions.shape != unique_zones.shape:
@@ -153,60 +152,13 @@ class ZoningSystem:
         #     name_dict = dict(zip(unique_zones, zone_descriptions))
         #     self._zone_descriptions = np.array([name_dict[x] for x in self._unique_zones])
 
-    @property
-    def name(self) -> str:
-        """The name of the zoning system"""
-        return self._name
+
+
 
     @property
-    def col_name(self) -> str:
-        """The default name to give a column containing the zone data"""
-        return self._col_name
-
-    @property
-    def unique_zones(self) -> pd.DataFrame:
-        """A numpy array of the unique zones in order"""
-        return self._unique_zones
-
-    @property
-    def zone_descriptions(self) -> np.ndarray:
-        """A numpy array of the unique zone names in order"""
-        if self._zone_descriptions is None:
-            raise ValueError(
-                f"No definition for zone descriptions has been set for this "
-                f"zoning system. Name: {self.name}"
-            )
-        return self._zone_descriptions
-
-    @property
-    def zone_to_description_dict(self) -> Dict[Any, Any]:
+    def zone_to_description_df(self) -> Dict[Any, Any]:
         """A Dictionary of zones to their names"""
-        return dict(zip(self._unique_zones, self.zone_descriptions))
-
-    @property
-    def n_zones(self) -> int:
-        """The number of zones in this zoning system"""
-        return self._n_zones
-
-    @property
-    def internal_zones(self) -> np.ndarray:
-        """A numpy array of the internal zones in order"""
-        if self._internal_zones is None:
-            raise ValueError(
-                f"No definition for internal zones has been set for this "
-                f"zoning system. Name: {self.name}"
-            )
-        return self._internal_zones
-
-    @property
-    def external_zones(self) -> np.ndarray:
-        """A numpy array of the external zones in order"""
-        if self._external_zones is None:
-            raise ValueError(
-                f"No definition for external zones has been set for this "
-                f"zoning system. Name: {self.name}"
-            )
-        return self._external_zones
+        return self.unique_zones.join(self.zone_descriptions)
 
     def __copy__(self):
         """Returns a copy of this class"""
@@ -236,7 +188,7 @@ class ZoningSystem:
 
     def __len__(self) -> int:
         """Get the length of the zoning system"""
-        return self._n_zones
+        return self.n_zones
 
     def _get_translation_definition(
         self,
@@ -250,7 +202,7 @@ class ZoningSystem:
         # Init
         names = sorted([self.name, other.name])
         folder = f"{names[0]}_{names[1]}"
-        file = f"{names[0]}_to_{names[1]}_{weighting}"
+        file = f"{names[0]}_to_{names[1]}_{weighting}.csv"
 
         # Try find a translation
         if (trans_cache / folder).is_dir():
@@ -269,7 +221,7 @@ class ZoningSystem:
                     f"Files in folder are : {os.listdir(trans_cache / folder)}. Please choose"
                     f" one of these or generate your own translation using caf.space."
                 ) from error
-        elif (self._metadata.shapefile_path is not None) & (other._metadata.shapefile_path is not None):
+        elif (self.metadata.shapefile_path is not None) & (other.metadata.shapefile_path is not None):
             LOG.warning(
                 "A translation for these zones does not exist. Trying to generate a "
                 "translation using caf.space. This will be spatial regardless of the "
@@ -284,13 +236,13 @@ class ZoningSystem:
                 )
             zone_1 = cs.TransZoneSystemInfo(
                 name=self.name,
-                shapefile=self._metadata.shapefile_path,
-                id_col=self._metadata.shapefile_id_col,
+                shapefile=self.metadata.shapefile_path,
+                id_col=self.metadata.shapefile_id_col,
             )
             zone_2 = cs.TransZoneSystemInfo(
                 name=other.name,
-                shapefile=other._metadata.shapefile_path,
-                id_col=other._metadata.shapefile_id_col,
+                shapefile=other.metadata.shapefile_path,
+                id_col=other.metadata.shapefile_id_col,
             )
             conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2)
             trans = cs.ZoneTranslation(conf).spatial_translation()
@@ -324,11 +276,11 @@ class ZoningSystem:
         """Returns a copy of this class"""
         return ZoningSystem(
             name=self.name,
-            unique_zones=self._unique_zones.copy(),
-            internal_zones=self._internal_zones.copy(),
-            external_zones=self._external_zones.copy(),
-            zone_descriptions=self._zone_descriptions.copy(),
-            metadata=self._metadata.copy(),
+            unique_zones=self.unique_zones.copy(),
+            internal_zones=self.internal_zones.copy(),
+            external_zones=self.external_zones.copy(),
+            zone_descriptions=self.zone_descriptions.copy(),
+            metadata=self.metadata.copy(),
         )
 
     def translate(
@@ -384,19 +336,19 @@ class ZoningSystem:
         out_path = Path(path)
         save_df = self.unique_zones
         if self._internal_zones is not None:
-            save_df["internal"] = save_df["zone_id"].isin(self.internal_zones["zone_name"])
+            save_df["internal"] = save_df["zone_name"].isin(self.internal_zones["zone_name"])
         if self._external_zones is not None:
-            save_df["external"] = save_df["zone_id"].isin(self.external_zones["zone_name"])
+            save_df["external"] = save_df["zone_name"].isin(self.external_zones["zone_name"])
         if self._zone_descriptions is not None:
             save_df["descriptions"] = self.zone_descriptions
         if mode.lower() == "hdf":
             with pd.HDFStore(out_path / "DVector.h5") as store:
                 store["zoning"] = save_df
         elif mode.lower() == "csv":
-            save_df.to_csv(out_path / "zoning.csv")
+            save_df.to_csv(out_path / "zoning.csv", index=False)
         else:
             raise ValueError("Mode can only be 'hdf' or 'csv', not " f"{mode}.")
-        self._metadata.save_yaml(out_path / "zoning_meta.yml")
+        self.metadata.save_yaml(out_path / "zoning_meta.yml")
 
     @classmethod
     def load(cls, in_path: PathLike, mode: str):
@@ -417,7 +369,7 @@ class ZoningSystem:
         # make sure in_path is a Path
         in_path = Path(in_path)
         # If this file exists the zoning should be in the hdf and vice versa
-        if ~os.path.isfile(in_path / "metadata.yml"):
+        if os.path.isfile(in_path / "zoning_meta.yml") is False:
             return None
         zoning_meta = ZoningSystemMetaData.load_yaml(in_path / "zoning_meta.yml")
         if mode.lower() == "hdf":
@@ -431,15 +383,15 @@ class ZoningSystem:
         ext_zones = None
         descriptions = None
         if "internal" in zoning.columns:
-            int_zones = zoning.loc[zoning["internal"], "zone_id"].values
+            int_zones = zoning.loc[zoning["internal"], "zone_name"]
         if "external" in zoning.columns:
-            ext_zones = zoning.loc[zoning["external"], "zone_id"].values
+            ext_zones = zoning.loc[zoning["external"], "zone_name"]
         if "descriptions" in zoning.columns:
-            descriptions = zoning["descriptions"].values
+            descriptions = zoning["descriptions"]
 
         return cls(
             name=zoning_meta.name,
-            unique_zones=zoning["zones"].values,
+            unique_zones=zoning[['zone_id', 'zone_name']],
             metadata=zoning_meta,
             internal_zones=int_zones,
             external_zones=ext_zones,
@@ -501,7 +453,7 @@ class ZoningSystem:
             external_zones=external,
         )
         out_dir = Path(new_dir) / name
-        out_dir.mkdir(exist_ok=False, parents=False)
+        out_dir.mkdir(exist_ok=True, parents=False)
         zoning.save(out_dir, mode=mode)
         if return_zoning:
             return zoning
@@ -529,6 +481,6 @@ class ZoningSystemMetaData(ctk.BaseConfig):
     """
     Class to store metadata relating to zoning systems in normits_demand
     """
-    name: str
+    name: Optional[str]
     shapefile_id_col: Optional[str]
     shapefile_path: Optional[Path]
