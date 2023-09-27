@@ -12,7 +12,7 @@ File purpose:
 """
 import enum
 import pandas as pd
-from caf.core.config_base import BaseConfig
+from caf.toolkit import BaseConfig
 import numpy as np
 from pathlib import Path
 from dataclasses import dataclass
@@ -90,10 +90,12 @@ class SegmentsSuper(enum.Enum):
     CA = "ca"
     TFN_AT = "tfn_at"
     USERCLASS = "uc"
+    NS = "ns"
 
     @classmethod
     def values(cls):
-        return  [e.value for e in cls]
+        return [e.value for e in cls]
+
     def get_segment(self, subset: list[int] = None):
         match self:
             case SegmentsSuper.PURPOSE:
@@ -161,13 +163,16 @@ class SegmentsSuper(enum.Enum):
                         2: "High Skilled",
                         3: "High Skilled",
                         4: "Skilled",
-                        5: "Skilled",
-                        6: "Skilled",
-                        7: "Low Skilled",
-                        8: "Low Skilled",
-                        9: "Low Skilled",
                     },
                 )
+            case SegmentsSuper.CA:
+                segmentation = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
+            case SegmentsSuper.NS:
+                segmentation = Segment(
+                    name=self.value,
+                    values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
+                )
+
         if subset:
             segmentation.values = {i: j for i, j in segmentation.values.items() if i in subset}
         return segmentation

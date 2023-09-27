@@ -17,10 +17,11 @@ from os import PathLike
 
 # Third Party
 import pandas as pd
-from caf.core.config_base import BaseConfig
+from caf.toolkit import BaseConfig
 import numpy as np
 from pathlib import Path
 from pydantic import validator
+
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
@@ -43,28 +44,33 @@ class SegmentationInput(BaseConfig):
     custom_segments: Optional[list[Segment]]
     naming_order: list[str]
 
-    @validator("subsets")
+    @validator("subsets", always=True)
     def enums(cls, v, values):
         if v is None:
             return v
         for seg in v.keys():
             if SegmentsSuper(seg) not in values["enum_segments"]:
-                raise ValueError(f"{v} is not a valid segment  "
-                                 ", and so can't be a subset value.")
+                raise ValueError(
+                    f"{v} is not a valid segment  " ", and so can't be a subset value."
+                )
         return v
 
-    # @validator("custom_segments")
-    # def no_copied_names(cls, v):
-    #     for seg in v:
-    #         if seg.name in SegmentsSuper.values():
-    #             raise ValueError("There is already a segment defined with name "
-    #                               f"{seg.name}. Segment names must be unique "
-    #                               "even if the existing segment isn't in this "
-    #                               "segmentation. This error is raised on the "
-    #                               "first occurrence so it is possible there is "
-    #                               "more than one clash. 'caf.core.SegmentsSuper.values' "
-    #                               "will list all existing segment names.")
-    #     return v
+    @validator("custom_segments", always=True)
+    def no_copied_names(cls, v):
+        if v is None:
+            return v
+        for seg in v:
+            if seg.name in SegmentsSuper.values():
+                raise ValueError(
+                    "There is already a segment defined with name "
+                    f"{seg.name}. Segment names must be unique "
+                    "even if the existing segment isn't in this "
+                    "segmentation. This error is raised on the "
+                    "first occurrence so it is possible there is "
+                    "more than one clash. 'caf.core.SegmentsSuper.values' "
+                    "will list all existing segment names."
+                )
+        return v
 
     @validator("naming_order")
     def names_match_segments(cls, v, values):
@@ -72,8 +78,9 @@ class SegmentationInput(BaseConfig):
         if values["custom_segments"] is not None:
             seg_names += [i.name for i in values["custom_segments"]]
         if set(seg_names) != set(v):
-            raise ValueError("Names provided for naming_order do not match names"
-                             " in segments")
+            raise ValueError(
+                "Names provided for naming_order do not match names" " in segments"
+            )
         return v
 
     @property
@@ -96,18 +103,20 @@ class Segmentation:
     input: Instance of SegmentationInput. See that class for details.
     """
 
-    _time_period_segment_name = "tp"
+    _time_period_segment_name = "tp3"
 
     def __init__(self, input: SegmentationInput):
         self.input = input
         # unpack enum segments, applying subsets if necessary
         if input.subsets is None:
-            enum_segments = [SegmentsSuper(string).get_segment() for string in input.enum_segments]
+            enum_segments = [
+                SegmentsSuper(string).get_segment() for string in input.enum_segments
+            ]
         else:
             enum_segments = []
             for seg in input.enum_segments:
-                if seg in input.subsets.keys():
-                    segment = SegmentsSuper(seg).get_segment(subset=input.subsets[seg])
+                if seg.value in input.subsets.keys():
+                    segment = SegmentsSuper(seg).get_segment(subset=input.subsets[seg.value])
                 else:
                     segment = SegmentsSuper(seg).get_segment()
                 enum_segments.append(segment)
@@ -151,16 +160,15 @@ class Segmentation:
         for own_seg in self.segments:
             for other_seg in drop_iterator:
                 if other_seg == own_seg.name:
-                    pass
+                    continue
                 if own_seg.exclusion_segs:
                     if other_seg in own_seg.exclusion_segs:
                         dropper = own_seg.drop_indices(other_seg)
                         df = df.reset_index().set_index([own_seg.name, other_seg])
                         mask = ~df.index.isin(dropper)
                         df = df[mask]
-        df = df.reorder_levels(self.naming_order)
 
-        return df.index
+        return df.reset_index().set_index(self.naming_order).index
 
     def has_time_period_segments(self) -> bool:
         """Checks whether this segmentation has time period segmentation
@@ -174,48 +182,7 @@ class Segmentation:
         return self._time_period_segment_name in self.naming_order
 
     @classmethod
-    def _build_seg(
-        cls,
-        segs: list[str],
-        naming_order: list[str],
-        custom_segments: list[Segment] = None,
-    ):
-        """
-        Internal method to build a segmentation from inputs.
-
-        Parameters
-        ----------
-        segs: list of segment names.
-        naming_order: Ordered list of segment names.
-        custom_segments: List of fully defined segments which don't exist in the SegmentsSuper
-        enum class
-
-        Returns
-        -------
-        A segmentation built from these inputs.
-        """
-        segments = []
-        for seg in segs:
-            try:
-                segments.append(SegmentsSuper(seg).get_segment())
-            except ValueError:
-                raise ValueError(
-                    f"{seg} isn't defined in this package. Either define it there or"
-                    f"create your own segment and pass it in as a custom segment."
-                )
-        if custom_segments:
-            segments += custom_segments
-        segminput = SegmentationInput(segments=segments, naming_order=naming_order)
-        return cls(segminput)
-
-    @classmethod
-    def load_segmentation(
-        cls,
-        source: Union[Path, pd.DataFrame],
-        segs: list[str] = None,
-        naming_order: list[str] = None,
-        custom_segs=None,
-    ):
+    def load_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation):
         """
         Load a segmentation from either a path to a csv, or a dataframe. This could either be
         purely a segmentation, or data with a segmentation index.
@@ -237,20 +204,20 @@ class Segmentation:
             df = pd.read_csv(source)
         else:
             df = source
-        if segs is None:
-            segs = list(df.columns)
-        if naming_order is None:
-            naming_order = segs
-        built_segmentation = cls._build_seg(segs, naming_order, custom_segs)
+        naming_order = segmentation.naming_order
+        conf = segmentation.input.copy()
         if df.index.names == naming_order:
             read_index = df.index
         else:
-            read_index = pd.MultiIndex.from_frame(df[naming_order])
-        built_index = built_segmentation.ind
+            try:
+                read_index = pd.MultiIndex.from_frame(df[naming_order])
+            except KeyError:
+                read_index = df.index.reorder_levels(naming_order)
+        built_index = segmentation.ind
         if built_index.names != read_index.names:
             raise ValueError("The read in segmentation does not match the given parameters")
         if read_index.equal_levels(built_index):
-            return built_segmentation
+            return segmentation
         for name in built_index.names:
             built_level = set(built_index.get_level_values(name))
             read_level = set(read_index.get_level_values(name))
@@ -261,23 +228,19 @@ class Segmentation:
                     f"Read in level {name} is a subset of the segment. If this was not"
                     f" expected check the input segmentation."
                 )
-                built_segmentation.seg_dict[name].values = {
-                    i: j
-                    for i, j in built_segmentation.seg_dict[name].values.items()
-                    if i in read_level
-                }
-                temp_df = (
-                    pd.DataFrame(index=built_index, columns=[0]).reset_index().set_index(name)
-                )
-                temp_df = temp_df.loc[read_level]
-                built_index = temp_df.reset_index().set_index(naming_order).index
+                if conf.subsets is not None:
+                    conf.subsets.update({name: list(read_level)})
+                else:
+                    conf.subsets = {name: list(read_level)}
             else:
                 raise ValueError(
                     f"The segment for {name} does not match the inbuilt definition."
                     f"Check for mistakes in the read in segmentation, or redefine the"
                     f"segment with a different name."
                 )
-        if read_index.equal_levels(built_index):
+
+        built_segmentation = cls(conf)
+        if read_index.equal_levels(built_segmentation.ind):
             return built_segmentation
         else:
             raise ValueError(
@@ -315,13 +278,14 @@ class Segmentation:
     @staticmethod
     def ordered_set(list_1, list_2):
         """Takes in two lists and combines them, removing duplicates but
-         preserving order."""
+        preserving order."""
         combined_list = list_1 + list_2
         unique_list = []
         for item in combined_list:
             if item not in unique_list:
                 unique_list.append(item)
         return unique_list
+
     def __add__(self, other):
         enum_in = set(self.input.enum_segments + other.input.enum_segments)
         cust_in = self.input._custom_segments
@@ -338,12 +302,13 @@ class Segmentation:
         else:
             subsets = other.input.subsets
         naming_order = self.ordered_set(self.naming_order, other.naming_order)
-        input = SegmentationInput(enum_segments=enum_in,
-                                  subsets=subsets,
-                                  custom_segments=cust_in,
-                                  naming_order=naming_order)
+        input = SegmentationInput(
+            enum_segments=enum_in,
+            # subsets=subsets,
+            custom_segments=cust_in,
+            naming_order=naming_order,
+        )
         return Segmentation(input)
-
 
     def overlap(self, other):
         """Check the overlap in segments between two segmentations"""
@@ -406,9 +371,31 @@ class Segmentation:
 
         return df_self, df_other
 
-    def __mul__(self, other, data_self, data_other):
-        df_self, df_other = self._mul_div_join(self, other, data_self, data_other)
-        return df_self * df_other
+    def aggregate(self, new_segs: list[str]):
+        custom = None
+        subsets = None
+        if self.input.custom_segments is not None:
+            custom = self.input.custom_segments.copy()
+            for seg in self.input.custom_segments:
+                if seg.name not in new_segs:
+                    custom.remove(seg)
+        enum_segs = self.input.enum_segments.copy()
+        for seg in self.input.enum_segments:
+            if seg.value not in new_segs:
+                enum_segs.remove(seg)
+        if self.input.subsets is not None:
+            subsets = dict()
+            for key, val in self.input.subsets.items():
+                if key in new_segs:
+                    subsets.update({key: val})
+        new_order = [i for i in self.naming_order if i in new_segs]
+        conf = SegmentationInput(
+            enum_segments=enum_segs,
+            subsets=subsets,
+            custom_segments=custom,
+            naming_order=new_order,
+        )
+        return Segmentation(conf)
 
 
 # # # FUNCTIONS # # #

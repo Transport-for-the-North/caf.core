@@ -26,8 +26,8 @@ import numpy as np
 import caf.toolkit as ctk
 
 # Local Imports
-from segmentation import Segmentation
-from zoning import ZoningSystem
+from caf.core.segmentation import Segmentation
+from caf.core.zoning import ZoningSystem
 
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
@@ -221,7 +221,6 @@ class TimeFormat(enum.Enum):
 
 
 class DVector:
-    _chunk_size = 1000
     _val_col = "val"
 
     def __init__(
@@ -230,7 +229,6 @@ class DVector:
         import_data: Union[pd.DataFrame, PathLike],
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
-        zone_col: Optional[str] = None,
         val_col: Optional[str] = None,
     ) -> None:
         if zoning_system is not None:
@@ -250,16 +248,8 @@ class DVector:
         self._segmentation = segmentation
         self._time_format = self._validate_time_format(time_format)
 
-        if self.process_count == 0:
-            self._chunk_divider = 1
-        else:
-            self._chunk_divider = self.process_count * 3
-
         # Set defaults if args not set
         val_col = self._val_col if val_col is None else val_col
-        if zone_col is None and zoning_system is not None:
-            zone_col = zoning_system.col_name
-        self.zone_col = zone_col
 
         # Try to convert the given data into DVector format
         if isinstance(import_data, pd.DataFrame):
@@ -285,15 +275,8 @@ class DVector:
         return self._segmentation
 
     @property
-    def process_count(self):
-        return self._process_count
-
-    @process_count.setter
-    def process_count(self, a):
-        if a < 0:
-            self._process_count = os.cpu_count() + a
-        else:
-            self._process_count = a
+    def data(self):
+        return self._data
 
     @property
     def time_format(self):
@@ -383,16 +366,18 @@ class DVector:
         Make sure an input dataframe is in the right format and contains to correct zones and
         segmentation
         """
-        # Init columns depending on if we have zones
         loaded_seg = Segmentation.load_segmentation(
-            source=import_data, segs=segmentation.names, naming_order=segmentation.naming_order
+            source=import_data, segmentation=segmentation
         )
         if isinstance(import_data.index, pd.MultiIndex):
             if import_data.index.names != loaded_seg.naming_order:
                 import_data.reset_index(inplace=True)
-        import_data.set_index(loaded_seg.naming_order, inplace=True)
+                import_data.set_index(loaded_seg.naming_order, inplace=True)
         if self.zoning_system is not None:
-            if set(import_data.columns) != set(self.zoning_system.unique_zones):
+            # columns could match id or name
+            if (
+                set(import_data.columns) != set(self.zoning_system.unique_zones["zone_name"])
+            ) & (set(import_data.columns) != set(self.zoning_system.unique_zones["zone_id"])):
                 raise ImportError(
                     "The input dataframe does not contain columns matching the zoning system given"
                 )
@@ -523,9 +508,11 @@ class DVector:
     def overlap(self, other):
         overlap = self.segmentation.overlap(other.segmentation)
         if overlap == []:
-            raise NotImplementedError("There are no common segments between the "
-                                      "two DVectors so this operation is not "
-                                      "possible.")
+            raise NotImplementedError(
+                "There are no common segments between the "
+                "two DVectors so this operation is not "
+                "possible."
+            )
 
     def _generic_dunder(self, other, method):
         # Make sure the two DVectors have overlapping indices
@@ -533,30 +520,35 @@ class DVector:
         # for the same zoning a simple * gives the desired result
         # This drops any nan values (intersecting index level but missing val)
         if self.zoning_system == other.zoning_system:
-            prod = method(self._data, other._data)
+            prod = method(self.data, other.data)
+            # Either None if both are None, or the right zone system
+            zoning = self.zoning_system
         # For a dataframe by a series the mul is broadcast across
         # for this to work axis needs to be set to 'index'
         elif self.zoning_system is None:
-            prod = method(other._data, self._data.squeeze(), axis='index')
+            prod = method(other.data, self.data.squeeze(), axis="index")
+            zoning = other.zoning_system
         elif other.zoning_system is None:
-            prod = method(self._data, other._data.squeeze(), axis='index')
+            prod = method(self.data, other.data.squeeze(), axis="index")
+            zoning = self.zoning_system
         # Different zonings raise an error rather than trying to translate
         else:
-            raise NotImplementedError("The two DVectors have different zonings. "
-                                      "To multiply them, one must be translated "
-                                      "to match the other.")
+            raise NotImplementedError(
+                "The two DVectors have different zonings. "
+                "To multiply them, one must be translated "
+                "to match the other."
+            )
         # Index unchanged, aside from possible order. Segmentation remained the same
         if prod.index.equal_levels(self._data.index):
-            return DVector(segmentation=self.segmentation,
-                           import_data=prod,
-                           zoning_system=self.zoning_system)
+            return DVector(
+                segmentation=self.segmentation, import_data=prod, zoning_system=zoning
+            )
         # Index changed so the segmentation has changed. Segmentation should equal
         # the addition of the two segmentations (see __add__ method in segmentation)
         else:
             new_seg = self.segmentation + other.segmentation
-            return DVector(segmentation=new_seg,
-                           import_data=prod,
-                           zoning_system=self.zoning_system)
+            return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
+
     def __mul__(self, other):
         """Multiply dunder method for DVector"""
         return self._generic_dunder(other, pd.DataFrame.mul)
@@ -573,6 +565,16 @@ class DVector:
         """Division dunder method for DVector"""
         return self._generic_dunder(other, pd.DataFrame.div)
 
+    def aggregate(self, segs: list[str]):
+        segmentation = self.segmentation.aggregate(segs)
+        data = self.data.groupby(level=segs).sum()
+        return DVector(
+            segmentation=segmentation,
+            import_data=data,
+            zoning_system=self.zoning_system,
+            time_format=self.time_format,
+            val_col=self.val_col,
+        )
 
 
 # # # FUNCTIONS # # #
