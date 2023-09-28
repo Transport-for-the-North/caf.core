@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on: 19/09/2023
-Updated on:
-
-Original author: Ben Taylor
-Last update made by:
-Other updates made by:
-
-File purpose:
-
+to test:
+from pure enum inputs
+from enum+custom inputs
+subsets
+exclusions
+load
+save
+add segmentations
 """
 # Built-Ins
 
