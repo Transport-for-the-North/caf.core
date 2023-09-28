@@ -441,7 +441,7 @@ class DVector:
     def translate_zoning(
         self,
         new_zoning: ZoningSystem,
-        weighting: str = None,
+        weighting: str = 'spatial',
     ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
@@ -481,9 +481,18 @@ class DVector:
 
         # Get translation
         translation = self.zoning_system.translate(new_zoning, weighting)
-
+        if (set(new_zoning.unique_zones['zone_id']) != set(translation[f"{new_zoning.name}_id"])) & (set(new_zoning.unique_zones['zone_name']) != set(translation[f"{new_zoning.name}_id"])):
+            raise IndexError("The new zone id in the translation being used does not match "
+                             "either column in the new zoning's unique_zones attribute. This "
+                             "is most likely due to multiple unique identifiers existing "
+                             "for this zone system. Either generate a new translation using "
+                             "a valid identifier column, or update the zoning info for the "
+                             "new zoning. Particularly it's a good idea to define different "
+                             "'zone_id' and 'zone_name' columns if both exist.")
+        transposed = self.data.transpose()
+        transposed.index.names = [f"{self.zoning_system.name}_id"]
         translated = ctk.translation.pandas_multi_column_translation(
-            self._data.transpose(),
+            self.data.transpose(),
             translation,
             from_col=f"{self.zoning_system.name}_id",
             to_col=f"{new_zoning.name}_id",
