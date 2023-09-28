@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Tuple, Union, Optional
 import numpy as np
 import pandas as pd
 import caf.toolkit as ctk
-
+import h5py
 # Local Imports
 
 
@@ -347,11 +347,14 @@ class ZoningSystem:
         if mode.lower() == "hdf":
             with pd.HDFStore(out_path / "DVector.h5") as store:
                 store["zoning"] = save_df
+            with h5py.File(out_path / "DVector.h5", 'a') as h_file:
+                h_file.create_dataset("zoning_meta", data=self.metadata.to_yaml().encode("utf-8"))
         elif mode.lower() == "csv":
             save_df.to_csv(out_path / "zoning.csv", index=False)
+            self.metadata.save_yaml(out_path / "zoning_meta.yml")
         else:
             raise ValueError("Mode can only be 'hdf' or 'csv', not " f"{mode}.")
-        self.metadata.save_yaml(out_path / "zoning_meta.yml")
+
 
     @classmethod
     def load(cls, in_path: PathLike, mode: str):
@@ -372,14 +375,15 @@ class ZoningSystem:
         # make sure in_path is a Path
         in_path = Path(in_path)
         # If this file exists the zoning should be in the hdf and vice versa
-        if os.path.isfile(in_path / "zoning_meta.yml") is False:
-            return None
-        zoning_meta = ZoningSystemMetaData.load_yaml(in_path / "zoning_meta.yml")
         if mode.lower() == "hdf":
             with pd.HDFStore(in_path / "DVector.h5", "r") as store:
                 zoning = store["zoning"]
+            with h5py.File(in_path / "DVector.h5", "r") as h_file:
+                yam_load = h_file["zoning_meta"][()].decode("utf-8")
+                zoning_meta = ZoningSystemMetaData.from_yaml(yam_load)
         elif mode.lower() == "csv":
             zoning = pd.read_csv(in_path / "zoning.csv")
+            zoning_meta = ZoningSystemMetaData.load_yaml(in_path / "zoning_meta.yml")
         else:
             raise ValueError("Mode can only be 'hdf' or 'csv', not " f"{mode}.")
         int_zones = None

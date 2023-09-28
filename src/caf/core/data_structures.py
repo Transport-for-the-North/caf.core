@@ -15,23 +15,18 @@ from __future__ import annotations
 # Built-Ins
 import enum
 import operator
-from typing import Union, Optional, Any
-import os
+from typing import Union, Optional
 from os import PathLike
 from pathlib import Path
 
 # Third Party
 import pandas as pd
-import numpy as np
 import caf.toolkit as ctk
-
-# Local Imports
-from caf.core.segmentation import Segmentation
-from caf.core.zoning import ZoningSystem
 
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
-
+from caf.core.segmentation import Segmentation
+from caf.core.zoning import ZoningSystem
 # pylint: enable=import-error,wrong-import-position
 
 # # # CONSTANTS # # #
@@ -221,6 +216,14 @@ class TimeFormat(enum.Enum):
 
 
 class DVector:
+    """
+    Class to store and manipulate data with segmentation and optionally zoning.
+
+    The segmentation is stored as an attribute as well as forming the index of
+    the data. Zoning, if present, is stored as an attribute as well as forming
+    the columns of the data. Data is in the form of a dataframe and reads/writes
+    to h5 files.
+    """
     _val_col = "val"
 
     def __init__(
@@ -425,17 +428,19 @@ class DVector:
         out_path.mkdir(exist_ok=True, parents=False)
         with pd.HDFStore(out_path / "DVector.h5", "w") as hdf_store:
             hdf_store["data"] = self._data
+            print('debugging')
         if self.zoning_system is not None:
             self.zoning_system.save(out_path, 'hdf')
-        self.segmentation.save(out_path / "segmentation_meta.yml")
+        self.segmentation.save(out_path / "DVector.h5", 'hdf')
 
     @classmethod
     def load(cls, in_path: PathLike):
         in_path = Path(in_path)
+        zoning = ZoningSystem.load(in_path, 'hdf')
+        segmentation = Segmentation.load(in_path / "DVector.h5", 'hdf')
         with pd.HDFStore(in_path / "DVector.h5", "r") as hdf_store:
             data = hdf_store["data"]
-        zoning = ZoningSystem.load(in_path, 'hdf')
-        segmentation = Segmentation.load(in_path / "segmentation_meta.yml")
+
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
 
     def translate_zoning(

@@ -21,7 +21,7 @@ from caf.toolkit import BaseConfig
 import numpy as np
 from pathlib import Path
 from pydantic import validator
-
+import h5py
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
@@ -250,12 +250,26 @@ class Segmentation:
                 " an out of date in built segmentation in the caf.core package."
             )
 
-    def save(self, out_path: PathLike):
-        self.input.save_yaml(out_path)
+    def save(self, out_path: PathLike, mode='hdf'):
+        if mode == 'hdf':
+            with h5py.File(out_path, 'a') as h_file:
+                h_file.create_dataset("segmentation", data=self.input.to_yaml().encode("utf-8"))
+        elif mode == 'yaml':
+            self.input.save_yaml(out_path)
+        else:
+            raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
+
 
     @classmethod
-    def load(cls, in_path: PathLike):
-        input = SegmentationInput.load_yaml(in_path)
+    def load(cls, in_path: PathLike, mode='hdf'):
+        if mode == 'hdf':
+            with h5py.File(in_path, "r") as h_file:
+                yam_load = h_file["segmentation"][()].decode("utf-8")
+                input = SegmentationInput.from_yaml(yam_load)
+        elif mode == 'yaml':
+            input = SegmentationInput.load_yaml(in_path)
+        else:
+            raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
         return cls(input)
 
     def __copy__(self):
