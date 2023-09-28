@@ -338,11 +338,11 @@ class ZoningSystem:
         """
         out_path = Path(path)
         save_df = self.unique_zones
-        if self._internal_zones is not None:
-            save_df["internal"] = save_df["zone_name"].isin(self.internal_zones["zone_name"])
-        if self._external_zones is not None:
-            save_df["external"] = save_df["zone_name"].isin(self.external_zones["zone_name"])
-        if self._zone_descriptions is not None:
+        if self.internal_zones is not None:
+            save_df["internal"] = save_df["zone_name"].isin(self.internal_zones)
+        if self.external_zones is not None:
+            save_df["external"] = save_df["zone_name"].isin(self.external_zones)
+        if self.zone_descriptions is not None:
             save_df["descriptions"] = self.zone_descriptions
         if mode.lower() == "hdf":
             with pd.HDFStore(out_path / "DVector.h5") as store:
@@ -376,7 +376,7 @@ class ZoningSystem:
             return None
         zoning_meta = ZoningSystemMetaData.load_yaml(in_path / "zoning_meta.yml")
         if mode.lower() == "hdf":
-            with pd.HDFStore(in_path / "DVector.hdf", "r") as store:
+            with pd.HDFStore(in_path / "DVector.h5", "r") as store:
                 zoning = store["zoning"]
         elif mode.lower() == "csv":
             zoning = pd.read_csv(in_path / "zoning.csv")

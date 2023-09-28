@@ -426,7 +426,7 @@ class DVector:
         with pd.HDFStore(out_path / "DVector.h5", "w") as hdf_store:
             hdf_store["data"] = self._data
         if self.zoning_system is not None:
-            self.zoning_system.save(out_path)
+            self.zoning_system.save(out_path, 'hdf')
         self.segmentation.save(out_path / "segmentation_meta.yml")
 
     @classmethod
@@ -434,9 +434,8 @@ class DVector:
         in_path = Path(in_path)
         with pd.HDFStore(in_path / "DVector.h5", "r") as hdf_store:
             data = hdf_store["data"]
-        zoning = ZoningSystem.load(in_path)
-        segmentation_input = Segmentation.load(in_path / "segmentation_meta.yml")
-        segmentation = Segmentation(segmentation_input)
+        zoning = ZoningSystem.load(in_path, 'hdf')
+        segmentation = Segmentation.load(in_path / "segmentation_meta.yml")
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
 
     def translate_zoning(
