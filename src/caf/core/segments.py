@@ -47,6 +47,12 @@ class Segment(BaseConfig):
 
     Parameters
     ----------
+    name: the name of the segmentation. Generally this is short form (e.g. 'p'
+    instead of 'purpose')
+    values: The values forming the segment. Keys are the values, and values are
+    descriptions, e.g. for 'p', 1: 'HB work'. Descriptions don't tend to get used
+    in DVectors so can be as verbose as desired for clarity.
+    exclusions: Define incompatibilities between segments. See Exclusion class
     """
 
     name: str
@@ -81,6 +87,11 @@ class Segment(BaseConfig):
 
 
 class SegmentsSuper(enum.Enum):
+    """
+    Getter for predefined segments. This should be where segments forming
+    segmentations come from. In most cases if a segment is not defined here it
+    should be added, rather than defined as a custom segment in a Segmentation
+    """
     PURPOSE = "p"
     TIMEPERIOD = "tp"
     MODE = "m"
@@ -97,6 +108,14 @@ class SegmentsSuper(enum.Enum):
         return [e.value for e in cls]
 
     def get_segment(self, subset: list[int] = None):
+        """
+        method to get a segments.
+
+        Parameters
+        ----------
+        subset: Define a subset of the segment being got. The integers in subset
+        must appear in the asked for segment.
+        """
         match self:
             case SegmentsSuper.PURPOSE:
                 segmentation = Segment(
