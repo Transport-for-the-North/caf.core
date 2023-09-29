@@ -35,8 +35,17 @@ from caf.core.segments import Segment, SegmentsSuper
 # # # CLASSES # # #
 class SegmentationInput(BaseConfig):
     """
-    segments: list of segments, stored as Segment classes.
-    naming_order: The order segment names will appear in segmentations
+    enum_segments: Provide as strings matching enumerations in SegmentsSuper.
+    In 99% of cases segments should be provided in this form. If a segment
+    doesn't exist in the enumeration it should usually be added.
+    subsets: Define any segments you want subsets of. Keys should match values
+    in 'enum_segments', values should be lists defining values from the segment
+    which should be included.
+    custom_segments: User defined segments which don't appear in SegmentsSuper.
+    As stated, in almost all cases a missing segment should be added to that
+    class, and this option is a contingency.
+    naming_order: The naming order of the segments. This primarily affects the
+    index order of the multi-index formed from the segmentation.
     """
 
     enum_segments: list[SegmentsSuper]
@@ -46,6 +55,7 @@ class SegmentationInput(BaseConfig):
 
     @validator("subsets", always=True)
     def enums(cls, v, values):
+        """ Validate the subsets match segments"""
         if v is None:
             return v
         for seg in v.keys():
@@ -57,6 +67,7 @@ class SegmentationInput(BaseConfig):
 
     @validator("custom_segments", always=True)
     def no_copied_names(cls, v):
+        """Validate the custom_segments do not clash with existing segments"""
         if v is None:
             return v
         for seg in v:
@@ -74,6 +85,7 @@ class SegmentationInput(BaseConfig):
 
     @validator("naming_order")
     def names_match_segments(cls, v, values):
+        """Validate that naming order names match segment names"""
         seg_names = [i.value for i in values["enum_segments"]]
         if values["custom_segments"] is not None:
             seg_names += [i.name for i in values["custom_segments"]]
@@ -125,23 +137,17 @@ class Segmentation:
 
     @property
     def seg_dict(self):
-        """
-        Method to access segments in dict form.
-        """
+        """Method to access segments in dict form."""
         return {seg.name: seg for seg in self.segments}
 
     @property
     def names(self):
-        """
-        Returns the names of all segments.
-        """
+        """Returns the names of all segments."""
         return [seg.name for seg in self.segments]
 
     @property
     def seg_descriptions(self):
-        """
-        Returns a list of segment descriptions.
-        """
+        """Returns a list of segment descriptions."""
         return [seg.values.values() for seg in self.segments]
 
     @property
@@ -182,19 +188,16 @@ class Segmentation:
         return self._time_period_segment_name in self.naming_order
 
     @classmethod
-    def load_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation):
+    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation: Segmentation):
         """
-        Load a segmentation from either a path to a csv, or a dataframe. This could either be
+        Validate a segmentation from either a path to a csv, or a dataframe. This could either be
         purely a segmentation, or data with a segmentation index.
 
         Parameters
         ----------
         source: Either a path to a csv containing a segmentation or a dataframe containing a segmentation.
         If source is a dataframe the segmentation should not form the index.
-        segs: A list of strings, which must match enumerations in SegmentsSuper. If this isn't
-        provided then it will default to the column names in 'source'
-        naming_order: The order for the segmentation. This will default to segs if not provided.
-        custom_segs: Optional list of Segment objects if segments not in SegmentsSuper
+        segmentation: The segmentation you expect 'source' to match.
 
         Returns
         -------
@@ -216,18 +219,22 @@ class Segmentation:
         built_index = segmentation.ind
         if built_index.names != read_index.names:
             raise ValueError("The read in segmentation does not match the given parameters")
+        # Perfect match, return segmentation with no more checks
         if read_index.equal_levels(built_index):
             return segmentation
         for name in built_index.names:
             built_level = set(built_index.get_level_values(name))
             read_level = set(read_index.get_level_values(name))
+            # This level matches, check the next one
             if read_level == built_level:
                 continue
+            # The input segmentation should have had subsets defined. warn user but allow
             if read_level.issubset(built_level):
                 warnings.warn(
                     f"Read in level {name} is a subset of the segment. If this was not"
                     f" expected check the input segmentation."
                 )
+                # Define the read subset in the generated config
                 if conf.subsets is not None:
                     conf.subsets.update({name: list(read_level)})
                 else:
@@ -240,17 +247,31 @@ class Segmentation:
                 )
 
         built_segmentation = cls(conf)
+        # Check for equality again after subset checks
         if read_index.equal_levels(built_segmentation.ind):
             return built_segmentation
+        # Still doesn't match, this is probably an exclusion error. User should check that
+        # proper exclusions are defined in SegmentsSuper.
         else:
             raise ValueError(
                 "The read in segmentation does not match the given parameters. The segment names"
                 " are correct, but segment values don't match. This could be due to an incompatibility"
-                " between segments which isn't reflected in the loaded in segmentation, or it could be"
-                " an out of date in built segmentation in the caf.core package."
+                " between segments which isn't reflected in the loaded in the segmentation, or it could be"
+                " an out of date in built segmentation in the caf.core package. The first place to "
+                "look is the SegmentsSuper class."
             )
 
     def save(self, out_path: PathLike, mode='hdf'):
+        """
+        Save a segmentation to either a yaml file or an hdf file if part of a
+        DVector.
+
+        Parameters
+        ----------
+        out_path: Path to where the data should be saved. The file extension must
+        match 'mode'
+        mode: Currently only can be 'hdf' or 'yaml'. How to save the file.
+        """
         if mode == 'hdf':
             with h5py.File(out_path, 'a') as h_file:
                 h_file.create_dataset("segmentation", data=self.input.to_yaml().encode("utf-8"))
@@ -262,6 +283,14 @@ class Segmentation:
 
     @classmethod
     def load(cls, in_path: PathLike, mode='hdf'):
+        """
+        Load the segmentation from a file, either an hdf or csv file.
+
+        Parameters
+        ----------
+        in_path: Path to the file. File extension must match 'mode'
+        mode: Mode to load in, either 'hdf' or 'yaml'
+        """
         if mode == 'hdf':
             with h5py.File(in_path, "r") as h_file:
                 yam_load = h_file["segmentation"][()].decode("utf-8")
@@ -301,6 +330,8 @@ class Segmentation:
         return unique_list
 
     def __add__(self, other):
+        """Combine two segmentations without duplicates. Order of naming_order
+        in resulting segmentation will have self before other."""
         enum_in = set(self.input.enum_segments + other.input.enum_segments)
         cust_in = self.input._custom_segments
         for seg in other.input._custom_segments:
@@ -324,9 +355,13 @@ class Segmentation:
         )
         return Segmentation(input)
 
-    def overlap(self, other):
+    def overlap(self, other, return_overlap: bool = False):
         """Check the overlap in segments between two segmentations"""
-        return [seg for seg in self.names if seg in other.names]
+        overlap = [seg for seg in self.names if seg in other.names]
+        if len(overlap) == 0:
+            raise KeyError("These segmentations have no overlap")
+        if return_overlap:
+            return overlap
 
     def __ne__(self, other) -> bool:
         """Overrides the default implementation"""
@@ -335,57 +370,14 @@ class Segmentation:
     def copy(self):
         return Segmentation(input=self.input.copy())
 
-    def _mul_div_join(self, other, data_self: np.array, data_other: np.array):
-        self_col_length = data_self.shape[1]
-        other_col_length = data_other.shape[1]
-        overlap = [i for i in other.segments if i in self.segments]
-        merge_cols = [seg.name for seg in overlap]
-        combindex = set(self.names + other.names)
-        if (
-            (self_col_length != other_col_length)
-            & (self_col_length != 1)
-            & (other_col_length != 1)
-        ):
-            raise ValueError("Different numbers of columns cannot be multiplied")
-        if (self_col_length == 1) & (other_col_length != 1):
-            df_self = pd.DataFrame(
-                data=data_self, index=self.ind, columns=["data"]
-            ).reset_index()
-            df_other = pd.DataFrame(
-                data=data_other, index=other.ind, columns=range(other_col_length)
-            ).reset_index()
-            joined = pd.merge([df_self, df_other], on=merge_cols, how="inner")
-            joined.set_index(combindex, inplace=True)
-            df_self = joined["data"]
-            df_other = joined.drop("data", axis=1)
-        elif (self_col_length != 1) & (other_col_length == 1):
-            df_self = pd.DataFrame(
-                data=data_self, index=self.ind, columns=range(self_col_length)
-            ).reset_index()
-            df_other = pd.DataFrame(
-                data=data_other, index=other.ind, columns=["data"]
-            ).reset_index()
-            joined = pd.merge([df_self, df_other], on=merge_cols, how="inner")
-            joined.set_index(combindex, inplace=True)
-            df_other = joined["data"]
-            df_self = joined.drop("data", axis=1)
-        else:
-            df_self = pd.DataFrame(
-                data=data_self, index=self.ind, columns=range(self_col_length)
-            ).reset_index()
-            df_other = pd.DataFrame(
-                data=data_other, index=other.ind, columns=range(other_col_length)
-            ).reset_index()
-            joined = pd.merge(
-                [df_self, df_other], on=merge_cols, how="inner", suffixes=["_self", "_other"]
-            )
-            joined.set_index(combindex, inplace=True)
-            df_self = joined[[col for col in joined.columns if col.endswith("_self")]]
-            df_other = joined[[col for col in joined.columns if col.endswith("_other")]]
-
-        return df_self, df_other
-
     def aggregate(self, new_segs: list[str]):
+        """
+        Aggregate segmentation to a subset of the segmentation
+
+        Parameters
+        ----------
+        new_segs: The new segmentation. All must be in the current segmentation.
+        """
         custom = None
         subsets = None
         if self.input.custom_segments is not None:
