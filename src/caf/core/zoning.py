@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 import caf.toolkit as ctk
 import h5py
+
 # Local Imports
 
 
@@ -347,14 +348,15 @@ class ZoningSystem:
         if mode.lower() == "hdf":
             with pd.HDFStore(out_path) as store:
                 store["zoning"] = save_df
-            with h5py.File(out_path, 'a') as h_file:
-                h_file.create_dataset("zoning_meta", data=self.metadata.to_yaml().encode("utf-8"))
+            with h5py.File(out_path, "a") as h_file:
+                h_file.create_dataset(
+                    "zoning_meta", data=self.metadata.to_yaml().encode("utf-8")
+                )
         elif mode.lower() == "csv":
             save_df.to_csv(out_path / "zoning.csv", index=False)
             self.metadata.save_yaml(out_path / "zoning_meta.yml")
         else:
             raise ValueError("Mode can only be 'hdf' or 'csv', not " f"{mode}.")
-
 
     @classmethod
     def load(cls, in_path: PathLike, mode: str):

@@ -22,6 +22,7 @@ import numpy as np
 from pathlib import Path
 from pydantic import validator
 import h5py
+
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
@@ -55,7 +56,7 @@ class SegmentationInput(BaseConfig):
 
     @validator("subsets", always=True)
     def enums(cls, v, values):
-        """ Validate the subsets match segments"""
+        """Validate the subsets match segments"""
         if v is None:
             return v
         for seg in v.keys():
@@ -261,7 +262,7 @@ class Segmentation:
                 "look is the SegmentsSuper class."
             )
 
-    def save(self, out_path: PathLike, mode='hdf'):
+    def save(self, out_path: PathLike, mode="hdf"):
         """
         Save a segmentation to either a yaml file or an hdf file if part of a
         DVector.
@@ -272,17 +273,18 @@ class Segmentation:
         match 'mode'
         mode: Currently only can be 'hdf' or 'yaml'. How to save the file.
         """
-        if mode == 'hdf':
-            with h5py.File(out_path, 'a') as h_file:
-                h_file.create_dataset("segmentation", data=self.input.to_yaml().encode("utf-8"))
-        elif mode == 'yaml':
+        if mode == "hdf":
+            with h5py.File(out_path, "a") as h_file:
+                h_file.create_dataset(
+                    "segmentation", data=self.input.to_yaml().encode("utf-8")
+                )
+        elif mode == "yaml":
             self.input.save_yaml(out_path)
         else:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
 
-
     @classmethod
-    def load(cls, in_path: PathLike, mode='hdf'):
+    def load(cls, in_path: PathLike, mode="hdf"):
         """
         Load the segmentation from a file, either an hdf or csv file.
 
@@ -291,11 +293,11 @@ class Segmentation:
         in_path: Path to the file. File extension must match 'mode'
         mode: Mode to load in, either 'hdf' or 'yaml'
         """
-        if mode == 'hdf':
+        if mode == "hdf":
             with h5py.File(in_path, "r") as h_file:
                 yam_load = h_file["segmentation"][()].decode("utf-8")
                 input = SegmentationInput.from_yaml(yam_load)
-        elif mode == 'yaml':
+        elif mode == "yaml":
             input = SegmentationInput.load_yaml(in_path)
         else:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")

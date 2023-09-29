@@ -27,6 +27,7 @@ import caf.toolkit as ctk
 # Local imports here
 from caf.core.segmentation import Segmentation
 from caf.core.zoning import ZoningSystem
+
 # pylint: enable=import-error,wrong-import-position
 
 # # # CONSTANTS # # #
@@ -224,6 +225,7 @@ class DVector:
     the columns of the data. Data is in the form of a dataframe and reads/writes
     to h5 along with all metadata.
     """
+
     _val_col = "val"
 
     def __init__(
@@ -431,8 +433,8 @@ class DVector:
         with pd.HDFStore(out_path, "w") as hdf_store:
             hdf_store["data"] = self._data
         if self.zoning_system is not None:
-            self.zoning_system.save(out_path, 'hdf')
-        self.segmentation.save(out_path, 'hdf')
+            self.zoning_system.save(out_path, "hdf")
+        self.segmentation.save(out_path, "hdf")
 
     @classmethod
     def load(cls, in_path: PathLike):
@@ -444,8 +446,8 @@ class DVector:
         in_path: Path to where the DVector is saved. This should be a single hdf file.
         """
         in_path = Path(in_path)
-        zoning = ZoningSystem.load(in_path, 'hdf')
-        segmentation = Segmentation.load(in_path, 'hdf')
+        zoning = ZoningSystem.load(in_path, "hdf")
+        segmentation = Segmentation.load(in_path, "hdf")
         with pd.HDFStore(in_path, "r") as hdf_store:
             data = hdf_store["data"]
 
@@ -454,7 +456,7 @@ class DVector:
     def translate_zoning(
         self,
         new_zoning: ZoningSystem,
-        weighting: str = 'spatial',
+        weighting: str = "spatial",
     ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
@@ -494,14 +496,22 @@ class DVector:
 
         # Get translation
         translation = self.zoning_system.translate(new_zoning, weighting)
-        if (set(new_zoning.unique_zones['zone_id']) != set(translation[f"{new_zoning.name}_id"])) & (set(new_zoning.unique_zones['zone_name']) != set(translation[f"{new_zoning.name}_id"])):
-            raise IndexError("The new zone id in the translation being used does not match "
-                             "either column in the new zoning's unique_zones attribute. This "
-                             "is most likely due to multiple unique identifiers existing "
-                             "for this zone system. Either generate a new translation using "
-                             "a valid identifier column, or update the zoning info for the "
-                             "new zoning. Particularly it's a good idea to define different "
-                             "'zone_id' and 'zone_name' columns if both exist.")
+        if (
+            set(new_zoning.unique_zones["zone_id"])
+            != set(translation[f"{new_zoning.name}_id"])
+        ) & (
+            set(new_zoning.unique_zones["zone_name"])
+            != set(translation[f"{new_zoning.name}_id"])
+        ):
+            raise IndexError(
+                "The new zone id in the translation being used does not match "
+                "either column in the new zoning's unique_zones attribute. This "
+                "is most likely due to multiple unique identifiers existing "
+                "for this zone system. Either generate a new translation using "
+                "a valid identifier column, or update the zoning info for the "
+                "new zoning. Particularly it's a good idea to define different "
+                "'zone_id' and 'zone_name' columns if both exist."
+            )
         transposed = self.data.transpose()
         transposed.index.names = [f"{self.zoning_system.name}_id"]
         translated = ctk.translation.pandas_multi_column_translation(

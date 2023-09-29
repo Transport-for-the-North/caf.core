@@ -92,6 +92,7 @@ class SegmentsSuper(enum.Enum):
     segmentations come from. In most cases if a segment is not defined here it
     should be added, rather than defined as a custom segment in a Segmentation
     """
+
     PURPOSE = "p"
     TIMEPERIOD = "tp"
     MODE = "m"
