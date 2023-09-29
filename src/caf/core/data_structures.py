@@ -222,18 +222,29 @@ class DVector:
     The segmentation is stored as an attribute as well as forming the index of
     the data. Zoning, if present, is stored as an attribute as well as forming
     the columns of the data. Data is in the form of a dataframe and reads/writes
-    to h5 files.
+    to h5 along with all metadata.
     """
     _val_col = "val"
 
     def __init__(
         self,
         segmentation: Segmentation,
-        import_data: Union[pd.DataFrame, PathLike],
+        import_data: Union[pd.DataFrame, dict],
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = None,
     ) -> None:
+        """
+        segmentation: An instance of the segmentation class. This should usually
+        be built from enumerated options in the SegmentsSuper class, but custom
+        segments can be user defined if necesssary.
+        import_data: The DVector data. This should usually be a dataframe or path
+        to a dataframe, but there is also an option to read in and convert
+        DVectors in the old format from NorMITs-demand.
+        zoning_system: Instance of ZoningSystem. This must match import data.
+        If this is given, import data must contain zone info in the column names,
+        if this is not given import data must contain only 1 column.
+        """
         if zoning_system is not None:
             if not isinstance(zoning_system, ZoningSystem):
                 raise ValueError(
@@ -256,9 +267,9 @@ class DVector:
 
         # Try to convert the given data into DVector format
         if isinstance(import_data, pd.DataFrame):
-            self._data = self._dataframe_to_dvec(import_data, self.segmentation, val_col)
+            self._data = self._dataframe_to_dvec(import_data)
         elif isinstance(import_data, dict):
-            self._data = self._old_to_new_dvec(import_data=import_data)
+            self._data = self._old_to_new_dvec(import_data)
         else:
             raise NotImplementedError(
                 "Don't know how to deal with anything other than: " "pandas DF, or dict"
@@ -359,19 +370,15 @@ class DVector:
 
         return return_val
 
-    def _dataframe_to_dvec(
-        self,
-        import_data: pd.DataFrame,
-        segmentation: Segmentation,
-        val_col: str,
-    ):
+    def _dataframe_to_dvec(self, import_data: pd.DataFrame):
         """
-        Make sure an input dataframe is in the right format and contains to correct zones and
-        segmentation
+        Take dataframe and ensure it is in DVec data format. This requires the
+        dataframe to be in wide format.
         """
-        loaded_seg = Segmentation.load_segmentation(
-            source=import_data, segmentation=segmentation
+        loaded_seg = Segmentation.validate_segmentation(
+            source=import_data, segmentation=self.segmentation
         )
+        # Segmentation should already be validated, this can probably be removed
         if isinstance(import_data.index, pd.MultiIndex):
             if import_data.index.names != loaded_seg.naming_order:
                 import_data.reset_index(inplace=True)
@@ -389,10 +396,7 @@ class DVector:
 
         return import_data
 
-    def _old_to_new_dvec(
-        self,
-        import_data: dict,
-    ):
+    def _old_to_new_dvec(self, import_data: dict):
         """
         Converts the old format of DVector into the new - this only applies to the new dataframe.
         """
@@ -417,28 +421,32 @@ class DVector:
 
         Parameters
         ----------
-        out_path: Path to the folder to save the DVector in. This folder will be
-        generated if it doesn't exist but parents will not be.
+        out_path: Path to the DVector, which should be an HDF file.
 
         Returns
         -------
         None
         """
         out_path = Path(out_path)
-        out_path.mkdir(exist_ok=True, parents=False)
-        with pd.HDFStore(out_path / "DVector.h5", "w") as hdf_store:
+        with pd.HDFStore(out_path, "w") as hdf_store:
             hdf_store["data"] = self._data
-            print('debugging')
         if self.zoning_system is not None:
             self.zoning_system.save(out_path, 'hdf')
-        self.segmentation.save(out_path / "DVector.h5", 'hdf')
+        self.segmentation.save(out_path, 'hdf')
 
     @classmethod
     def load(cls, in_path: PathLike):
+        """
+        Method to load the DVector
+
+        Parameters
+        ----------
+        in_path: Path to where the DVector is saved. This should be a single hdf file.
+        """
         in_path = Path(in_path)
         zoning = ZoningSystem.load(in_path, 'hdf')
-        segmentation = Segmentation.load(in_path / "DVector.h5", 'hdf')
-        with pd.HDFStore(in_path / "DVector.h5", "r") as hdf_store:
+        segmentation = Segmentation.load(in_path, 'hdf')
+        with pd.HDFStore(in_path, "r") as hdf_store:
             data = hdf_store["data"]
 
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)

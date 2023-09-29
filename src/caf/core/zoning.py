@@ -345,9 +345,9 @@ class ZoningSystem:
         if self.zone_descriptions is not None:
             save_df["descriptions"] = self.zone_descriptions
         if mode.lower() == "hdf":
-            with pd.HDFStore(out_path / "DVector.h5") as store:
+            with pd.HDFStore(out_path) as store:
                 store["zoning"] = save_df
-            with h5py.File(out_path / "DVector.h5", 'a') as h_file:
+            with h5py.File(out_path, 'a') as h_file:
                 h_file.create_dataset("zoning_meta", data=self.metadata.to_yaml().encode("utf-8"))
         elif mode.lower() == "csv":
             save_df.to_csv(out_path / "zoning.csv", index=False)
@@ -376,9 +376,9 @@ class ZoningSystem:
         in_path = Path(in_path)
         # If this file exists the zoning should be in the hdf and vice versa
         if mode.lower() == "hdf":
-            with pd.HDFStore(in_path / "DVector.h5", "r") as store:
+            with pd.HDFStore(in_path, "r") as store:
                 zoning = store["zoning"]
-            with h5py.File(in_path / "DVector.h5", "r") as h_file:
+            with h5py.File(in_path, "r") as h_file:
                 yam_load = h_file["zoning_meta"][()].decode("utf-8")
                 zoning_meta = ZoningSystemMetaData.from_yaml(yam_load)
         elif mode.lower() == "csv":

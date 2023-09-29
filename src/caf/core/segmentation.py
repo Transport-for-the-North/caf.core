@@ -188,7 +188,7 @@ class Segmentation:
         return self._time_period_segment_name in self.naming_order
 
     @classmethod
-    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation: Segmentation):
+    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation):
         """
         Validate a segmentation from either a path to a csv, or a dataframe. This could either be
         purely a segmentation, or data with a segmentation index.
