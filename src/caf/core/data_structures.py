@@ -138,7 +138,7 @@ class TimeFormat(enum.Enum):
             raise ValueError(
                 "The given time_format is not valid.\n"
                 "\tGot: %s\n"
-                "\tExpected one of: %s" % (value, TimeFormat._valid_time_formats())
+                f"\tExpected one of: {(value, TimeFormat._valid_time_formats())}"
             )
 
         # Convert into a TimeFormat constant
@@ -251,13 +251,13 @@ class DVector:
             if not isinstance(zoning_system, ZoningSystem):
                 raise ValueError(
                     "Given zoning_system is not a caf.core.ZoningSystem object."
-                    "Got a %s object instead." % type(zoning_system)
+                    f"Got a {type(zoning_system)} object instead."
                 )
 
         if not isinstance(segmentation, Segmentation):
             raise ValueError(
                 "Given segmentation is not a caf.core.SegmentationLevel object."
-                "Got a %s object instead." % type(segmentation)
+                f"Got a {type(segmentation)} object instead."
             )
 
         self._zoning_system = zoning_system
@@ -274,28 +274,33 @@ class DVector:
             self._data = self._old_to_new_dvec(import_data)
         else:
             raise NotImplementedError(
-                "Don't know how to deal with anything other than: " "pandas DF, or dict"
+                "Don't know how to deal with anything other than: pandas DF, or dict"
             )
 
     # SETTERS AND GETTERS
     @property
     def val_col(self):
+        """_val_col getter"""
         return self._val_col
 
     @property
     def zoning_system(self):
+        """_zoning_system getter"""
         return self._zoning_system
 
     @property
     def segmentation(self):
+        """_segmentation getter"""
         return self._segmentation
 
     @property
     def data(self):
+        """_data getter"""
         return self._data
 
     @property
     def time_format(self):
+        """_time_format getter"""
         if self._time_format is None:
             return None
         return self._time_format.name
@@ -335,12 +340,8 @@ class DVector:
                     "The given segmentation level has time periods in its "
                     "segmentation, but the format of this time period has "
                     "not been defined.\n"
-                    "\tTime periods segment name: %s\n"
-                    "\tValid time_format values: %s"
-                    % (
-                        self.segmentation._time_period_segment_name,
-                        self._valid_time_formats(),
-                    )
+                    f"\tTime periods segment name: {self.segmentation._time_period_segment_name}\n"
+                    f"\tValid time_format values: {self._valid_time_formats()}"
                 )
 
         # If None or TimeFormat, that's fine
@@ -352,8 +353,8 @@ class DVector:
         if time_format not in self._valid_time_formats():
             raise ValueError(
                 "The given time_format is not valid.\n"
-                "\tGot: %s\n"
-                "\tExpected one of: %s" % (time_format, self._valid_time_formats())
+                f"\tGot: {time_format}\n"
+                f"\tExpected one of: {self._valid_time_formats()}"
             )
 
         # Convert into a TimeFormat constant
@@ -394,7 +395,7 @@ class DVector:
                     "The input dataframe does not contain columns matching the zoning system given"
                 )
         else:
-            import_data.columns = [val_col]
+            import_data.columns = [self.val_col]
 
         return import_data
 
@@ -481,7 +482,7 @@ class DVector:
         if not isinstance(new_zoning, ZoningSystem):
             raise ValueError(
                 "new_zoning is not the correct type. "
-                "Expected ZoningSystem, got %s" % type(new_zoning)
+                f"Expected ZoningSystem, got {type(new_zoning)}"
             )
 
         if self.zoning_system is None:
@@ -530,6 +531,7 @@ class DVector:
         )
 
     def copy(self):
+        """Class copy method"""
         return DVector(
             segmentation=self._segmentation.copy(),
             zoning_system=self._zoning_system.copy(),
@@ -537,6 +539,8 @@ class DVector:
         )
 
     def overlap(self, other):
+        """Calls segmentation overlap method to check two DVector's contain
+        overlapping segments"""
         overlap = self.segmentation.overlap(other.segmentation)
         if overlap == []:
             raise NotImplementedError(
@@ -576,9 +580,8 @@ class DVector:
             )
         # Index changed so the segmentation has changed. Segmentation should equal
         # the addition of the two segmentations (see __add__ method in segmentation)
-        else:
-            new_seg = self.segmentation + other.segmentation
-            return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
+        new_seg = self.segmentation + other.segmentation
+        return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
 
     def __mul__(self, other):
         """Multiply dunder method for DVector"""
@@ -597,6 +600,18 @@ class DVector:
         return self._generic_dunder(other, pd.DataFrame.div)
 
     def aggregate(self, segs: list[str]):
+        """
+        Aggregate DVector to new segmentation.
+
+        New Segmentation must be a subset of the current segmentation. Currently
+        this method is essentially a pandas 'groupby.sum()', but other methods
+        could be called if needed (e.g. mean())
+
+        Parameters
+        ----------
+        segs: Segments to aggregate to. Must be a subset of self.segmentation.naming_order,
+        naming order will be preserved.
+        """
         segmentation = self.segmentation.aggregate(segs)
         data = self.data.groupby(level=segs).sum()
         return DVector(

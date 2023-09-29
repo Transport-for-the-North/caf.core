@@ -14,14 +14,15 @@ File purpose:
 import warnings
 from typing import Union, Optional
 from os import PathLike
-
+from pathlib import Path
 # Third Party
 import pandas as pd
-from caf.toolkit import BaseConfig
-import numpy as np
-from pathlib import Path
 from pydantic import validator
 import h5py
+from caf.toolkit import BaseConfig
+
+
+
 
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
@@ -92,7 +93,7 @@ class SegmentationInput(BaseConfig):
             seg_names += [i.name for i in values["custom_segments"]]
         if set(seg_names) != set(v):
             raise ValueError(
-                "Names provided for naming_order do not match names" " in segments"
+                "Names provided for naming_order do not match names in segments"
             )
         return v
 
@@ -113,28 +114,28 @@ class Segmentation:
 
     Parameters
     ----------
-    input: Instance of SegmentationInput. See that class for details.
+    config: Instance of SegmentationInput. See that class for details.
     """
 
     _time_period_segment_name = "tp3"
 
-    def __init__(self, input: SegmentationInput):
-        self.input = input
+    def __init__(self, config: SegmentationInput):
+        self.input = config
         # unpack enum segments, applying subsets if necessary
-        if input.subsets is None:
+        if config.subsets is None:
             enum_segments = [
-                SegmentsSuper(string).get_segment() for string in input.enum_segments
+                SegmentsSuper(string).get_segment() for string in config.enum_segments
             ]
         else:
             enum_segments = []
-            for seg in input.enum_segments:
-                if seg.value in input.subsets.keys():
-                    segment = SegmentsSuper(seg).get_segment(subset=input.subsets[seg.value])
+            for seg in config.enum_segments:
+                if seg.value in config.subsets.keys():
+                    segment = SegmentsSuper(seg).get_segment(subset=config.subsets[seg.value])
                 else:
                     segment = SegmentsSuper(seg).get_segment()
                 enum_segments.append(segment)
-        self.segments = input._custom_segments + enum_segments
-        self.naming_order = input.naming_order
+        self.segments = config._custom_segments + enum_segments
+        self.naming_order = config.naming_order
 
     @property
     def seg_dict(self):
@@ -153,6 +154,7 @@ class Segmentation:
 
     @property
     def seg_vals(self):
+        """Return all segmnentation values"""
         return [seg.values.keys() for seg in self.segments]
 
     @property
@@ -253,14 +255,13 @@ class Segmentation:
             return built_segmentation
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.
-        else:
-            raise ValueError(
-                "The read in segmentation does not match the given parameters. The segment names"
-                " are correct, but segment values don't match. This could be due to an incompatibility"
-                " between segments which isn't reflected in the loaded in the segmentation, or it could be"
-                " an out of date in built segmentation in the caf.core package. The first place to "
-                "look is the SegmentsSuper class."
-            )
+        raise ValueError(
+            "The read in segmentation does not match the given parameters. The segment names"
+            " are correct, but segment values don't match. This could be due to an incompatibility"
+            " between segments which isn't reflected in the loaded in the segmentation, or it could be"
+            " an out of date in built segmentation in the caf.core package. The first place to "
+            "look is the SegmentsSuper class."
+        )
 
     def save(self, out_path: PathLike, mode="hdf"):
         """
@@ -296,12 +297,12 @@ class Segmentation:
         if mode == "hdf":
             with h5py.File(in_path, "r") as h_file:
                 yam_load = h_file["segmentation"][()].decode("utf-8")
-                input = SegmentationInput.from_yaml(yam_load)
+                config = SegmentationInput.from_yaml(yam_load)
         elif mode == "yaml":
-            input = SegmentationInput.load_yaml(in_path)
+            config = SegmentationInput.load_yaml(in_path)
         else:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
-        return cls(input)
+        return cls(config)
 
     def __copy__(self):
         """Returns a copy of this class"""
@@ -349,28 +350,26 @@ class Segmentation:
         else:
             subsets = other.input.subsets
         naming_order = self.ordered_set(self.naming_order, other.naming_order)
-        input = SegmentationInput(
+        config = SegmentationInput(
             enum_segments=enum_in,
             # subsets=subsets,
             custom_segments=cust_in,
             naming_order=naming_order,
         )
-        return Segmentation(input)
+        return Segmentation(config)
 
-    def overlap(self, other, return_overlap: bool = False):
+    def overlap(self, other):
         """Check the overlap in segments between two segmentations"""
-        overlap = [seg for seg in self.names if seg in other.names]
-        if len(overlap) == 0:
-            raise KeyError("These segmentations have no overlap")
-        if return_overlap:
-            return overlap
+        return [seg for seg in self.names if seg in other.names]
+
 
     def __ne__(self, other) -> bool:
         """Overrides the default implementation"""
         return not self.__eq__(other)
 
     def copy(self):
-        return Segmentation(input=self.input.copy())
+        """Copy method of class."""
+        return Segmentation(config=self.input.copy())
 
     def aggregate(self, new_segs: list[str]):
         """
