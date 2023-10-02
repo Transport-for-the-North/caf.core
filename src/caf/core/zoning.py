@@ -170,6 +170,8 @@ class ZoningSystem:
             weighting = 'spatial'
         if trans_cache is None:
             trans_cache = Path(r"I:\Data\Zone Translations\cache")
+        else:
+            trans_cache = Path(trans_cache)
         file = f"{names[0]}_to_{names[1]}_{weighting}.csv"
 
         # Try find a translation

@@ -458,6 +458,7 @@ class DVector:
         self,
         new_zoning: ZoningSystem,
         weighting: str = "spatial",
+        cache_path: PathLike = None
     ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
@@ -496,7 +497,7 @@ class DVector:
             return self.copy()
 
         # Get translation
-        translation = self.zoning_system.translate(new_zoning, weighting)
+        translation = self.zoning_system.translate(new_zoning, weighting=weighting, cache_path=cache_path)
         if (
             set(new_zoning.unique_zones["zone_id"])
             != set(translation[f"{new_zoning.name}_id"])

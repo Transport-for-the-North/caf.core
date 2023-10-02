@@ -63,26 +63,9 @@ def fix_complete_1(min_zoning, internal_zoning, external_zoning, desc_zoning):
     )
 
 
-@pytest.fixture(name="min_zoning_2", scope="session")
-def fix_min_zoning_2():
-    data = {"zone_id": [1, 2, 3, 4], "zone_name": ["w", "x", "y", "z"]}
-    name = "zone_2"
-    meta = zoning.ZoningSystemMetaData(name=name)
-    return zoning.ZoningSystem(name=name, unique_zones=pd.DataFrame(data), metadata=meta)
 
 
-@pytest.fixture(name="test_trans", scope="session")
-def fix_test_trans(main_dir):
-    data = {
-        "zone_1_id": ["a", "b", "c", "d", "e"],
-        "zone_2_id": ["w", "x", "y", "z", "z"],
-        "zone_1_to_zone_2": [1, 1, 1, 1, 1],
-        "zone_2_to_zone_1": [1, 1, 1, 0.5, 0.5],
-    }
-    save_path = main_dir / "zone_1_zone_2"
-    save_path.mkdir(exist_ok=True, parents=True)
-    pd.DataFrame(data).to_csv(save_path / "zone_1_to_zone_2_spatial.csv", index=False)
-    return pd.DataFrame(data)
+
 
 
 class TestZoning:
