@@ -47,24 +47,31 @@ def fix_exp_vanilla_ind():
 
 @pytest.fixture(scope="session", name="build_basic")
 def fix_build_basic():
-    return segmentation.Segmentation._build_seg(segs=["p", "g", "m"], naming_order=["p", "g", "m"])
+    return segmentation.Segmentation._build_seg(
+        segs=["p", "g", "m"], naming_order=["p", "g", "m"]
+    )
 
 
 @pytest.fixture(scope="session", name="build_naming_order")
 def fix_build_naming_order():
-    return segmentation.Segmentation._build_seg(segs=["p", "g", "m"], naming_order=["g", "p", "m"])
+    return segmentation.Segmentation._build_seg(
+        segs=["p", "g", "m"], naming_order=["g", "p", "m"]
+    )
 
 
 @pytest.fixture(scope="session", name="expected_basic_build")
 def fix_expected_basic(purpose_seg, gender_seg, mode_seg):
-    input = segmentation.SegmentationInput(segments=[purpose_seg, gender_seg, mode_seg],
-                                           naming_order=["g", "p", "m"])
+    input = segmentation.SegmentationInput(
+        segments=[purpose_seg, gender_seg, mode_seg], naming_order=["g", "p", "m"]
+    )
     return segmentation.Segmentation(input)
+
 
 @pytest.fixture(scope="session", name="expected_name_build")
 def fix_expected_name(purpose_seg, gender_seg, mode_seg):
-    input = segmentation.SegmentationInput(segments=[purpose_seg, gender_seg, mode_seg],
-                                           naming_order=["p", "g", "m"])
+    input = segmentation.SegmentationInput(
+        segments=[purpose_seg, gender_seg, mode_seg], naming_order=["p", "g", "m"]
+    )
     return segmentation.Segmentation(input)
 
 
@@ -80,14 +87,17 @@ class TestInd:
 
 
 class TestBuild:
-    @pytest.mark.parametrize("built,expected",
-                             [("build_basic", "expected_basic_build"),
-                              ("build_naming_order", "expected_name_build")])
+    @pytest.mark.parametrize(
+        "built,expected",
+        [
+            ("build_basic", "expected_basic_build"),
+            ("build_naming_order", "expected_name_build"),
+        ],
+    )
     def test_build(self, built, expected, request):
         built = request.getfixturevalue(built)
         expected = request.getfixturevalue(expected)
         assert built == expected
-
 
 
 # # # FUNCTIONS # # #
