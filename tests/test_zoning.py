@@ -108,6 +108,6 @@ class TestZoning:
         assert trans.equals(test_trans)
 
     def test_getter(self, min_zoning, main_dir):
-        min_zoning.save(main_dir, 'csv')
+        min_zoning.save(main_dir, "csv")
         got_zone = zoning.ZoningSystem.get_zoning(min_zoning.name, search_dir=main_dir)
         assert got_zone == min_zoning
