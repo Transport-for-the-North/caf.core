@@ -599,6 +599,20 @@ class DVector:
         """Division dunder method for DVector"""
         return self._generic_dunder(other, pd.DataFrame.div)
 
+    def __eq__(self, other):
+        """Equals dunder for DVector"""
+        if self.zoning_system != other.zoning_system:
+            return False
+        if self.segmentation != other.segmentation:
+            return False
+        if not self.data.equals(other.data):
+            return False
+        return True
+
+    def __ne__(self, other):
+        """Note equals dunder for DVector"""
+        return not self.__eq__(other)
+
     def aggregate(self, segs: list[str]):
         """
         Aggregate DVector to new segmentation.
