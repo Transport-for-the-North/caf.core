@@ -334,7 +334,9 @@ class Segmentation:
 
     def __add__(self, other):
         """Combine two segmentations without duplicates. Order of naming_order
-        in resulting segmentation will have self before other."""
+        in resulting segmentation will have self before other. This name may be
+        misleading as this is the method used for most of the dunder methods
+        in DVector for combining resulting segmentations."""
         enum_in = set(self.input.enum_segments + other.input.enum_segments)
         cust_in = self.input._custom_segments
         for seg in other.input._custom_segments:
@@ -373,7 +375,11 @@ class Segmentation:
 
     def aggregate(self, new_segs: list[str]):
         """
-        Aggregate segmentation to a subset of the segmentation
+        Aggregate segmentation to a subset of the segmentation.
+
+        This method isn't exactly an aggregation, it just removes segments.
+        It is called aggregate as currently it is the segmentation component
+        of the aggregate method in DVector.
 
         Parameters
         ----------

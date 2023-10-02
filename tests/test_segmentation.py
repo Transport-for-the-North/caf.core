@@ -110,6 +110,12 @@ def fix_exp_sub():
     return pd.MultiIndex.from_product([p, g, ns],
                                       names=['p','g','ns'])
 
+@pytest.fixture(scope="session", name="exp_add")
+def fix_add_exp():
+    conf = segmentation.SegmentationInput(enum_segments=['g','soc','ca','p','ns'],
+                                          subsets={'p':list(range(1,9))},
+                                          naming_order=['g','soc','ca','p','ns'])
+    return segmentation.Segmentation(conf)
 
 class TestInd:
     def test_vanilla_ind(self, vanilla_seg, expected_vanilla_ind):
@@ -128,10 +134,21 @@ class TestInd:
 
     @pytest.mark.parametrize("seg_str", ["subset_seg", "seg_with_excl", "nam_ord_seg", "vanilla_seg"])
     def test_io(self, seg_str, main_dir, request):
+        """Check that segmentation objects can be saved and loaded"""
         seg = request.getfixturevalue(seg_str)
         seg.save(main_dir / 'meta.yml', 'yaml')
         read = segmentation.Segmentation.load(main_dir / 'meta.yml', 'yaml')
         assert read == seg
+
+    def test_add(self, seg_with_excl, subset_seg, exp_add):
+        added = seg_with_excl + subset_seg
+        assert added == exp_add
+
+    def test_agg(self, vanilla_seg):
+        aggregated = vanilla_seg.aggregate(["ca", "m"])
+        conf = segmentation.SegmentationInput(enum_segments=['ca','m'],
+                                              naming_order=['ca','m'])
+        assert aggregated == segmentation.Segmentation(conf)
 
 
 class TestBuild:
