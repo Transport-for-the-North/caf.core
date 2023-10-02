@@ -11,6 +11,7 @@ File purpose:
 
 """
 # Built-Ins
+from pathlib import Path
 
 # Third Party
 import pytest
@@ -24,6 +25,23 @@ from caf.core import segmentation, segments
 
 
 # # # CONSTANTS # # #
+@pytest.fixture(name="main_dir", scope="session")
+def fixture_main_dir(tmp_path_factory) -> Path:
+    """
+    Temporary path for I/O.
+
+    Parameters
+    ----------
+    tmp_path_factory
+
+    Returns
+    -------
+    Path: file path used for all saving and loading of files within the tests
+    """
+    path = tmp_path_factory.mktemp("main")
+    return path
+
+
 @pytest.fixture(scope="session", name="gender_seg")
 def fix_gender():
     return segments.Segment(

@@ -57,42 +57,6 @@ class ZoningSystem:
     n_zones:
         The number of zones in this zoning system
     """
-
-    _zoning_system_import_fname = "zoning_systems"
-    _base_col_name = "%s_zone_id"
-
-    # File names
-    _valid_ftypes = [".csv", ".pbz2", ".csv.bz2", ".bz2"]
-    _zones_csv_fname = "zones.csv"
-    _internal_zones_fname = "internal_zones.csv"
-    _external_zones_fname = "external_zones.csv"
-
-    # Df col names
-    _df_name_col = "zone_name"
-    _df_desc_col = "zone_desc"
-
-    _zoning_definitions_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "definitions",
-        "zoning_systems",
-    )
-
-    _translation_dir = os.path.join(_zoning_definitions_path, "_translations")
-
-    _translate_infill = 0
-    _translate_base_zone_col = "%s_zone_id"
-    _translate_base_trans_col = "%s_to_%s"
-
-    _default_weighting_suffix = "correspondence"
-    _weighting_suffix = {
-        "population": "population_weight",
-        "employment": "employment_weight",
-        "no_weight": "no_weighting",
-        "average": "weighted_average",
-    }
-
-    possible_weightings = list(_weighting_suffix.keys()) + [None]
-
     def __init__(
         self,
         name: str,
@@ -171,7 +135,10 @@ class ZoningSystem:
         if self.name != other.name:
             return False
 
-        if set(self.unique_zones) != set(other.unique_zones):
+        if set(self.unique_zones['zone_id']) != set(other.unique_zones['zone_id']):
+            return False
+
+        if set(self.unique_zones['zone_name']) != set(other.unique_zones['zone_name']):
             return False
 
         if self.n_zones != other.n_zones:
@@ -199,6 +166,10 @@ class ZoningSystem:
         # Init
         names = sorted([self.name, other.name])
         folder = f"{names[0]}_{names[1]}"
+        if weighting is None:
+            weighting = 'spatial'
+        if trans_cache is None:
+            trans_cache = Path(r"I:\Data\Zone Translations\cache")
         file = f"{names[0]}_to_{names[1]}_{weighting}.csv"
 
         # Try find a translation
@@ -289,7 +260,9 @@ class ZoningSystem:
     def translate(
         self,
         other: ZoningSystem,
+        cache_path: PathLike = None,
         weighting: str = None,
+
     ) -> np.ndarray:
         """
         Returns a numpy array defining the translation of self to other
@@ -322,7 +295,8 @@ class ZoningSystem:
             )
 
         # Get a numpy array to define the translation
-        translation_df = self._get_translation_definition(other, weighting)
+
+        translation_df = self._get_translation_definition(other, weighting, trans_cache=cache_path)
 
         return translation_df
 
@@ -352,6 +326,8 @@ class ZoningSystem:
                     "zoning_meta", data=self.metadata.to_yaml().encode("utf-8")
                 )
         elif mode.lower() == "csv":
+            out_path = out_path / self.name
+            out_path.mkdir(exist_ok=True, parents=False)
             save_df.to_csv(out_path / "zoning.csv", index=False)
             self.metadata.save_yaml(out_path / "zoning_meta.yml")
         else:
