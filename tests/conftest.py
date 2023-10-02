@@ -76,9 +76,12 @@ def fixture_basic_segmentation_1():
     conf = segmentation.SegmentationInput(enum_segments=["g", "m"], naming_order=["g", "m"])
     return segmentation.Segmentation(conf)
 
+
 @pytest.fixture(name="basic_segmentation_2", scope="session")
 def fixture_basic_segmentation_2():
-    conf = segmentation.SegmentationInput(enum_segments=["g", "soc"], naming_order=["g", "soc"])
+    conf = segmentation.SegmentationInput(
+        enum_segments=["g", "soc"], naming_order=["g", "soc"]
+    )
     return segmentation.Segmentation(conf)
 
 
