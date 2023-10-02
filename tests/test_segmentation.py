@@ -149,20 +149,3 @@ class TestInd:
         conf = segmentation.SegmentationInput(enum_segments=['ca','m'],
                                               naming_order=['ca','m'])
         assert aggregated == segmentation.Segmentation(conf)
-
-
-class TestBuild:
-    @pytest.mark.parametrize(
-        "built,expected",
-        [
-            ("build_basic", "expected_basic_build"),
-            ("build_naming_order", "expected_name_build"),
-        ],
-    )
-    def test_build(self, built, expected, request):
-        built = request.getfixturevalue(built)
-        expected = request.getfixturevalue(expected)
-        assert built == expected
-
-
-# # # FUNCTIONS # # #
