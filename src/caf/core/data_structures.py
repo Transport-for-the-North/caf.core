@@ -560,13 +560,15 @@ class DVector:
             if self.zoning_system is not None:
                 prod = method(self.data, other.data)
             else:
-                prod = method(pd.DataFrame(self.data), pd.DataFrame(other.data))
+                # The method called expects dataframes, so convert
+                prod = method(self.data.to_frame(), other.data.to_frame())
             # Either None if both are None, or the right zone system
             zoning = self.zoning_system
 
         # For a dataframe by a series the mul is broadcast across
         # for this to work axis needs to be set to 'index'
         elif self.zoning_system is None:
+            # Allowed but warned
             logging.warning(
                 "For this method to work between a DVector with "
                 "a zoning system and a DVector without one, the "

@@ -96,13 +96,10 @@ class SegmentationInput(BaseConfig):
 
     @property
     def _custom_segments(self):
+        """Convert None to empty list or return custom_segments"""
         if self.custom_segments is None:
             return []
         return self.custom_segments
-
-    @property
-    def _enum_segments(self):
-        return self.enum_segments
 
 
 class Segmentation:
@@ -114,6 +111,9 @@ class Segmentation:
     config: Instance of SegmentationInput. See that class for details.
     """
 
+    # This currently isn't used and doesn't mean anything. In few places code
+    # relating to time periods or time formats is included from normits_core but
+    # never used.
     _time_period_segment_name = "tp3"
 
     def __init__(self, config: SegmentationInput):

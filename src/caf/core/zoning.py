@@ -35,6 +35,7 @@ import caf.toolkit as ctk
 
 LOG = logging.getLogger(__name__)
 
+# This is temporary, and will be an enviornment variable
 ZONE_CACHE_HOME = Path(r"I:\Data\Zoning Systems\core_zoning")
 
 
@@ -105,17 +106,6 @@ class ZoningSystem:
         self.external_zones = external_zones
         self.zone_descriptions = zone_descriptions
 
-        # if zone_descriptions is not None:
-        #     if zone_descriptions.shape != unique_zones.shape:
-        #         raise ValueError(
-        #             "zone_names is not the same shape as unique_zones. "
-        #             f"Expected shape of {unique_zones.shape}, got shape of "
-        #             f"{zone_descriptions.shape}"
-        #         )
-        #
-        #     # Order the zone names the same as the unique zones
-        #     name_dict = dict(zip(unique_zones, zone_descriptions))
-        #     self._zone_descriptions = np.array([name_dict[x] for x in self._unique_zones])
 
     @property
     def zone_to_description_df(self) -> Dict[Any, Any]:
