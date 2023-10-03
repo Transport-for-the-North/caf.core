@@ -222,9 +222,14 @@ class Segmentation:
         built_index = segmentation.ind
         if built_index.names != read_index.names:
             raise ValueError("The read in segmentation does not match the given parameters")
-        # Perfect match, return segmentation with no more checks
-        if read_index.equal_levels(built_index):
-            return segmentation
+        # Different method for a single level index
+        try:
+            # Perfect match, return segmentation with no more checks
+            if read_index.equal_levels(built_index):
+                return segmentation
+        except AttributeError:
+            if read_index.equals(built_index):
+                return segmentation
         for name in built_index.names:
             built_level = set(built_index.get_level_values(name))
             read_level = set(read_index.get_level_values(name))

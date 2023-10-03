@@ -94,6 +94,3 @@ class TestSegmentsSuper:
 
     def test_get_subset(self, get_hb_purpose, expected_hb_purpose):
         assert get_hb_purpose == expected_hb_purpose
-
-
-# # # FUNCTIONS # # #

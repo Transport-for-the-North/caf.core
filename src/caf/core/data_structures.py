@@ -14,6 +14,7 @@ from __future__ import annotations
 
 # Built-Ins
 import enum
+import logging
 import operator
 from typing import Union, Optional
 from os import PathLike
@@ -31,7 +32,7 @@ from caf.core.zoning import ZoningSystem
 # pylint: enable=import-error,wrong-import-position
 
 # # # CONSTANTS # # #
-
+LOG = logging.getLogger(__name__)
 
 # # # CLASSES # # #
 @enum.unique
@@ -268,7 +269,7 @@ class DVector:
         val_col = self._val_col if val_col is None else val_col
 
         # Try to convert the given data into DVector format
-        if isinstance(import_data, pd.DataFrame):
+        if isinstance(import_data, pd.DataFrame) or isinstance(import_data, pd.Series):
             self._data = self._dataframe_to_dvec(import_data)
         elif isinstance(import_data, dict):
             self._data = self._old_to_new_dvec(import_data)
@@ -556,12 +557,21 @@ class DVector:
         # for the same zoning a simple * gives the desired result
         # This drops any nan values (intersecting index level but missing val)
         if self.zoning_system == other.zoning_system:
-            prod = method(self.data, other.data)
+            if self.zoning_system is not None:
+                prod = method(self.data, other.data)
+            else:
+                prod = method(pd.DataFrame(self.data), pd.DataFrame(other.data))
             # Either None if both are None, or the right zone system
             zoning = self.zoning_system
+
         # For a dataframe by a series the mul is broadcast across
         # for this to work axis needs to be set to 'index'
         elif self.zoning_system is None:
+            logging.warning("For this method to work between a DVector with "
+                            "a zoning system and a DVector without one, the "
+                            "DVector with a zoning system must come first. "
+                            "This is being changed internally but if this was "
+                            "not expected, check your inputs")
             prod = method(other.data, self.data.squeeze(), axis="index")
             zoning = other.zoning_system
         elif other.zoning_system is None:
