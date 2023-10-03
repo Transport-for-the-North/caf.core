@@ -63,11 +63,6 @@ def fix_complete_1(min_zoning, internal_zoning, external_zoning, desc_zoning):
     )
 
 
-
-
-
-
-
 class TestZoning:
     @pytest.mark.parametrize(
         "zone_system_str",

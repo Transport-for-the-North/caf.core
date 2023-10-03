@@ -117,9 +117,10 @@ class SegmentsSuper(enum.Enum):
         subset: Define a subset of the segment being got. The integers in subset
         must appear in the asked for segment.
         """
+        seg = None
         match self:
             case SegmentsSuper.PURPOSE:
-                segmentation = Segment(
+                seg = Segment(
                     name=self.value,
                     values={
                         1: "HB Work",
@@ -140,7 +141,7 @@ class SegmentsSuper(enum.Enum):
                     },
                 )
             case SegmentsSuper.TIMEPERIOD:
-                segmentation = Segment(
+                seg = Segment(
                     name=self.value,
                     values={
                         1: "Weekday AM peak period (0700 - 0959)",
@@ -154,7 +155,7 @@ class SegmentsSuper(enum.Enum):
                     },
                 )
             case SegmentsSuper.MODE:
-                segmentation = Segment(
+                seg = Segment(
                     name=self.value,
                     values={
                         1: "Walk",
@@ -166,7 +167,7 @@ class SegmentsSuper(enum.Enum):
                     },
                 )
             case SegmentsSuper.GENDER:
-                segmentation = Segment(
+                seg = Segment(
                     name=self.value,
                     values={1: "Child", 2: "Male", 3: "Female"},
                     exclusions=[
@@ -176,7 +177,7 @@ class SegmentsSuper(enum.Enum):
                     ],
                 )
             case SegmentsSuper.SOC:
-                segmentation = Segment(
+                seg = Segment(
                     name=self.value,
                     values={
                         1: "High Skilled",
@@ -186,16 +187,17 @@ class SegmentsSuper(enum.Enum):
                     },
                 )
             case SegmentsSuper.CA:
-                segmentation = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
+                seg = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
             case SegmentsSuper.NS:
-                segmentation = Segment(
+                seg = Segment(
                     name=self.value,
                     values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
                 )
 
         if subset:
-            segmentation.values = {i: j for i, j in segmentation.values.items() if i in subset}
-        return segmentation
+            if seg is not None:
+                seg.values = {i: j for i, j in seg.values.items() if i in subset}
+        return seg
 
 
 # # # FUNCTIONS # # #

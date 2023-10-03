@@ -15,13 +15,12 @@ import warnings
 from typing import Union, Optional
 from os import PathLike
 from pathlib import Path
+
 # Third Party
 import pandas as pd
 from pydantic import validator
 import h5py
 from caf.toolkit import BaseConfig
-
-
 
 
 # Local Imports
@@ -92,9 +91,7 @@ class SegmentationInput(BaseConfig):
         if values["custom_segments"] is not None:
             seg_names += [i.name for i in values["custom_segments"]]
         if set(seg_names) != set(v):
-            raise ValueError(
-                "Names provided for naming_order do not match names in segments"
-            )
+            raise ValueError("Names provided for naming_order do not match names in segments")
         return v
 
     @property
@@ -368,7 +365,6 @@ class Segmentation:
     def overlap(self, other):
         """Check the overlap in segments between two segmentations"""
         return [seg for seg in self.names if seg in other.names]
-
 
     def __ne__(self, other) -> bool:
         """Overrides the default implementation"""

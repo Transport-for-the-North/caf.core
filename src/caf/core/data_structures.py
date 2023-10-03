@@ -34,6 +34,7 @@ from caf.core.zoning import ZoningSystem
 # # # CONSTANTS # # #
 LOG = logging.getLogger(__name__)
 
+
 # # # CLASSES # # #
 @enum.unique
 class TimeFormat(enum.Enum):
@@ -456,10 +457,7 @@ class DVector:
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
 
     def translate_zoning(
-        self,
-        new_zoning: ZoningSystem,
-        weighting: str = "spatial",
-        cache_path: PathLike = None
+        self, new_zoning: ZoningSystem, weighting: str = "spatial", cache_path: PathLike = None
     ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
@@ -498,7 +496,9 @@ class DVector:
             return self.copy()
 
         # Get translation
-        translation = self.zoning_system.translate(new_zoning, weighting=weighting, cache_path=cache_path)
+        translation = self.zoning_system.translate(
+            new_zoning, weighting=weighting, cache_path=cache_path
+        )
         if (
             set(new_zoning.unique_zones["zone_id"])
             != set(translation[f"{new_zoning.name}_id"])
@@ -567,11 +567,13 @@ class DVector:
         # For a dataframe by a series the mul is broadcast across
         # for this to work axis needs to be set to 'index'
         elif self.zoning_system is None:
-            logging.warning("For this method to work between a DVector with "
-                            "a zoning system and a DVector without one, the "
-                            "DVector with a zoning system must come first. "
-                            "This is being changed internally but if this was "
-                            "not expected, check your inputs")
+            logging.warning(
+                "For this method to work between a DVector with "
+                "a zoning system and a DVector without one, the "
+                "DVector with a zoning system must come first. "
+                "This is being changed internally but if this was "
+                "not expected, check your inputs"
+            )
             prod = method(other.data, self.data.squeeze(), axis="index")
             zoning = other.zoning_system
         elif other.zoning_system is None:

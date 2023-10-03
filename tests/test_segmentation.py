@@ -95,27 +95,34 @@ def fix_exp_excl():
         ]
     )
 
+
 @pytest.fixture(scope="session", name="subset_seg")
 def fix_subset_seg():
-    conf = segmentation.SegmentationInput(enum_segments=['p','g','ns'],
-                                          subsets={'p': list(range(1,9))},
-                                          naming_order=['p','g','ns'])
+    conf = segmentation.SegmentationInput(
+        enum_segments=["p", "g", "ns"],
+        subsets={"p": list(range(1, 9))},
+        naming_order=["p", "g", "ns"],
+    )
     return segmentation.Segmentation(conf)
+
 
 @pytest.fixture(scope="session", name="exp_subset")
 def fix_exp_sub():
     p = [1, 2, 3, 4, 5, 6, 7, 8]
     g = [1, 2, 3]
     ns = [1, 2, 3, 4, 5]
-    return pd.MultiIndex.from_product([p, g, ns],
-                                      names=['p','g','ns'])
+    return pd.MultiIndex.from_product([p, g, ns], names=["p", "g", "ns"])
+
 
 @pytest.fixture(scope="session", name="exp_add")
 def fix_add_exp():
-    conf = segmentation.SegmentationInput(enum_segments=['g','soc','ca','p','ns'],
-                                          subsets={'p':list(range(1,9))},
-                                          naming_order=['g','soc','ca','p','ns'])
+    conf = segmentation.SegmentationInput(
+        enum_segments=["g", "soc", "ca", "p", "ns"],
+        subsets={"p": list(range(1, 9))},
+        naming_order=["g", "soc", "ca", "p", "ns"],
+    )
     return segmentation.Segmentation(conf)
+
 
 class TestInd:
     def test_vanilla_ind(self, vanilla_seg, expected_vanilla_ind):
@@ -132,12 +139,14 @@ class TestInd:
     def test_subset(self, subset_seg, exp_subset):
         assert exp_subset.equal_levels(subset_seg.ind)
 
-    @pytest.mark.parametrize("seg_str", ["subset_seg", "seg_with_excl", "nam_ord_seg", "vanilla_seg"])
+    @pytest.mark.parametrize(
+        "seg_str", ["subset_seg", "seg_with_excl", "nam_ord_seg", "vanilla_seg"]
+    )
     def test_io(self, seg_str, main_dir, request):
         """Check that segmentation objects can be saved and loaded"""
         seg = request.getfixturevalue(seg_str)
-        seg.save(main_dir / 'meta.yml', 'yaml')
-        read = segmentation.Segmentation.load(main_dir / 'meta.yml', 'yaml')
+        seg.save(main_dir / "meta.yml", "yaml")
+        read = segmentation.Segmentation.load(main_dir / "meta.yml", "yaml")
         assert read == seg
 
     def test_add(self, seg_with_excl, subset_seg, exp_add):
@@ -146,6 +155,7 @@ class TestInd:
 
     def test_agg(self, vanilla_seg):
         aggregated = vanilla_seg.aggregate(["ca", "m"])
-        conf = segmentation.SegmentationInput(enum_segments=['ca','m'],
-                                              naming_order=['ca','m'])
+        conf = segmentation.SegmentationInput(
+            enum_segments=["ca", "m"], naming_order=["ca", "m"]
+        )
         assert aggregated == segmentation.Segmentation(conf)
