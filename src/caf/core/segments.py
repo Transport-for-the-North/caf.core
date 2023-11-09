@@ -14,16 +14,24 @@ import enum
 import pandas as pd
 from caf.toolkit import BaseConfig
 from dataclasses import dataclass
-
+import pydantic
 
 # # # CONSTANTS # # #
 # # # CLASSES # # #
 @dataclass
 class Exclusion:
     """
-    seg_name: Name of the other segment this exclusion applies to
-    own_val: The value for self segmentation which has exclusions in other
-    other_vals: Values in other segmentation incompatible with 'own_val'.
+    Class to define exclusions between segments.
+
+    Parameters
+    ----------
+
+    seg_name: str
+        Name of the other segment this exclusion applies to
+    own_val: int
+        The value for self segmentation which has exclusions in other
+    other_vals: set[int]
+        Values in other segmentation incompatible with 'own_val'.
     """
 
     seg_name: str
@@ -45,12 +53,15 @@ class Segment(BaseConfig):
 
     Parameters
     ----------
-    name: the name of the segmentation. Generally this is short form (e.g. 'p'
-    instead of 'purpose')
-    values: The values forming the segment. Keys are the values, and values are
-    descriptions, e.g. for 'p', 1: 'HB work'. Descriptions don't tend to get used
-    in DVectors so can be as verbose as desired for clarity.
-    exclusions: Define incompatibilities between segments. See Exclusion class
+    name: str
+        The name of the segmentation. Generally this is short form (e.g. 'p'
+        instead of 'purpose')
+    values: dict[int, str]
+        The values forming the segment. Keys are the values, and values are
+        descriptions, e.g. for 'p', 1: 'HB work'. Descriptions don't tend to
+        get used in DVectors so can be as verbose as desired for clarity.
+    exclusions: list[Exclusion]
+        Define incompatibilities between segments. See Exclusion class
     """
 
     name: str
@@ -62,10 +73,8 @@ class Segment(BaseConfig):
 
     @property
     def exclusion_segs(self):
-        if self.exclusions:
-            return [seg.seg_name for seg in self.exclusions]
-        else:
-            return None
+        return [seg.seg_name for seg in self.exclusions]
+
 
     def drop_indices(self, other_seg: str):
         if other_seg not in self.exclusion_segs:

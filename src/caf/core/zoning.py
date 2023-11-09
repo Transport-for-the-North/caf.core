@@ -29,6 +29,7 @@ LOG = logging.getLogger(__name__)
 
 # This is temporary, and will be an environment variable
 ZONE_CACHE_HOME = Path(r"I:\Data\Zoning Systems\core_zoning")
+ZONE_TRANSLATION_CACHE = Path(r"I:\Data\Zone Translations\cache")
 
 
 class ZoningSystem:
@@ -50,7 +51,9 @@ class ZoningSystem:
     n_zones:
         The number of zones in this zoning system
     """
-
+    # TODO This module needs to be completely refactored.The zoning should be a
+    # TODO dataframe with a list of unique zones, and extra columns for any
+    # TODO extra data. Extra columns should be defined in the metadata.
     def __init__(
         self,
         name: str,
@@ -63,7 +66,7 @@ class ZoningSystem:
         """Builds a ZoningSystem
 
         This class should almost never be constructed directly. If an
-        instance of ZoningSystem is needed, the helper function
+        instance of ZoningSystem is needed, the classmethod
         `get_zoning_system()` should be used instead.
 
         Parameters
@@ -72,7 +75,7 @@ class ZoningSystem:
             The name of the zoning system to create.
 
         unique_zones:
-            A numpy array of unique zone names for this zoning system.
+            A dataframe of unique zone names for this zoning system.
 
         internal_zones:
             A numpy array of unique zone names that make up the "internal"
@@ -110,7 +113,6 @@ class ZoningSystem:
 
     def __eq__(self, other) -> bool:
         """Overrides the default implementation"""
-        # May need to update in future, but assume they are equal if names match
         if not isinstance(other, ZoningSystem):
             return False
 
@@ -211,6 +213,7 @@ class ZoningSystem:
                 "translation you must generate a translation using "
                 "caf.space."
             )
+        self._check_translation_zones(other, trans, f"{self.name}_id", f"{other.name}_id")
         return trans
 
     def _check_translation_zones(

@@ -4,6 +4,7 @@ Module for handling segmentation objects. This imports the Segment class from
 caf.core.segments, and the SegmentsSuper enumeration from caf.core.segments. Both
 are used for building segmentations.
 """
+from __future__ import annotations
 # Built-Ins
 import warnings
 from typing import Union, Optional, Literal
@@ -12,7 +13,7 @@ from pathlib import Path
 
 # Third Party
 import pandas as pd
-from pydantic import validator
+import pydantic
 import h5py
 from caf.toolkit import BaseConfig
 
@@ -28,32 +29,44 @@ from caf.core.segments import Segment, SegmentsSuper
 
 
 # # # CLASSES # # #
+class SegmentationWarning(Warning):
+    """Warning class for segmentation objects"""
+    pass
+
 class SegmentationInput(BaseConfig):
     """
-    enum_segments: Provide as strings matching enumerations in SegmentsSuper.
-    In 99% of cases segments should be provided in this form. If a segment
-    doesn't exist in the enumeration it should usually be added.
-    subsets: Define any segments you want subsets of. Keys should match values
-    in 'enum_segments', values should be lists defining values from the segment
-    which should be included.
-    custom_segments: User defined segments which don't appear in SegmentsSuper.
-    As stated, in almost all cases a missing segment should be added to that
-    class, and this option is a contingency.
-    naming_order: The naming order of the segments. This primarily affects the
-    index order of the multi-index formed from the segmentation.
+    Input class for segmentation objects.
+
+    Parameters
+    ----------
+
+    enum_segments: list[SegmentsSuper]
+        Provide as strings matching enumerations in SegmentsSuper. In 99% of
+        cases segments should be provided in this form. If a segment doesn't
+        exist in the enumeration it should usually be added.
+    subsets: dict[str, list[int]]
+        Define any segments you want subsets of. Keys should match values in
+        'enum_segments', values should be lists defining values from the
+        segment which should be included.
+    custom_segments: list[Segment]
+        User defined segments which don't appear in SegmentsSuper. As stated,
+        in almost all cases a missing segment should be added to that class,
+        and this option is a contingency.
+    naming_order: list[str]
+        The naming order of the segments. This primarily affects the index
+        order of the multi-index formed from the segmentation.
     """
 
     enum_segments: list[SegmentsSuper]
-    subsets: dict[str, list[int]] = pydantic.Field(default_factory=list)
-    custom_segments: list[Segment] = pydantic.Field(default_factory=dict)
     naming_order: list[str]
+    subsets: dict[str, list[int]] = pydantic.Field(default_factory=dict)
+    custom_segments: list[Segment] = pydantic.Field(default_factory=list)
 
-    @validator("subsets", always=True)
+
+    @pydantic.validator("subsets", always=True)
     def enums(cls, v, values):
         """Validate the subsets match segments"""
-        # validator is a class method pylint: disable=no-self-argument 
-        if v is None:
-            return v
+        # validator is a class method pylint: disable=no-self-argument
         for seg in v.keys():
             if SegmentsSuper(seg) not in values["enum_segments"]:
                 raise ValueError(
@@ -61,11 +74,9 @@ class SegmentationInput(BaseConfig):
                 )
         return v
 
-    @validator("custom_segments", always=True)
+    @pydantic.validator("custom_segments", always=True)
     def no_copied_names(cls, v):
         """Validate the custom_segments do not clash with existing segments"""
-        if v is None:
-            return v
         for seg in v:
             if seg.name in SegmentsSuper.values():
                 raise ValueError(
@@ -79,26 +90,17 @@ class SegmentationInput(BaseConfig):
                 )
         return v
 
-    @validator("naming_order")
+    @pydantic.validator("naming_order")
     def names_match_segments(cls, v, values):
         """Validate that naming order names match segment names"""
         seg_names = [i.value for i in values["enum_segments"]]
-
-        if values["custom_segments"] is not None:
+        if "custom_segments" in values.keys():
             seg_names += [i.name for i in values["custom_segments"]]
 
         if set(seg_names) != set(v):
             raise ValueError("Names provided for naming_order do not match names in segments")
 
         return v
-
-    @property
-    def _custom_segments(self):
-        """Convert None to empty list or return custom_segments"""
-        if self.custom_segments is None:
-            return []
-
-        return self.custom_segments
 
 
 class Segmentation:
@@ -107,7 +109,8 @@ class Segmentation:
 
     Parameters
     ----------
-    config: Instance of SegmentationInput. See that class for details.
+        config: SegmentationInput
+        Instance of SegmentationInput. See that class for details.
     """
 
     # This currently isn't used and doesn't mean anything. In few places code
@@ -129,7 +132,7 @@ class Segmentation:
                 segment = SegmentsSuper(seg).get_segment(subset=config.subsets.get(seg.value))
                 enum_segments.append(segment)
 
-        self.segments = config._custom_segments + enum_segments
+        self.segments = config.custom_segments + enum_segments
         self.naming_order = config.naming_order
 
     @property
@@ -152,11 +155,11 @@ class Segmentation:
         """Return all segmentation values"""
         return [seg.values.keys() for seg in self.segments]
 
-    @property
     def ind(self):
         """
-        Returns a pandas MultiIndex of the segmentation. This is by default just a product
-        of all segments given, taking exclusions into account if any exist between segments.
+        Returns a pandas MultiIndex of the segmentation. This is by default
+        just a product of all segments given, taking exclusions into account if
+        any exist between segments.
         """
         index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
         df = pd.DataFrame(index=index)
@@ -186,16 +189,19 @@ class Segmentation:
         return self._time_period_segment_name in self.naming_order
 
     @classmethod
-    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation: Segmentation) -> Segmentation:
+    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation: Segmentation, escalate_warning: bool = False) -> Segmentation:
         """
-        Validate a segmentation from either a path to a csv, or a dataframe. This could either be
-        purely a segmentation, or data with a segmentation index.
+        Validate a segmentation from either a path to a csv, or a dataframe.
+
+        This could either be purely a segmentation, or data with a segmentation
+        index.
 
         Parameters
         ----------
         source : Path | pd.DataFrame
-            Either a path to a csv containing a segmentation or a dataframe containing a segmentation.
-            If source is a dataframe the segmentation should not form the index.
+            Either a path to a csv containing a segmentation or a dataframe
+            containing a segmentation. If source is a dataframe the
+            segmentation should not form the index.
         segmentation : Segmentation
             The segmentation you expect 'source' to match.
 
@@ -203,6 +209,8 @@ class Segmentation:
         -------
         Segmentation class
         """
+        if escalate_warning:
+            warnings.filterwarnings("error", category=SegmentationWarning)
         if isinstance(source, Path):
             df = pd.read_csv(source)
         else:
@@ -220,7 +228,7 @@ class Segmentation:
             except KeyError:
                 read_index = df.index.reorder_levels(naming_order)
         # Index to validate against
-        built_index = segmentation.ind
+        built_index = segmentation.ind()
         # I think an error would already be raised at this point
         if built_index.names != read_index.names:
             raise ValueError("The read in segmentation does not match the given parameters. "
@@ -244,7 +252,8 @@ class Segmentation:
             if read_level.issubset(built_level):
                 warnings.warn(
                     f"Read in level {name} is a subset of the segment. If this was not"
-                    f" expected check the input segmentation."
+                    f" expected check the input segmentation.",
+                    SegmentationWarning
                 )
                 # Define the read subset in the generated config
                 if conf.subsets is not None:
@@ -273,16 +282,18 @@ class Segmentation:
             "look is the SegmentsSuper class."
         )
 
-    def save(self, out_path: PathLike, mode="hdf"):
+    def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"]="hdf"):
         """
         Save a segmentation to either a yaml file or an hdf file if part of a
         DVector.
 
         Parameters
         ----------
-        out_path: Path to where the data should be saved. The file extension must
-        match 'mode'
-        mode: Currently only can be 'hdf' or 'yaml'. How to save the file.
+        out_path: PathLike
+            Path to where the data should be saved. The file extension must
+            match 'mode'
+        mode: Literal["hdf", "yaml"]
+            Currently only can be 'hdf' or 'yaml'. How to save the file.
         """
         if mode == "hdf":
             with h5py.File(out_path, "a") as h_file:
@@ -303,8 +314,14 @@ class Segmentation:
 
         Parameters
         ----------
-        in_path: Path to the file. File extension must match 'mode'
-        mode: Mode to load in, either 'hdf' or 'yaml'
+        in_path: PathLike
+            Path to the file. File extension must match 'mode'
+        mode: Literal["hdf", "yaml"], default "hdf"
+            Mode to load in, either 'hdf' or 'yaml'
+
+        Returns
+        -------
+        Segmentation class
         """
         if mode == "hdf":
             with h5py.File(in_path, "r") as h_file:
@@ -353,8 +370,8 @@ class Segmentation:
         misleading as this is the method used for most of the dunder methods
         in DVector for combining resulting segmentations."""
         enum_in = set(self.input.enum_segments + other.input.enum_segments)
-        cust_in = self.input._custom_segments
-        for seg in other.input._custom_segments:
+        cust_in = self.input.custom_segments
+        for seg in other.input.custom_segments:
             if seg.name not in [i.name for i in cust_in]:
                 cust_in.append(seg)
         subsets = self.input.subsets.copy()

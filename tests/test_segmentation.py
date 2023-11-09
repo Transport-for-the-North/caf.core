@@ -126,18 +126,18 @@ def fix_add_exp():
 
 class TestInd:
     def test_vanilla_ind(self, vanilla_seg, expected_vanilla_ind):
-        assert expected_vanilla_ind.equal_levels(vanilla_seg.ind)
+        assert expected_vanilla_ind.equal_levels(vanilla_seg.ind())
 
     def test_name_order(self, nam_ord_seg, exp_nam_ord):
-        assert exp_nam_ord.equal_levels(nam_ord_seg.ind)
+        assert exp_nam_ord.equal_levels(nam_ord_seg.ind())
 
     # @pytest.mark.parametrize("segmentation", ["excl_segmentation", "excl_segmentation_rev"])
 
     def test_exclusions(self, seg_with_excl, expected_excl):
-        assert seg_with_excl.ind.equal_levels(expected_excl)
+        assert seg_with_excl.ind().equal_levels(expected_excl)
 
     def test_subset(self, subset_seg, exp_subset):
-        assert exp_subset.equal_levels(subset_seg.ind)
+        assert exp_subset.equal_levels(subset_seg.ind())
 
     @pytest.mark.parametrize(
         "seg_str", ["subset_seg", "seg_with_excl", "nam_ord_seg", "vanilla_seg"]

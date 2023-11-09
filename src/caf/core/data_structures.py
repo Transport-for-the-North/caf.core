@@ -13,6 +13,7 @@ import operator
 from typing import Union, Optional
 from os import PathLike
 from pathlib import Path
+import warnings
 
 # Third Party
 import pandas as pd
@@ -20,7 +21,7 @@ import caf.toolkit as ctk
 
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
-from caf.core.segmentation import Segmentation
+from caf.core.segmentation import Segmentation, SegmentationWarning
 from caf.core.zoning import ZoningSystem
 
 # pylint: enable=import-error,wrong-import-position
@@ -512,8 +513,10 @@ class DVector:
         )
 
     def overlap(self, other):
-        """Calls segmentation overlap method to check two DVector's contain
-        overlapping segments"""
+        """
+        Calls segmentation overlap method to check two DVector's contain
+        overlapping segments
+        """
         overlap = self.segmentation.overlap(other.segmentation)
         if overlap == []:
             raise NotImplementedError(
@@ -522,10 +525,12 @@ class DVector:
                 "possible."
             )
 
-    def _generic_dunder(self, other, method):
+    def _generic_dunder(self, other, method, escalate_warnings: bool = False):
         """
-
+        A generic dunder method which is called by each of the duneder methods.
         """
+        if escalate_warnings:
+            warnings.filterwarnings('error', category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
         # for the same zoning a simple * gives the desired result
@@ -570,6 +575,11 @@ class DVector:
         # Index changed so the segmentation has changed. Segmentation should equal
         # the addition of the two segmentations (see __add__ method in segmentation)
         new_seg = self.segmentation + other.segmentation
+        warnings.warn(f"This operation has changed the segmentation of the DVector"
+                      f"from {self.segmentation} to {new_seg}. This can happen"
+                      "but it can also be a sign of an error. Check the output DVector.",
+                      SegmentationWarning)
+        prod = prod.reorder_levels(new_seg.naming_order)
         return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
 
     def __mul__(self, other):

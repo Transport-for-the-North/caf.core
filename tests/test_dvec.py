@@ -36,7 +36,8 @@ import numpy as np
 def fix_data_1(basic_segmentation_1, min_zoning):
     return pd.DataFrame(
         data=np.random.rand(18, 5),
-        index=basic_segmentation_1.ind,
+        index=basic_segmentation_1.ind()
+        ,
         columns=min_zoning.unique_zones["zone_name"],
     )
 
@@ -45,7 +46,7 @@ def fix_data_1(basic_segmentation_1, min_zoning):
 def fix_data_2(basic_segmentation_2, min_zoning):
     return pd.DataFrame(
         data=np.random.rand(9, 5),
-        index=basic_segmentation_2.ind,
+        index=basic_segmentation_2.ind(),
         columns=min_zoning.unique_zones["zone_name"],
     )
 
@@ -55,7 +56,7 @@ def fix_single_seg(min_zoning):
     seg_conf = segmentation.SegmentationInput(enum_segments=["p"], naming_order=["p"])
     seg = segmentation.Segmentation(seg_conf)
     data = pd.DataFrame(
-        data=np.random.rand(15, 5), index=seg.ind, columns=min_zoning.unique_zones["zone_name"]
+        data=np.random.rand(15, 5), index=seg.ind(), columns=min_zoning.unique_zones["zone_name"]
     )
     return data_structures.DVector(
         segmentation=seg, import_data=data, zoning_system=min_zoning
@@ -68,7 +69,7 @@ def fix_no_zone_1(basic_segmentation_1):
         np.random.rand(
             18,
         ),
-        index=basic_segmentation_1.ind,
+        index=basic_segmentation_1.ind(),
     )
     return data_structures.DVector(segmentation=basic_segmentation_1, import_data=data)
 
@@ -79,7 +80,7 @@ def fix_no_zone_2(basic_segmentation_2):
         np.random.rand(
             9,
         ),
-        index=basic_segmentation_2.ind,
+        index=basic_segmentation_2.ind(),
     )
     return data_structures.DVector(segmentation=basic_segmentation_2, import_data=data)
 
