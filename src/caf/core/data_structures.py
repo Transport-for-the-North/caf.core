@@ -225,7 +225,7 @@ class DVector:
     def __init__(
         self,
         segmentation: Segmentation,
-        import_data: Union[pd.DataFrame, dict],
+        import_data: pd.DataFrame,
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = "val",
@@ -262,10 +262,8 @@ class DVector:
         self._val_col = val_col
 
         # Try to convert the given data into DVector format
-        if isinstance(import_data, pd.DataFrame) or isinstance(import_data, pd.Series):
+        if isinstance(import_data, pd.DataFrame):
             self._data = self._dataframe_to_dvec(import_data)
-        elif isinstance(import_data, dict):
-            self._data = self._old_to_new_dvec(import_data)
         else:
             raise NotImplementedError(
                 "Don't know how to deal with anything other than: pandas DF, or dict"
@@ -373,22 +371,6 @@ class DVector:
 
         return import_data
 
-    def _old_to_new_dvec(self, import_data: dict):
-        """
-        Converts the old format of DVector into the new - this only applies to the new dataframe.
-        """
-        zoning = import_data["zoning_system"]["unique_zones"]
-        data = import_data["data"].values()
-        segmentation = import_data["data"].keys()
-        naming_order = import_data["segmentation"]["naming_order"]
-        # Convert list of segmentations into multiindex
-        dict_list = []
-        for string in segmentation:
-            int_list = [int(x) for x in string.split("_")]
-            row_dict = {naming_order[i]: value for i, value in enumerate(int_list)}
-            dict_list.append(row_dict)
-        ind = pd.MultiIndex.from_frame(pd.DataFrame(dict_list))
-        return pd.DataFrame(data=data, index=ind, columns=zoning)
 
     def save(self, out_path: PathLike):
         """
@@ -510,6 +492,8 @@ class DVector:
             segmentation=self._segmentation.copy(),
             zoning_system=self._zoning_system.copy(),
             import_data=self._data.copy(),
+            time_format=self.time_format,
+            val_col=self.val_col
         )
 
     def overlap(self, other):
@@ -634,6 +618,22 @@ class DVector:
             time_format=self.time_format,
             val_col=self.val_col,
         )
-
+    @staticmethod
+    def old_to_new_dvec(import_data: dict):
+        """
+        Converts the old format of DVector into the new - this only applies to the new dataframe.
+        """
+        zoning = import_data["zoning_system"]["unique_zones"]
+        data = import_data["data"].values()
+        segmentation = import_data["data"].keys()
+        naming_order = import_data["segmentation"]["naming_order"]
+        # Convert list of segmentations into multiindex
+        dict_list = []
+        for string in segmentation:
+            int_list = [int(x) for x in string.split("_")]
+            row_dict = {naming_order[i]: value for i, value in enumerate(int_list)}
+            dict_list.append(row_dict)
+        ind = pd.MultiIndex.from_frame(pd.DataFrame(dict_list))
+        return pd.DataFrame(data=data, index=ind, columns=zoning)
 
 # # # FUNCTIONS # # #
