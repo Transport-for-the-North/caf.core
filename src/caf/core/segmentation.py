@@ -44,8 +44,8 @@ class SegmentationInput(BaseConfig):
     """
 
     enum_segments: list[SegmentsSuper]
-    subsets: Optional[dict[str, list[int]]]
-    custom_segments: Optional[list[Segment]]
+    subsets: dict[str, list[int]] = pydantic.Field(default_factory=list)
+    custom_segments: list[Segment] = pydantic.Field(default_factory=dict)
     naming_order: list[str]
 
     @validator("subsets", always=True)
@@ -166,12 +166,11 @@ class Segmentation:
             for other_seg in drop_iterator:
                 if other_seg == own_seg.name:
                     continue
-                if own_seg.exclusion_segs:
-                    if other_seg in own_seg.exclusion_segs:
-                        dropper = own_seg.drop_indices(other_seg)
-                        df = df.reset_index().set_index([own_seg.name, other_seg])
-                        mask = ~df.index.isin(dropper)
-                        df = df[mask]
+                if other_seg in own_seg.exclusion_segs:
+                    dropper = own_seg.drop_indices(other_seg)
+                    df = df.reset_index().set_index([own_seg.name, other_seg])
+                    mask = ~df.index.isin(dropper)
+                    df = df[mask]
 
         return df.reset_index().set_index(self.naming_order).index
 
@@ -194,9 +193,11 @@ class Segmentation:
 
         Parameters
         ----------
-        source: Either a path to a csv containing a segmentation or a dataframe containing a segmentation.
-        If source is a dataframe the segmentation should not form the index.
-        segmentation: The segmentation you expect 'source' to match.
+        source : Path | pd.DataFrame
+            Either a path to a csv containing a segmentation or a dataframe containing a segmentation.
+            If source is a dataframe the segmentation should not form the index.
+        segmentation : Segmentation
+            The segmentation you expect 'source' to match.
 
         Returns
         -------
@@ -296,7 +297,7 @@ class Segmentation:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
 
     @classmethod
-    def load(cls, in_path: PathLike, mode: Literal["hdf", "yaml"]="hdf"):
+    def load(cls, in_path: PathLike, mode: Literal["hdf", "yaml"]="hdf") -> Segmentation:
         """
         Load the segmentation from a file, either an hdf or csv file.
 
@@ -336,7 +337,7 @@ class Segmentation:
         return True
 
     @staticmethod
-    def ordered_set(list_1, list_2):
+    def ordered_set(list_1: list, list_2: list) -> list:
         """Takes in two lists and combines them, removing duplicates but
         preserving order."""
         combined_list = list_1 + list_2
@@ -356,15 +357,8 @@ class Segmentation:
         for seg in other.input._custom_segments:
             if seg.name not in [i.name for i in cust_in]:
                 cust_in.append(seg)
-        if (self.input.subsets is not None) & (other.input.subsets is not None):
-            subsets = self.input.subsets
-            subsets.update(other.input.subsets)
-        elif self.input.subsets is not None:
-            subsets = self.input.subsets
-        # At this point other.input.subsets could either be a subset, or could be None
-        # Either are fine
-        else:
-            subsets = other.input.subsets
+        subsets = self.input.subsets.copy()
+        subsets.update(other.input.subsets)
         naming_order = self.ordered_set(self.naming_order, other.naming_order)
         config = SegmentationInput(
             enum_segments=enum_in,
