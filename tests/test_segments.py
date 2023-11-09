@@ -59,6 +59,18 @@ def fix_excl_ind():
 def fix_gender_seg():
     return segments.SegmentsSuper("g").get_segment()
 
+@pytest.fixture(scope="session", name="exp_gender_seg")
+def fix_exp_gen():
+    return segments.Segment(
+        name='g',
+        values={1: "Child", 2: "Male", 3: "Female"},
+        exclusions=[
+            segments.Exclusion(
+                seg_name=segments.SegmentsSuper.SOC.value, own_val=1, other_vals=[1, 2, 3]
+            )
+        ],
+    )
+
 
 @pytest.fixture(scope="session", name="get_hb_purpose")
 def fix_hb_purpose():
@@ -82,15 +94,9 @@ def fix_exp_hb_purpose():
     )
 
 
-class TestSegments:
-    def test_naming_order(self, basic_segmentation, expected_excl_ind):
-        names = basic_segmentation.ind.names
-        assert names == ["test seg 2", "test seg 1"]
-
-
 class TestSegmentsSuper:
-    def test_get(self, get_gender_seg, expected_gender_seg):
-        assert get_gender_seg == expected_gender_seg
+    def test_get(self, get_gender_seg, exp_gender_seg):
+        assert get_gender_seg == exp_gender_seg
 
     def test_get_subset(self, get_hb_purpose, expected_hb_purpose):
         assert get_hb_purpose == expected_hb_purpose

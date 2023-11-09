@@ -1,18 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on: 07/09/2023
-Updated on:
-
-Original author: Ben Taylor
-Last update made by:
-Other updates made by:
-
-File purpose:
-
+Module for handling segmentation objects. This imports the Segment class from
+caf.core.segments, and the SegmentsSuper enumeration from caf.core.segments. Both
+are used for building segmentations.
 """
 # Built-Ins
 import warnings
-from typing import Union, Optional
+from typing import Union, Optional, Literal
 from os import PathLike
 from pathlib import Path
 
@@ -57,6 +51,7 @@ class SegmentationInput(BaseConfig):
     @validator("subsets", always=True)
     def enums(cls, v, values):
         """Validate the subsets match segments"""
+        # validator is a class method pylint: disable=no-self-argument 
         if v is None:
             return v
         for seg in v.keys():
@@ -88,10 +83,13 @@ class SegmentationInput(BaseConfig):
     def names_match_segments(cls, v, values):
         """Validate that naming order names match segment names"""
         seg_names = [i.value for i in values["enum_segments"]]
+
         if values["custom_segments"] is not None:
             seg_names += [i.name for i in values["custom_segments"]]
+
         if set(seg_names) != set(v):
             raise ValueError("Names provided for naming_order do not match names in segments")
+
         return v
 
     @property
@@ -99,6 +97,7 @@ class SegmentationInput(BaseConfig):
         """Convert None to empty list or return custom_segments"""
         if self.custom_segments is None:
             return []
+
         return self.custom_segments
 
 
@@ -123,14 +122,13 @@ class Segmentation:
             enum_segments = [
                 SegmentsSuper(string).get_segment() for string in config.enum_segments
             ]
+
         else:
             enum_segments = []
             for seg in config.enum_segments:
-                if seg.value in config.subsets.keys():
-                    segment = SegmentsSuper(seg).get_segment(subset=config.subsets[seg.value])
-                else:
-                    segment = SegmentsSuper(seg).get_segment()
+                segment = SegmentsSuper(seg).get_segment(subset=config.subsets.get(seg.value))
                 enum_segments.append(segment)
+
         self.segments = config._custom_segments + enum_segments
         self.naming_order = config.naming_order
 
@@ -151,7 +149,7 @@ class Segmentation:
 
     @property
     def seg_vals(self):
-        """Return all segmnentation values"""
+        """Return all segmentation values"""
         return [seg.values.keys() for seg in self.segments]
 
     @property
@@ -163,6 +161,7 @@ class Segmentation:
         index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
         df = pd.DataFrame(index=index)
         drop_iterator = self.naming_order.copy()
+
         for own_seg in self.segments:
             for other_seg in drop_iterator:
                 if other_seg == own_seg.name:
@@ -188,7 +187,7 @@ class Segmentation:
         return self._time_period_segment_name in self.naming_order
 
     @classmethod
-    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation):
+    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation: Segmentation) -> Segmentation:
         """
         Validate a segmentation from either a path to a csv, or a dataframe. This could either be
         purely a segmentation, or data with a segmentation index.
@@ -207,23 +206,30 @@ class Segmentation:
             df = pd.read_csv(source)
         else:
             df = source
+
         naming_order = segmentation.naming_order
         conf = segmentation.input.copy()
         if df.index.names == naming_order:
             read_index = df.index
         else:
+            # Try to build index from df columns
             try:
                 read_index = pd.MultiIndex.from_frame(df[naming_order])
+            # Assume the index is already correct but reorder to naming_order
             except KeyError:
                 read_index = df.index.reorder_levels(naming_order)
+        # Index to validate against
         built_index = segmentation.ind
+        # I think an error would already be raised at this point
         if built_index.names != read_index.names:
-            raise ValueError("The read in segmentation does not match the given parameters")
-        # Different method for a single level index
+            raise ValueError("The read in segmentation does not match the given parameters. "
+                             "The segment names are not correct.")
+
         try:
             # Perfect match, return segmentation with no more checks
             if read_index.equal_levels(built_index):
                 return segmentation
+        # Different method for a single level index
         except AttributeError:
             if read_index.equals(built_index):
                 return segmentation
@@ -244,6 +250,7 @@ class Segmentation:
                     conf.subsets.update({name: list(read_level)})
                 else:
                     conf.subsets = {name: list(read_level)}
+            # Not a subset so doesn't match completely
             else:
                 raise ValueError(
                     f"The segment for {name} does not match the inbuilt definition."
@@ -281,13 +288,15 @@ class Segmentation:
                 h_file.create_dataset(
                     "segmentation", data=self.input.to_yaml().encode("utf-8")
                 )
+
         elif mode == "yaml":
             self.input.save_yaml(out_path)
+
         else:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
 
     @classmethod
-    def load(cls, in_path: PathLike, mode="hdf"):
+    def load(cls, in_path: PathLike, mode: Literal["hdf", "yaml"]="hdf"):
         """
         Load the segmentation from a file, either an hdf or csv file.
 
@@ -300,10 +309,13 @@ class Segmentation:
             with h5py.File(in_path, "r") as h_file:
                 yam_load = h_file["segmentation"][()].decode("utf-8")
                 config = SegmentationInput.from_yaml(yam_load)
+
         elif mode == "yaml":
             config = SegmentationInput.load_yaml(in_path)
+
         else:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
+
         return cls(config)
 
     def __copy__(self):
@@ -315,7 +327,7 @@ class Segmentation:
         if not isinstance(other, Segmentation):
             return False
 
-        if set(self.naming_order) != set(other.naming_order):
+        if self.naming_order != other.naming_order:
             return False
 
         if set(self.names) != set(other.names):
@@ -356,7 +368,7 @@ class Segmentation:
         naming_order = self.ordered_set(self.naming_order, other.naming_order)
         config = SegmentationInput(
             enum_segments=enum_in,
-            # subsets=subsets,
+            subsets=subsets,
             custom_segments=cust_in,
             naming_order=naming_order,
         )
@@ -388,21 +400,26 @@ class Segmentation:
         """
         custom = None
         subsets = None
+
         if self.input.custom_segments is not None:
             custom = self.input.custom_segments.copy()
             for seg in self.input.custom_segments:
                 if seg.name not in new_segs:
                     custom.remove(seg)
+
         enum_segs = self.input.enum_segments.copy()
         for seg in self.input.enum_segments:
             if seg.value not in new_segs:
                 enum_segs.remove(seg)
+
         if self.input.subsets is not None:
             subsets = dict()
             for key, val in self.input.subsets.items():
                 if key in new_segs:
                     subsets.update({key: val})
+
         new_order = [i for i in self.naming_order if i in new_segs]
+
         conf = SegmentationInput(
             enum_segments=enum_segs,
             subsets=subsets,

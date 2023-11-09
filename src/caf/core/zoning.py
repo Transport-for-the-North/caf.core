@@ -21,7 +21,7 @@ import warnings
 
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, Union, Optional
+from typing import Any, Dict, Union, Optional, Literal
 
 # Third Party
 import numpy as np
@@ -35,7 +35,7 @@ import caf.toolkit as ctk
 
 LOG = logging.getLogger(__name__)
 
-# This is temporary, and will be an enviornment variable
+# This is temporary, and will be an environment variable
 ZONE_CACHE_HOME = Path(r"I:\Data\Zoning Systems\core_zoning")
 
 
@@ -295,7 +295,7 @@ class ZoningSystem:
 
         return translation_df
 
-    def save(self, path: PathLike, mode: str):
+    def save(self, path: PathLike, mode: Literal["csv", "hdf"] = "csv"):
         """
         Save zoning data as a dataframe and a yml file.
 
@@ -411,6 +411,7 @@ class ZoningSystem:
             description = zones["zone_desc"]
         else:
             description = None
+        # It might be more appropriate to check if files exist explicitly
         try:
             metadata = ZoningSystemMetaData.load_yaml(old_dir / "metadata.yml")
             metadata.name = name
@@ -426,6 +427,7 @@ class ZoningSystem:
         except FileNotFoundError:
             internal = None
             warnings.warn("No internal zoning info found.")
+
         zoning = ZoningSystem(
             name=name,
             unique_zones=unique_zones,
@@ -434,9 +436,12 @@ class ZoningSystem:
             internal_zones=internal,
             external_zones=external,
         )
+
         out_dir = Path(new_dir) / name
         out_dir.mkdir(exist_ok=True, parents=False)
         zoning.save(out_dir, mode=mode)
+        # This method was mainly written to write new format to a new location
+        # so writing out is optional
         if return_zoning:
             return zoning
 
@@ -467,3 +472,4 @@ class ZoningSystemMetaData(ctk.BaseConfig):
     name: Optional[str]
     shapefile_id_col: Optional[str]
     shapefile_path: Optional[Path]
+    extra_columns: Optional[list[str]]

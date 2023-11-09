@@ -1,13 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on: 19/09/2023
-Updated on:
-
-Original author: Ben Taylor
-Last update made by:
-Other updates made by:
-
-File purpose:
+Module containing the data structures used in the CAF package. Currently this is
+only the DVector class, but this may be expanded in the future.
 
 """
 from __future__ import annotations
@@ -227,16 +221,13 @@ class DVector:
     the columns of the data. Data is in the form of a dataframe and reads/writes
     to h5 along with all metadata.
     """
-
-    _val_col = "val"
-
     def __init__(
         self,
         segmentation: Segmentation,
         import_data: Union[pd.DataFrame, dict],
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
-        val_col: Optional[str] = None,
+        val_col: Optional[str] = "val",
     ) -> None:
         """
         segmentation: An instance of the segmentation class. This should usually
@@ -267,7 +258,7 @@ class DVector:
         self._time_format = self._validate_time_format(time_format)
 
         # Set defaults if args not set
-        val_col = self._val_col if val_col is None else val_col
+        self._val_col = val_col
 
         # Try to convert the given data into DVector format
         if isinstance(import_data, pd.DataFrame) or isinstance(import_data, pd.Series):
@@ -383,11 +374,6 @@ class DVector:
         loaded_seg = Segmentation.validate_segmentation(
             source=import_data, segmentation=self.segmentation
         )
-        # Segmentation should already be validated, this can probably be removed
-        if isinstance(import_data.index, pd.MultiIndex):
-            if import_data.index.names != loaded_seg.naming_order:
-                import_data.reset_index(inplace=True)
-                import_data.set_index(loaded_seg.naming_order, inplace=True)
         if self.zoning_system is not None:
             # columns could match id or name
             if (
@@ -457,7 +443,7 @@ class DVector:
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
 
     def translate_zoning(
-        self, new_zoning: ZoningSystem, weighting: str = "spatial", cache_path: PathLike = None
+        self, new_zoning: ZoningSystem, cache_path: Optional[PathLike], weighting: str = "spatial"
     ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
@@ -517,12 +503,12 @@ class DVector:
             )
         transposed = self.data.transpose()
         transposed.index.names = [f"{self.zoning_system.name}_id"]
-        translated = ctk.translation.pandas_multi_column_translation(
+        translated = ctk.translation.pandas_vector_zone_translation(
             self.data.transpose(),
             translation,
-            from_col=f"{self.zoning_system.name}_id",
-            to_col=f"{new_zoning.name}_id",
-            factors_col=f"{self.zoning_system.name}_to_{new_zoning.name}",
+            translation_from_col=f"{self.zoning_system.name}_id",
+            translation_to_col=f"{new_zoning.name}_id",
+            translation_factors_col=f"{self.zoning_system.name}_to_{new_zoning.name}",
         )
 
         return DVector(
@@ -552,6 +538,9 @@ class DVector:
             )
 
     def _generic_dunder(self, other, method):
+        """
+
+        """
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
         # for the same zoning a simple * gives the desired result

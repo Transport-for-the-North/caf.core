@@ -13,8 +13,6 @@ File purpose:
 import enum
 import pandas as pd
 from caf.toolkit import BaseConfig
-import numpy as np
-from pathlib import Path
 from dataclasses import dataclass
 
 
@@ -68,10 +66,6 @@ class Segment(BaseConfig):
             return [seg.seg_name for seg in self.exclusions]
         else:
             return None
-
-    @property
-    def _exclusions(self):
-        return {excl.seg_name: excl for excl in self.exclusions}
 
     def drop_indices(self, other_seg: str):
         if other_seg not in self.exclusion_segs:
