@@ -1,13 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on: Tues May 25th 15:04:32 2021
-Updated on:
-
-Original author: Ben Taylor
-Last update made by:
-Other updates made by:
-
-File purpose:
 Holds the ZoningSystem Class which stores all information on different zoning
 systems
 """
@@ -149,7 +141,7 @@ class ZoningSystem:
         self,
         other: ZoningSystem,
         weighting: str = "spatial",
-        trans_cache: Path = Path(r"I:\Data\Zone Translations\cache"),
+        trans_cache: Path = ZONE_TRANSLATION_CACHE
     ) -> pd.DataFrame:
         """
         Returns a space generate zone translation between self and other.

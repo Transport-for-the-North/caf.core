@@ -57,7 +57,7 @@ class Segment(BaseConfig):
 
     name: str
     values: dict[int, str]
-    exclusions: list[Exclusion] = None
+    exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
 
     class Config:
         arbitrary_types_allowed = True

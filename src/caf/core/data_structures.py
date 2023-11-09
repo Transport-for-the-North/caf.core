@@ -282,7 +282,7 @@ class DVector:
     # SETTERS AND GETTERS
     @property
     def val_col(self):
-        """_val_col getter"""
+        """Name of column containing DVector values, not relevant if DVector has a zoning system."""
         return self._val_col
 
     @property
@@ -336,15 +336,14 @@ class DVector:
             If the given time_format is not on of self._valid_time_formats
         """
         # Time period format only matters if it's in the segmentation
-        if self.segmentation.has_time_period_segments():
-            if time_format is None:
-                raise ValueError(
-                    "The given segmentation level has time periods in its "
-                    "segmentation, but the format of this time period has "
-                    "not been defined.\n"
-                    f"\tTime periods segment name: {self.segmentation._time_period_segment_name}\n"
-                    f"\tValid time_format values: {self._valid_time_formats()}"
-                )
+        if self.segmentation.has_time_period_segments() and time_format is None:
+            raise ValueError(
+                "The given segmentation level has time periods in its "
+                "segmentation, but the format of this time period has "
+                "not been defined.\n"
+                f"\tTime periods segment name: {self.segmentation._time_period_segment_name}\n"
+                f"\tValid time_format values: {self._valid_time_formats()}"
+            )
 
         # If None or TimeFormat, that's fine
         if time_format is None or isinstance(time_format, TimeFormat):
@@ -352,28 +351,14 @@ class DVector:
 
         # Check we've got a valid value
         time_format = time_format.strip().lower()
-        if time_format not in self._valid_time_formats():
+        try:
+            return TimeFormat(time_format)
+        except ValueError as exc:
             raise ValueError(
                 "The given time_format is not valid.\n"
                 f"\tGot: {time_format}\n"
                 f"\tExpected one of: {self._valid_time_formats()}"
-            )
-
-        # Convert into a TimeFormat constant
-        return_val = None
-        for name, time_format_obj in TimeFormat.__members__.items():
-            if name.lower() == time_format:
-                return_val = time_format_obj
-                break
-
-        if return_val is None:
-            raise ValueError(
-                "We checked that the given time_format was valid, but it "
-                "wasn't set when we tried to set it. This shouldn't be "
-                "possible!"
-            )
-
-        return return_val
+            ) from exc
 
     def _dataframe_to_dvec(self, import_data: pd.DataFrame):
         """
