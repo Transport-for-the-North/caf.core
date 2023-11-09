@@ -520,11 +520,7 @@ class DVector:
         # for the same zoning a simple * gives the desired result
         # This drops any nan values (intersecting index level but missing val)
         if self.zoning_system == other.zoning_system:
-            if self.zoning_system is not None:
-                prod = method(self.data, other.data)
-            else:
-                # The method called expects dataframes, so convert
-                prod = method(self.data.to_frame(), other.data.to_frame())
+            prod = method(self.data, other.data)
             # Either None if both are None, or the right zone system
             zoning = self.zoning_system
 
