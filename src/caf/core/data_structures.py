@@ -262,7 +262,7 @@ class DVector:
         self._val_col = val_col
 
         # Try to convert the given data into DVector format
-        if isinstance(import_data, pd.DataFrame):
+        if isinstance(import_data, (pd.DataFrame, pd.Series)):
             self._data = self._dataframe_to_dvec(import_data)
         else:
             raise NotImplementedError(
@@ -387,8 +387,8 @@ class DVector:
         None
         """
         out_path = Path(out_path)
-        with pd.HDFStore(out_path, "w") as hdf_store:
-            hdf_store["data"] = self._data
+
+        self._data.to_hdf(out_path, key="data", mode="w", complevel=1)
         if self.zoning_system is not None:
             self.zoning_system.save(out_path, "hdf")
         self.segmentation.save(out_path, "hdf")
@@ -405,8 +405,7 @@ class DVector:
         in_path = Path(in_path)
         zoning = ZoningSystem.load(in_path, "hdf")
         segmentation = Segmentation.load(in_path, "hdf")
-        with pd.HDFStore(in_path, "r") as hdf_store:
-            data = hdf_store["data"]
+        data = pd.read_hdf(in_path, key="data", mode="r")
 
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
 
@@ -509,7 +508,7 @@ class DVector:
                 "possible."
             )
 
-    def _generic_dunder(self, other, method, escalate_warnings: bool = False):
+    def _generic_dunder(self, other, df_method, series_method, escalate_warnings: bool = False):
         """
         A generic dunder method which is called by each of the duneder methods.
         """
@@ -520,7 +519,10 @@ class DVector:
         # for the same zoning a simple * gives the desired result
         # This drops any nan values (intersecting index level but missing val)
         if self.zoning_system == other.zoning_system:
-            prod = method(self.data, other.data)
+            if isinstance(self.data, pd.Series):
+                prod = series_method(self.data, other.data)
+            else:
+                prod = df_method(self.data, other.data)
             # Either None if both are None, or the right zone system
             zoning = self.zoning_system
 
@@ -535,10 +537,10 @@ class DVector:
                 "This is being changed internally but if this was "
                 "not expected, check your inputs"
             )
-            prod = method(other.data, self.data.squeeze(), axis="index")
+            prod = df_method(other.data, self.data.squeeze(), axis="index")
             zoning = other.zoning_system
         elif other.zoning_system is None:
-            prod = method(self.data, other.data.squeeze(), axis="index")
+            prod = df_method(self.data, other.data.squeeze(), axis="index")
             zoning = self.zoning_system
         # Different zonings raise an error rather than trying to translate
         else:
@@ -564,19 +566,19 @@ class DVector:
 
     def __mul__(self, other):
         """Multiply dunder method for DVector"""
-        return self._generic_dunder(other, pd.DataFrame.mul)
+        return self._generic_dunder(other, pd.DataFrame.mul, pd.Series.mul)
 
     def __add__(self, other):
         """Add dunder method for DVector"""
-        return self._generic_dunder(other, pd.DataFrame.add)
+        return self._generic_dunder(other, pd.DataFrame.add, pd.Series.add)
 
     def __sub__(self, other):
         """Subtract dunder method for DVector"""
-        return self._generic_dunder(other, pd.DataFrame.sub)
+        return self._generic_dunder(other, pd.DataFrame.sub, pd.Series.sub)
 
     def __truediv__(self, other):
         """Division dunder method for DVector"""
-        return self._generic_dunder(other, pd.DataFrame.div)
+        return self._generic_dunder(other, pd.DataFrame.div, pd.Series.div)
 
     def __eq__(self, other):
         """Equals dunder for DVector"""
