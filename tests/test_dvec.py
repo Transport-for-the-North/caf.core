@@ -150,8 +150,6 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        if isinstance(added_df, pd.Series):
-            added_df = added_df.to_frame(name=added_dvec.data.columns[0])
         assert added_dvec.data.equals(added_df)
 
     @pytest.mark.parametrize(
@@ -174,8 +172,6 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        if isinstance(added_df, pd.Series):
-            added_df = added_df.to_frame(name=added_dvec.data.columns[0])
         assert added_dvec.data.equals(added_df)
 
     @pytest.mark.parametrize(
@@ -198,8 +194,6 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        if isinstance(added_df, pd.Series):
-            added_df = added_df.to_frame(name=added_dvec.data.columns[0])
         assert added_dvec.data.equals(added_df)
 
     @pytest.mark.parametrize(
@@ -222,8 +216,6 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        if isinstance(added_df, pd.Series):
-            added_df = added_df.to_frame(name=added_dvec.data.columns[0])
         assert added_dvec.data.equals(added_df)
 
     def test_trans(self, basic_dvec_1, test_trans, min_zoning_2, expected_trans, main_dir):
