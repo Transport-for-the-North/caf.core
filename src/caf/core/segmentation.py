@@ -5,6 +5,7 @@ caf.core.segments, and the SegmentsSuper enumeration from caf.core.segments. Bot
 are used for building segmentations.
 """
 from __future__ import annotations
+
 # Built-Ins
 import warnings
 from typing import Union, Optional, Literal
@@ -31,7 +32,9 @@ from caf.core.segments import Segment, SegmentsSuper
 # # # CLASSES # # #
 class SegmentationWarning(Warning):
     """Warning class for segmentation objects"""
+
     pass
+
 
 class SegmentationInput(BaseConfig):
     """
@@ -61,7 +64,6 @@ class SegmentationInput(BaseConfig):
     naming_order: list[str]
     subsets: dict[str, list[int]] = pydantic.Field(default_factory=dict)
     custom_segments: list[Segment] = pydantic.Field(default_factory=list)
-
 
     @pydantic.validator("subsets", always=True)
     def enums(cls, v, values):
@@ -189,7 +191,12 @@ class Segmentation:
         return self._time_period_segment_name in self.naming_order
 
     @classmethod
-    def validate_segmentation(cls, source: Union[Path, pd.DataFrame], segmentation: Segmentation, escalate_warning: bool = False) -> Segmentation:
+    def validate_segmentation(
+        cls,
+        source: Union[Path, pd.DataFrame],
+        segmentation: Segmentation,
+        escalate_warning: bool = False,
+    ) -> Segmentation:
         """
         Validate a segmentation from either a path to a csv, or a dataframe.
 
@@ -231,8 +238,10 @@ class Segmentation:
         built_index = segmentation.ind()
         # I think an error would already be raised at this point
         if built_index.names != read_index.names:
-            raise ValueError("The read in segmentation does not match the given parameters. "
-                             "The segment names are not correct.")
+            raise ValueError(
+                "The read in segmentation does not match the given parameters. "
+                "The segment names are not correct."
+            )
 
         try:
             # Perfect match, return segmentation with no more checks
@@ -253,7 +262,7 @@ class Segmentation:
                 warnings.warn(
                     f"Read in level {name} is a subset of the segment. If this was not"
                     f" expected check the input segmentation.",
-                    SegmentationWarning
+                    SegmentationWarning,
                 )
                 # Define the read subset in the generated config
                 if conf.subsets is not None:
@@ -282,7 +291,7 @@ class Segmentation:
             "look is the SegmentsSuper class."
         )
 
-    def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"]="hdf"):
+    def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"] = "hdf"):
         """
         Save a segmentation to either a yaml file or an hdf file if part of a
         DVector.
@@ -308,7 +317,7 @@ class Segmentation:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
 
     @classmethod
-    def load(cls, in_path: PathLike, mode: Literal["hdf", "yaml"]="hdf") -> Segmentation:
+    def load(cls, in_path: PathLike, mode: Literal["hdf", "yaml"] = "hdf") -> Segmentation:
         """
         Load the segmentation from a file, either an hdf or csv file.
 

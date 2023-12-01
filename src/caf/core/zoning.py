@@ -51,6 +51,7 @@ class ZoningSystem:
     n_zones:
         The number of zones in this zoning system
     """
+
     # TODO This module needs to be completely refactored.The zoning should be a
     # TODO dataframe with a list of unique zones, and extra columns for any
     # TODO extra data. Extra columns should be defined in the metadata.
@@ -101,7 +102,6 @@ class ZoningSystem:
         self.external_zones = external_zones
         self.zone_descriptions = zone_descriptions
 
-
     @property
     def zone_to_description_df(self) -> Dict[Any, Any]:
         """A Dictionary of zones to their names"""
@@ -143,7 +143,7 @@ class ZoningSystem:
         self,
         other: ZoningSystem,
         weighting: str = "spatial",
-        trans_cache: Path = ZONE_TRANSLATION_CACHE
+        trans_cache: Path = ZONE_TRANSLATION_CACHE,
     ) -> pd.DataFrame:
         """
         Returns a space generate zone translation between self and other.
@@ -309,7 +309,7 @@ class ZoningSystem:
         if self.zone_descriptions is not None:
             save_df["descriptions"] = self.zone_descriptions
         if mode.lower() == "hdf":
-            save_df.to_hdf(out_path, key="zoning", mode='a')
+            save_df.to_hdf(out_path, key="zoning", mode="a")
             with h5py.File(out_path, "a") as h_file:
                 h_file.create_dataset(
                     "zoning_meta", data=self.metadata.to_yaml().encode("utf-8")

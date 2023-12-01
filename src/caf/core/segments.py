@@ -16,6 +16,7 @@ from caf.toolkit import BaseConfig
 from dataclasses import dataclass
 import pydantic
 
+
 # # # CONSTANTS # # #
 # # # CLASSES # # #
 @dataclass
@@ -74,7 +75,6 @@ class Segment(BaseConfig):
     @property
     def exclusion_segs(self):
         return [seg.seg_name for seg in self.exclusions]
-
 
     def drop_indices(self, other_seg: str):
         if other_seg not in self.exclusion_segs:

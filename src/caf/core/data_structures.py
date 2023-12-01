@@ -222,6 +222,7 @@ class DVector:
     the columns of the data. Data is in the form of a dataframe and reads/writes
     to h5 along with all metadata.
     """
+
     def __init__(
         self,
         segmentation: Segmentation,
@@ -371,7 +372,6 @@ class DVector:
 
         return import_data
 
-
     def save(self, out_path: PathLike):
         """
         Method to save the DVector
@@ -410,7 +410,10 @@ class DVector:
         return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
 
     def translate_zoning(
-        self, new_zoning: ZoningSystem, cache_path: Optional[PathLike], weighting: str = "spatial"
+        self,
+        new_zoning: ZoningSystem,
+        cache_path: Optional[PathLike],
+        weighting: str = "spatial",
     ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
@@ -492,7 +495,7 @@ class DVector:
             zoning_system=self._zoning_system.copy(),
             import_data=self._data.copy(),
             time_format=self.time_format,
-            val_col=self.val_col
+            val_col=self.val_col,
         )
 
     def overlap(self, other):
@@ -508,12 +511,14 @@ class DVector:
                 "possible."
             )
 
-    def _generic_dunder(self, other, df_method, series_method, escalate_warnings: bool = False):
+    def _generic_dunder(
+        self, other, df_method, series_method, escalate_warnings: bool = False
+    ):
         """
         A generic dunder method which is called by each of the duneder methods.
         """
         if escalate_warnings:
-            warnings.filterwarnings('error', category=SegmentationWarning)
+            warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
         # for the same zoning a simple * gives the desired result
@@ -557,10 +562,12 @@ class DVector:
         # Index changed so the segmentation has changed. Segmentation should equal
         # the addition of the two segmentations (see __add__ method in segmentation)
         new_seg = self.segmentation + other.segmentation
-        warnings.warn(f"This operation has changed the segmentation of the DVector"
-                      f"from {self.segmentation} to {new_seg}. This can happen"
-                      "but it can also be a sign of an error. Check the output DVector.",
-                      SegmentationWarning)
+        warnings.warn(
+            f"This operation has changed the segmentation of the DVector"
+            f"from {self.segmentation} to {new_seg}. This can happen"
+            "but it can also be a sign of an error. Check the output DVector.",
+            SegmentationWarning,
+        )
         prod = prod.reorder_levels(new_seg.naming_order)
         return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
 
@@ -616,6 +623,7 @@ class DVector:
             time_format=self.time_format,
             val_col=self.val_col,
         )
+
     @staticmethod
     def old_to_new_dvec(import_data: dict):
         """
@@ -633,5 +641,6 @@ class DVector:
             dict_list.append(row_dict)
         ind = pd.MultiIndex.from_frame(pd.DataFrame(dict_list))
         return pd.DataFrame(data=data, index=ind, columns=zoning)
+
 
 # # # FUNCTIONS # # #
