@@ -59,10 +59,11 @@ def fix_excl_ind():
 def fix_gender_seg():
     return segments.SegmentsSuper("g").get_segment()
 
+
 @pytest.fixture(scope="session", name="exp_gender_seg")
 def fix_exp_gen():
     return segments.Segment(
-        name='g',
+        name="g",
         values={1: "Child", 2: "Male", 3: "Female"},
         exclusions=[
             segments.Exclusion(
