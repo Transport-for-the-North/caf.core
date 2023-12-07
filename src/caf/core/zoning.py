@@ -6,24 +6,18 @@ systems
 # Allow class self hinting
 from __future__ import annotations
 
-# Builtins
-import os
 import logging
+import os
+import re
 import warnings
-
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, Union, Optional, Literal
+from typing import Literal, Optional, Union
 
-# Third Party
+import caf.toolkit as ctk
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
-import caf.toolkit as ctk
-
-
-# Local Imports
-
 
 LOG = logging.getLogger(__name__)
 
@@ -52,17 +46,15 @@ class ZoningSystem:
         The number of zones in this zoning system
     """
 
-    # TODO This module needs to be completely refactored.The zoning should be a
-    # TODO dataframe with a list of unique zones, and extra columns for any
-    # TODO extra data. Extra columns should be defined in the metadata.
+    _id_column = "zone_id"
+    _name_column = "zone_name"
+    _desc_column = "zone_description"
+
     def __init__(
         self,
         name: str,
         unique_zones: pd.DataFrame,
         metadata: Union[ZoningSystemMetaData, PathLike],
-        zone_descriptions: Optional[pd.DataFrame] = None,
-        internal_zones: Optional[pd.DataFrame] = None,
-        external_zones: Optional[pd.DataFrame] = None,
     ):
         """Builds a ZoningSystem
 
@@ -76,43 +68,217 @@ class ZoningSystem:
             The name of the zoning system to create.
 
         unique_zones:
-            A dataframe of unique zone names for this zoning system.
+            A dataframe of unique zone IDs and names, descriptions and subset flags
+            for this zoning system. Should contain at least one column with unique
+            zone ID integers labelled 'zone_id'.
 
-        internal_zones:
-            A numpy array of unique zone names that make up the "internal"
-            area of this zoning system. Every value in this array must also
-            be contained in unique_zones.
-
-        external_zones:
-            A numpy array of unique zone names that make up the "external"
-            area of this zoning system. Every value in this array must also
-            be contained in unique_zones.
         """
-        # Init
         self.name = name
-        self.unique_zones = unique_zones
-        self.n_zones = len(self.unique_zones)
+        self._zones, self._subset_columns = self._validate_unique_zones(unique_zones)
+        self.n_zones = len(self._zones)
+
         if isinstance(metadata, PathLike):
             self.metadata = ZoningSystemMetaData.load_yaml(metadata)
         else:
             self.metadata = metadata
 
-        # Validate and assign the optional arguments
-        self.internal_zones = internal_zones
-        self.external_zones = external_zones
-        self.zone_descriptions = zone_descriptions
+    def _validate_unique_zones(
+        self, zones: pd.DataFrame
+    ) -> tuple[pd.DataFrame, tuple[str, ...]]:
+        """Normalise column names and set index to ID column.
+
+        Returns
+        -------
+        pd.DataFrame
+            Validated and normalised zones DataFrame.
+        list[str]
+            Names of subset columns found.
+
+        Raises
+        ------
+        ValueError
+            If zone ID column is missing or the values aren't unique integers.
+        ValueError
+            If any subset columns found aren't (or can't be converted to)
+            boolean values. The boolean conversion process is restricted to
+            integers values 0, 1 or string values "TRUE", "FALSE".
+        """
+        zones = zones.copy()
+        zones.columns = [normalise_column_name(i) for i in zones.columns]
+
+        if self._id_column not in zones.columns:
+            raise ValueError(
+                f"mandatory ID column ({self._id_column}) missing from zones data"
+            )
+
+        # TODO(MB) Check if we want to enforce IDs being integers
+        try:
+            zones.loc[:, self._id_column] = zones[self._id_column].astype(int)
+        except ValueError as exc:
+            raise ValueError(
+                f"zone IDs should be integers not {zones[self._id_column].dtype}"
+            ) from exc
+
+        try:
+            zones = zones.set_index(self._id_column, verify_integrity=True)
+        except ValueError as exc:
+            duplicates = zones[self._id_column].drop_duplicates(keep="first")
+            raise ValueError(
+                f"duplicate zone IDs: {', '.join(duplicates.astype(str))}"
+            ) from exc
+
+        # Zone names and description columns are optional but should contain strings
+        optional_columns = (self._name_column, self._desc_column)
+        for name in optional_columns:
+            if name in zones.columns:
+                zones.loc[:, name] = zones[name].astype(str)
+
+        # Any other columns are assumed to be subset mask columns so should be boolean
+        # Restrictive boolean conversion is used that expects "TRUE", "FALSE" strings
+        # or 0, 1 integers
+        subset_column = []
+        non_bool_columns = []
+        for name in zones.columns:
+            if name in optional_columns:
+                continue
+
+            if zones[name].dtype.kind == "b":
+                subset_column.append(name)
+                continue
+
+            column = zones[name]
+
+            try:
+                column = column.astype(int)
+            except ValueError:
+                pass  # Attempt to convert column to integer for checking
+
+            if column.dtype.kind in ("i", "u"):
+                # Only convert integers 0 and 1 to boolean values
+                if column.min() < 0 or column.max() > 1:
+                    non_bool_columns.append(name)
+                else:
+                    zones.loc[:, name] = column.astype(bool)
+                    subset_column.append(name)
+                continue
+
+            # Check if column contains strings "TRUE" and "FALSE"
+            column = column.astype(str).str.strip().str.upper()
+            if np.isin(column.unique(), ("TRUE", "FALSE")).all():
+                zones.loc[:, name] = column.replace({"TRUE": True, "FALSE": False})
+                subset_column.append(name)
+                continue
+
+            non_bool_columns.append(name)
+
+        if len(non_bool_columns) > 0:
+            raise ValueError(
+                f"{len(non_bool_columns)} subset columns found "
+                f"which don't contain boolean values: {non_bool_columns}"
+            )
+
+        return zones, tuple(subset_column)
 
     @property
-    def zone_to_description_df(self) -> Dict[Any, Any]:
-        """A Dictionary of zones to their names"""
-        return self.unique_zones.join(self.zone_descriptions)
+    def zones_data(self) -> pd.DataFrame:
+        """Return a copy of the zones DataFrame, this contains zone ID as
+        the index and some optional columns for names, descriptions and subset flags."""
+        return self._zones.copy()
+
+    @property
+    def zone_ids(self) -> np.ndarray[int]:
+        "Return a copy of the zone IDs array."
+        return self._zones.index.values.copy()
+
+    @property
+    def subset_columns(self) -> tuple[str, ...]:
+        """Names of subset columns available."""
+        return self._subset_columns
+
+    def get_column(self, column: str) -> pd.Series:
+        """Get `column` from zones data, normalises `column` name.
+
+        Raises
+        ------
+        KeyError
+            If `column` doesn't exist in zones data.
+        """
+        normal = normalise_column_name(column)
+        if normal not in self._zones:
+            raise KeyError(f"{column} not found in zones data")
+        return self._zones[normal].copy()
+
+    def zone_descriptions(self) -> pd.Series:
+        """Description of zones, with the index as the zone ID.
+
+        Raises
+        ------
+        KeyError
+            If zone descriptions column doesn't exist.
+        """
+        return self.get_column(self._desc_column)
+
+    def zone_names(self) -> pd.Series:
+        """Name of zones, with the index as the zone ID.
+
+        Raises
+        ------
+        KeyError
+            If zone names column doesn't exist.
+        """
+        return self.get_column(self._name_column)
+
+    def _get_mask_column(self, name: str) -> pd.Series:
+        """Get subset mask column from zones data, validate it contains bool values."""
+        if name in (self._id_column, self._name_column, self._desc_column):
+            raise ValueError(f"{name} column is not a subset mask column")
+
+        mask = self.get_column(name)
+        if mask.dtype.kind == "b":
+            raise TypeError(
+                f"found subset column ({name}) but it is the "
+                f"wrong type ({mask.dtype}), should be boolean"
+            )
+
+        return mask
+
+    def get_subset(self, name: str) -> np.ndarray[int]:
+        """Get subset of zone IDs based on subset column `name`.
+
+        Raises
+        ------
+        KeyError
+            If `name` column doesn't exist in zones data.
+        ValueError
+            If `name` isn't a subset column, i.e. is a
+            name or description column.
+        TypeError
+            If a subset column is found but doesn't contain
+            boolean values.
+        """
+        mask = self._get_mask_column(name)
+        return mask[mask].index.values.copy()
+
+    def get_inverse_subset(self, name: str) -> np.ndarray[int]:
+        """Get inverse of the `name` subset.
+
+        See Also
+        --------
+        get_subset
+        """
+        mask = self._get_mask_column(name)
+        return mask[~mask].index.values.copy()
 
     def __copy__(self):
         """Returns a copy of this class"""
         return self.copy()
 
     def __eq__(self, other) -> bool:
-        """Overrides the default implementation"""
+        """Overrides the default implementation
+
+        Note: internal zones dataframe must be identical to `other`
+        for the zone systems to be considered equal.
+        """
         if not isinstance(other, ZoningSystem):
             return False
 
@@ -120,13 +286,10 @@ class ZoningSystem:
         if self.name != other.name:
             return False
 
-        if set(self.unique_zones["zone_id"]) != set(other.unique_zones["zone_id"]):
-            return False
-
-        if set(self.unique_zones["zone_name"]) != set(other.unique_zones["zone_name"]):
-            return False
-
         if self.n_zones != other.n_zones:
+            return False
+
+        if not self._zones.sort_index().equals(other._zones.sort_index()):
             return False
 
         return True
@@ -154,7 +317,7 @@ class ZoningSystem:
         if weighting is None:
             weighting = "spatial"
         if trans_cache is None:
-            trans_cache = Path(r"I:\Data\Zone Translations\cache")
+            trans_cache = ZONE_TRANSLATION_CACHE
         else:
             trans_cache = Path(trans_cache)
         file = f"{names[0]}_to_{names[1]}_{weighting}.csv"
@@ -226,7 +389,7 @@ class ZoningSystem:
         """Check if any zones are missing from the translation DataFrame."""
         translation_name = f"{self.name} to {other.name}"
         for zone_system, column in ((self, self_col), (other, other_col)):
-            missing = ~np.isin(zone_system.unique_zones, translation[column])
+            missing = ~np.isin(zone_system.zone_ids, translation[column])
             if np.sum(missing) > 0:
                 LOG.warning(
                     "%s %s zones missing from translation %s",
@@ -238,18 +401,13 @@ class ZoningSystem:
     def copy(self):
         """Returns a copy of this class"""
         return ZoningSystem(
-            name=self.name,
-            unique_zones=self.unique_zones.copy(),
-            internal_zones=self.internal_zones.copy(),
-            external_zones=self.external_zones.copy(),
-            zone_descriptions=self.zone_descriptions.copy(),
-            metadata=self.metadata.copy(),
+            name=self.name, unique_zones=self._zones.copy(), metadata=self.metadata.copy()
         )
 
     def translate(
         self,
         other: ZoningSystem,
-        cache_path: PathLike = None,
+        cache_path: PathLike = ZONE_TRANSLATION_CACHE,
         weighting: str = None,
     ) -> np.ndarray:
         """
@@ -301,13 +459,7 @@ class ZoningSystem:
         metadata, which at a minimum contains the zone name.
         """
         out_path = Path(path)
-        save_df = self.unique_zones
-        if self.internal_zones is not None:
-            save_df["internal"] = save_df["zone_name"].isin(self.internal_zones)
-        if self.external_zones is not None:
-            save_df["external"] = save_df["zone_name"].isin(self.external_zones)
-        if self.zone_descriptions is not None:
-            save_df["descriptions"] = self.zone_descriptions
+        save_df = self._zones
         if mode.lower() == "hdf":
             save_df.to_hdf(out_path, key="zoning", mode="a")
             with h5py.File(out_path, "a") as h_file:
@@ -351,24 +503,8 @@ class ZoningSystem:
             zoning_meta = ZoningSystemMetaData.load_yaml(in_path / "zoning_meta.yml")
         else:
             raise ValueError("Mode can only be 'hdf' or 'csv', not " f"{mode}.")
-        int_zones = None
-        ext_zones = None
-        descriptions = None
-        if "internal" in zoning.columns:
-            int_zones = zoning.loc[zoning["internal"], "zone_name"]
-        if "external" in zoning.columns:
-            ext_zones = zoning.loc[zoning["external"], "zone_name"]
-        if "descriptions" in zoning.columns:
-            descriptions = zoning["descriptions"]
 
-        return cls(
-            name=zoning_meta.name,
-            unique_zones=zoning[["zone_id", "zone_name"]],
-            metadata=zoning_meta,
-            internal_zones=int_zones,
-            external_zones=ext_zones,
-            zone_descriptions=descriptions,
-        )
+        return cls(name=zoning_meta.name, unique_zones=zoning, metadata=zoning_meta)
 
     @staticmethod
     def old_to_new_zoning(
@@ -466,3 +602,9 @@ class ZoningSystemMetaData(ctk.BaseConfig):
     shapefile_id_col: Optional[str]
     shapefile_path: Optional[Path]
     extra_columns: Optional[list[str]]
+
+
+def normalise_column_name(column: str) -> str:
+    """Convert column to lowercase and replace spaces with underscore."""
+    column = column.lower().strip()
+    return re.sub(r"\s+", "_", column)
