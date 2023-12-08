@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import os
 import re
-import warnings
 from os import PathLike
 from pathlib import Path
 from typing import Literal, Optional, Union
@@ -48,7 +47,7 @@ class ZoningSystem:
 
     _id_column = "zone_id"
     _name_column = "zone_name"
-    _desc_column = "zone_description"
+    _desc_column = "descriptions"
 
     def __init__(
         self,
@@ -234,7 +233,7 @@ class ZoningSystem:
             raise ValueError(f"{name} column is not a subset mask column")
 
         mask = self.get_column(name)
-        if mask.dtype.kind == "b":
+        if mask.dtype.kind != "b":
             raise TypeError(
                 f"found subset column ({name}) but it is the "
                 f"wrong type ({mask.dtype}), should be boolean"
@@ -289,7 +288,9 @@ class ZoningSystem:
         if self.n_zones != other.n_zones:
             return False
 
-        if not self._zones.sort_index().equals(other._zones.sort_index()):
+        sorted_self = self._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
+        sorted_other = other._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
+        if not sorted_self.equals(sorted_other):
             return False
 
         return True
@@ -401,7 +402,9 @@ class ZoningSystem:
     def copy(self):
         """Returns a copy of this class"""
         return ZoningSystem(
-            name=self.name, unique_zones=self._zones.copy(), metadata=self.metadata.copy()
+            name=self.name,
+            unique_zones=self._zones.copy().reset_index(),
+            metadata=self.metadata.copy(),
         )
 
     def translate(
@@ -459,7 +462,7 @@ class ZoningSystem:
         metadata, which at a minimum contains the zone name.
         """
         out_path = Path(path)
-        save_df = self._zones
+        save_df = self._zones.reset_index()
         if mode.lower() == "hdf":
             save_df.to_hdf(out_path, key="zoning", mode="a")
             with h5py.File(out_path, "a") as h_file:
@@ -506,13 +509,13 @@ class ZoningSystem:
 
         return cls(name=zoning_meta.name, unique_zones=zoning, metadata=zoning_meta)
 
-    @staticmethod
+    @classmethod
     def old_to_new_zoning(
+        cls,
         old_dir: PathLike,
         new_dir: PathLike = ZONE_CACHE_HOME,
         mode: str = "csv",
-        return_zoning: bool = False,
-    ):
+    ) -> ZoningSystem:
         """
         Converts zoning info stored in the old format to the new format.
         Optionally returns the zoning as well, but this is primarily designed
@@ -525,62 +528,46 @@ class ZoningSystem:
         new_dir: Directory for the reformatted zoning to be saved in. It will
         be saved in a sub-directory named for the zoning system.
         mode: Whether to save as a csv or HDF. Passed directly to save method
-        return_zoning: Whether to return the zoning as well as saving.
         """
         old_dir = Path(old_dir)
-        name = os.path.split(old_dir)[-1]
+        name = old_dir.name
         # read zones, expect at least zone_id and zone_name, possibly zone_desc too
         zones = pd.read_csv(old_dir / "zones.csv.bz2")
-        if "zone_id" not in zones.columns:
-            zones["zone_id"] = zones["zone_name"]
-        if "zone_name" not in zones.columns:
-            zones["zone_name"] = zones["zone_id"]
-        unique_zones = zones[["zone_id", "zone_name"]]
-        if "zone_desc" in zones.columns:
-            description = zones["zone_desc"]
-        else:
-            description = None
+        zones.columns = [normalise_column_name(i) for i in zones.columns]
+
+        zones = zones.rename(columns={"zone_desc": cls._desc_column})
+
+        if cls._id_column not in zones.columns and cls._name_column in zones.columns:
+            # TODO(MB) Clarify whether we should restrict zone ID to integers
+            zones.loc[:, cls._id_column] = zones[cls._name_column].astype(int)
+
         # It might be more appropriate to check if files exist explicitly
         try:
             metadata = ZoningSystemMetaData.load_yaml(old_dir / "metadata.yml")
             metadata.name = name
         except FileNotFoundError:
             metadata = ZoningSystemMetaData(name=name)
-        try:
-            external = pd.read_csv(old_dir / "external_zones.csv.bz2")
-        except FileNotFoundError:
-            external = None
-            warnings.warn("No external zoning info found.")
-        try:
-            internal = pd.read_csv(old_dir / "internal_zones.csv.bz2")
-        except FileNotFoundError:
-            internal = None
-            warnings.warn("No internal zoning info found.")
 
-        zoning = ZoningSystem(
-            name=name,
-            unique_zones=unique_zones,
-            metadata=metadata,
-            zone_descriptions=description,
-            internal_zones=internal,
-            external_zones=external,
-        )
+        for file in old_dir.glob("*_zones.csv*"):
+            subset = pd.read_csv(file)[cls._id_column].astype(int)
 
-        out_dir = Path(new_dir) / name
-        out_dir.mkdir(exist_ok=True, parents=False)
-        zoning.save(out_dir, mode=mode)
-        # This method was mainly written to write new format to a new location
-        # so writing out is optional
-        if return_zoning:
-            return zoning
+            match = re.match(r"(.*)_zones", file.stem, re.I)
+            assert match is not None, "impossible for match to be None"
+
+            column = normalise_column_name(match.group(1))
+            zones.loc[:, column] = zones[cls._id_column].isin(subset)
+
+        zoning = ZoningSystem(name=name, unique_zones=zones, metadata=metadata)
+
+        zoning.save(new_dir, mode=mode)
+
+        return zoning
 
     @classmethod
     def get_zoning(cls, name: str, search_dir: PathLike = ZONE_CACHE_HOME):
-        """
-        Calls load method to return zoning info based on a name.
-        """
+        """Calls load method to return zoning info based on a name."""
         zone_dir = Path(search_dir) / name
-        if os.path.isdir(zone_dir):
+        if zone_dir.is_dir():
             try:
                 return cls.load(zone_dir, "csv")
             except FileNotFoundError as exc:
