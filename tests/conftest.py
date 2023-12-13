@@ -20,7 +20,7 @@ import pandas as pd
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
-from caf.core import segmentation, segments, zoning
+from caf.core import segmentation, zoning
 
 # pylint: enable=import-error,wrong-import-position
 

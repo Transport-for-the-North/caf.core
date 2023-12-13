@@ -62,11 +62,11 @@ def fix_old_zoning_dir(zoning_data: ZoningData, tmp_path: Path) -> Path:
     return zoning_dir
 
 
-@pytest.fixture(name="min_zoning", scope="module")
-def fix_min_zoning(zoning_data: ZoningData) -> tuple[ZoningData, ZoningSystem]:
+@pytest.fixture(name="id_only_zoning", scope="module")
+def fix_id_only_zoning(zoning_data: ZoningData) -> tuple[ZoningData, ZoningSystem]:
     """Create `ZoningSystem` class containing only zone ID."""
     data = ZoningData(
-        name=zoning_data.name + "-min_zoning",
+        name=zoning_data.name + "-id_only",
         data=zoning_data.data["zone_id"].to_frame().copy(),
         subsets={},
     )
@@ -269,7 +269,7 @@ class TestZoning:
 
     @pytest.mark.parametrize(
         "zone_system_str",
-        ["min_zoning", "zoning_descriptions", "zoning_subsets"],
+        ["id_only_zoning", "zoning_descriptions", "zoning_subsets"],
     )
     def test_io(self, zone_system_str, main_dir, request) -> None:
         """Test saving and loading ZoningSystem's to / from CSVs.
@@ -282,17 +282,21 @@ class TestZoning:
         in_zoning = ZoningSystem.load(main_dir / zone_system.name, "csv")
         assert in_zoning == zone_system, "zone system not equal after save then load"
 
-    def test_get_trans(self, test_trans, min_zoning_2, min_zoning, main_dir):
-        trans = min_zoning._get_translation_definition(min_zoning_2, trans_cache=main_dir)
-        assert trans.equals(test_trans)
-
-    def test_zone_trans(self, test_trans, min_zoning_2, min_zoning, main_dir):
+    def test_zone_trans(
+        self,
+        test_trans: pd.DataFrame,
+        min_zoning_2: ZoningSystem,
+        min_zoning: ZoningSystem,
+        main_dir: Path,
+    ):
+        """Test sucessfully obtaining translation data."""
         trans = min_zoning_2.translate(min_zoning, cache_path=main_dir)
         assert trans.equals(test_trans)
+        assert min_zoning_2.translation_column_name(min_zoning) == "zone_2_to_zone_1"
 
-    def test_getter(self, min_zoning: tuple[ZoningData, ZoningSystem], main_dir):
+    def test_getter(self, id_only_zoning: tuple[ZoningData, ZoningSystem], main_dir):
         """Test finding a zone system based on name."""
-        _, system = min_zoning
+        _, system = id_only_zoning
         system.save(main_dir, "csv")
         got_zone = ZoningSystem.get_zoning(system.name, search_dir=main_dir)
         assert got_zone == system, "zoning system not equal after load"
