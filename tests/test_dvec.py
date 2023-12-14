@@ -37,7 +37,7 @@ def fix_data_1(basic_segmentation_1, min_zoning):
     return pd.DataFrame(
         data=np.random.rand(18, 5),
         index=basic_segmentation_1.ind(),
-        columns=min_zoning.unique_zones["zone_name"],
+        columns=min_zoning.zone_ids,
     )
 
 
@@ -46,7 +46,7 @@ def fix_data_2(basic_segmentation_2, min_zoning):
     return pd.DataFrame(
         data=np.random.rand(9, 5),
         index=basic_segmentation_2.ind(),
-        columns=min_zoning.unique_zones["zone_name"],
+        columns=min_zoning.zone_ids,
     )
 
 
@@ -55,9 +55,7 @@ def fix_single_seg(min_zoning):
     seg_conf = segmentation.SegmentationInput(enum_segments=["p"], naming_order=["p"])
     seg = segmentation.Segmentation(seg_conf)
     data = pd.DataFrame(
-        data=np.random.rand(15, 5),
-        index=seg.ind(),
-        columns=min_zoning.unique_zones["zone_name"],
+        data=np.random.rand(15, 5), index=seg.ind(), columns=min_zoning.zone_ids
     )
     return data_structures.DVector(
         segmentation=seg, import_data=data, zoning_system=min_zoning
@@ -106,10 +104,10 @@ def fix_exp_trans(basic_dvec_1, min_zoning_2):
     trans_data = pd.DataFrame(
         index=orig_data.index,
         data={
-            "w": orig_data["a"],
-            "x": orig_data["b"],
-            "y": orig_data["c"],
-            "z": orig_data["d"] + orig_data["e"],
+            1: orig_data[1],
+            2: orig_data[2],
+            3: orig_data[3],
+            4: orig_data[4] + orig_data[5],
         },
     )
     return data_structures.DVector(

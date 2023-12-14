@@ -20,7 +20,7 @@ import pandas as pd
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
-from caf.core import segmentation, segments, zoning
+from caf.core import segmentation, zoning
 
 # pylint: enable=import-error,wrong-import-position
 
@@ -109,8 +109,8 @@ def fixture_excl_segmentation_rev(seg_1, seg_2):
 @pytest.fixture(name="test_trans", scope="session")
 def fix_test_trans(main_dir):
     data = {
-        "zone_1_id": ["a", "b", "c", "d", "e"],
-        "zone_2_id": ["w", "x", "y", "z", "z"],
+        "zone_1_id": [1, 2, 3, 4, 5],
+        "zone_2_id": [1, 2, 3, 4, 4],
         "zone_1_to_zone_2": [1, 1, 1, 1, 1],
         "zone_2_to_zone_1": [1, 1, 1, 0.5, 0.5],
     }

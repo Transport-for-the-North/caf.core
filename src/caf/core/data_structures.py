@@ -6,25 +6,23 @@ only the DVector class, but this may be expanded in the future.
 """
 from __future__ import annotations
 
-# Built-Ins
 import enum
 import logging
 import operator
-from typing import Union, Optional
+import warnings
 from os import PathLike
 from pathlib import Path
-import warnings
+from typing import Optional, Union
 
-# Third Party
-import pandas as pd
 import caf.toolkit as ctk
+import numpy as np
+import pandas as pd
 
-# pylint: disable=import-error,wrong-import-position
-# Local imports here
+# pylint: disable=no-name-in-module,import-error
 from caf.core.segmentation import Segmentation, SegmentationWarning
-from caf.core.zoning import ZoningSystem
+from caf.core.zoning import ZoningSystem, TranslationWeighting
 
-# pylint: enable=import-error,wrong-import-position
+# pylint: enable=no-name-in-module,import-error
 
 # # # CONSTANTS # # #
 LOG = logging.getLogger(__name__)
@@ -356,19 +354,35 @@ class DVector:
         Take dataframe and ensure it is in DVec data format. This requires the
         dataframe to be in wide format.
         """
-        loaded_seg = Segmentation.validate_segmentation(
-            source=import_data, segmentation=self.segmentation
-        )
-        if self.zoning_system is not None:
-            # columns could match id or name
-            if (
-                set(import_data.columns) != set(self.zoning_system.unique_zones["zone_name"])
-            ) & (set(import_data.columns) != set(self.zoning_system.unique_zones["zone_id"])):
-                raise ImportError(
-                    "The input dataframe does not contain columns matching the zoning system given"
-                )
-        else:
+        Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation)
+
+        if self.zoning_system is None:
             import_data.columns = [self.val_col]
+            return import_data
+
+        # Check columns are labelled with zone IDs
+        try:
+            import_data.columns = import_data.columns.astype(int)
+        except ValueError as exc:
+            raise TypeError(
+                "DataFrame columns should be integers corresponding "
+                f"to zone IDs not {import_data.columns.dtype}"
+            ) from exc
+
+        if set(import_data.columns) != set(self.zoning_system.zone_ids):
+            missing = self.zoning_system.zone_ids[
+                np.isin(self.zoning_system.zone_ids, import_data.columns)
+            ]
+            extra = import_data.columns.values[
+                np.isin(import_data.columns.values, self.zoning_system.zone_ids)
+            ]
+
+            raise ValueError(
+                f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
+                f" aren't found in the DVector data and {len(extra)} column names are"
+                " found which don't correspond to zone IDs.\nDVector DataFrame column"
+                " names should be the zone IDs (integers) for the given zone system."
+            )
 
         return import_data
 
@@ -413,7 +427,7 @@ class DVector:
         self,
         new_zoning: ZoningSystem,
         cache_path: Optional[PathLike],
-        weighting: str = "spatial",
+        weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
     ) -> DVector:
         """
         Translates this DVector into another zoning system and returns a new
@@ -424,15 +438,20 @@ class DVector:
         new_zoning:
             The zoning system to translate into.
 
-        weighting:
-            The weighting to use when building the translation. Must be None,
-            or one of ZoningSystem.possible_weightings
+        weighting : default TranslationWeighting.SPATIAL
+            The weighting to use when building the translation. Must be
+            one of TranslationWeighting.
 
         Returns
         -------
         translated_dvector:
             This DVector translated into new_new_zoning zoning system
 
+        Warns
+        -----
+        TranslationWarning
+            If there are zone IDs missing from the translation or the
+            translation factors don't sum to 1.
         """
         # Validate inputs
         if not isinstance(new_zoning, ZoningSystem):
@@ -451,34 +470,19 @@ class DVector:
         if self.zoning_system == new_zoning:
             return self.copy()
 
-        # Get translation
+        # Translation validation is handled by ZoningSystem with TranslationWarning
         translation = self.zoning_system.translate(
             new_zoning, weighting=weighting, cache_path=cache_path
         )
-        if (
-            set(new_zoning.unique_zones["zone_id"])
-            != set(translation[f"{new_zoning.name}_id"])
-        ) & (
-            set(new_zoning.unique_zones["zone_name"])
-            != set(translation[f"{new_zoning.name}_id"])
-        ):
-            raise IndexError(
-                "The new zone id in the translation being used does not match "
-                "either column in the new zoning's unique_zones attribute. This "
-                "is most likely due to multiple unique identifiers existing "
-                "for this zone system. Either generate a new translation using "
-                "a valid identifier column, or update the zoning info for the "
-                "new zoning. Particularly it's a good idea to define different "
-                "'zone_id' and 'zone_name' columns if both exist."
-            )
+
         transposed = self.data.transpose()
-        transposed.index.names = [f"{self.zoning_system.name}_id"]
+        transposed.index.names = [self.zoning_system.column_name]
         translated = ctk.translation.pandas_vector_zone_translation(
-            self.data.transpose(),
+            transposed,
             translation,
-            translation_from_col=f"{self.zoning_system.name}_id",
-            translation_to_col=f"{new_zoning.name}_id",
-            translation_factors_col=f"{self.zoning_system.name}_to_{new_zoning.name}",
+            translation_from_col=self.zoning_system.column_name,
+            translation_to_col=new_zoning.column_name,
+            translation_factors_col=self.zoning_system.translation_column_name(new_zoning),
         )
 
         return DVector(

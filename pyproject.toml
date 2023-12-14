@@ -104,6 +104,7 @@ add-ignore = [
 [tool.pytest.ini_options]
 addopts = "--cov=caf.core --cov-report=xml --doctest-modules -n auto"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
+pythonpath = "src"
 
 [tool.coverage.run]
 omit = ["*/_version.py"]
