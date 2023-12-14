@@ -85,6 +85,8 @@ class ZoningSystem:
         self,
         name: str,
         unique_zones: pd.DataFrame,
+        # TODO(MB) Metadata to list extra unconstrained columns data, which aren't used by ZoningSystem
+        # TODO(MB) Metadata to optionally list subset columns, compare with those found
         metadata: Union[ZoningSystemMetaData, PathLike],
     ):
         """Builds a ZoningSystem
@@ -102,7 +104,6 @@ class ZoningSystem:
             A dataframe of unique zone IDs and names, descriptions and subset flags
             for this zoning system. Should contain at least one column with unique
             zone ID integers labelled 'zone_id'.
-
         """
         self.name = name
         self._zones, self._subset_columns = self._validate_unique_zones(unique_zones)
@@ -142,7 +143,6 @@ class ZoningSystem:
                 f"mandatory ID column ({self._id_column}) missing from zones data"
             )
 
-        # TODO(MB) Check if we want to enforce IDs being integers
         try:
             zones.loc[:, self._id_column] = zones[self._id_column].astype(int)
         except ValueError as exc:
@@ -309,6 +309,9 @@ class ZoningSystem:
         """Returns a copy of this class"""
         return self.copy()
 
+    # TODO(MB) Define almost equals method which ignores optional columns and
+    # just compares zone ID, zone name and zone description e.g. if 2 MSOA
+    # zone systems were compared with different subsets of internal zones
     def __eq__(self, other) -> bool:
         """Overrides the default implementation
 
@@ -652,7 +655,6 @@ class ZoningSystem:
         zones = zones.rename(columns={"zone_desc": cls._desc_column})
 
         if cls._id_column not in zones.columns and cls._name_column in zones.columns:
-            # TODO(MB) Clarify whether we should restrict zone ID to integers
             zones.loc[:, cls._id_column] = zones[cls._name_column].astype(int)
 
         # It might be more appropriate to check if files exist explicitly
