@@ -14,9 +14,10 @@ from os import PathLike
 from pathlib import Path
 from typing import Optional, Union
 
-import caf.toolkit as ctk
 import numpy as np
 import pandas as pd
+import caf.toolkit as ctk
+
 
 # pylint: disable=no-name-in-module,import-error
 from caf.core.segmentation import Segmentation, SegmentationWarning
@@ -29,6 +30,7 @@ LOG = logging.getLogger(__name__)
 
 
 # # # CLASSES # # #
+# pylint: disable-all
 @enum.unique
 class TimeFormat(enum.Enum):
     AVG_WEEK = "avg_week"
@@ -210,7 +212,7 @@ class TimeFormat(enum.Enum):
 
         return factors_fn()
 
-
+# pylint enable-all
 class DVector:
     """
     Class to store and manipulate data with segmentation and optionally zoning.

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 # Built-Ins
 import warnings
-from typing import Union, Optional, Literal
+from typing import Union, Literal
 from os import PathLike
 from pathlib import Path
 
@@ -32,8 +32,6 @@ from caf.core.segments import Segment, SegmentsSuper
 # # # CLASSES # # #
 class SegmentationWarning(Warning):
     """Warning class for segmentation objects"""
-
-    pass
 
 
 class SegmentationInput(BaseConfig):
@@ -76,6 +74,7 @@ class SegmentationInput(BaseConfig):
                 )
         return v
 
+    # pylint: disable=no-self-argument
     @pydantic.validator("custom_segments", always=True)
     def no_copied_names(cls, v):
         """Validate the custom_segments do not clash with existing segments"""
@@ -103,6 +102,7 @@ class SegmentationInput(BaseConfig):
             raise ValueError("Names provided for naming_order do not match names in segments")
 
         return v
+    # pylint: enable=no-self-argument
 
 
 class Segmentation:
@@ -171,12 +171,13 @@ class Segmentation:
             for other_seg in drop_iterator:
                 if other_seg == own_seg.name:
                     continue
-                if other_seg in own_seg.exclusion_segs:
-                    dropper = own_seg.drop_indices(other_seg)
+                # pylint: disable=protected-access
+                if other_seg in own_seg._exclusion_segs:
+                    dropper = own_seg._drop_indices(other_seg)
                     df = df.reset_index().set_index([own_seg.name, other_seg])
                     mask = ~df.index.isin(dropper)
                     df = df[mask]
-
+                # pylint: enable=protected-access
         return df.reset_index().set_index(self.naming_order).index
 
     def has_time_period_segments(self) -> bool:
@@ -190,6 +191,7 @@ class Segmentation:
         """
         return self._time_period_segment_name in self.naming_order
 
+    # pylint: disable=too-many-branches
     @classmethod
     def validate_segmentation(
         cls,
@@ -291,6 +293,8 @@ class Segmentation:
             "look is the SegmentsSuper class."
         )
 
+    # pylint: enable=too-many-branches
+
     def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"] = "hdf"):
         """
         Save a segmentation to either a yaml file or an hdf file if part of a
@@ -311,7 +315,7 @@ class Segmentation:
                 )
 
         elif mode == "yaml":
-            self.input.save_yaml(out_path)
+            self.input.save_yaml(Path(out_path))
 
         else:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")
@@ -332,13 +336,15 @@ class Segmentation:
         -------
         Segmentation class
         """
+        # pylint: disable=no-member
         if mode == "hdf":
             with h5py.File(in_path, "r") as h_file:
                 yam_load = h_file["segmentation"][()].decode("utf-8")
                 config = SegmentationInput.from_yaml(yam_load)
+        # pylint: enable=no-member
 
         elif mode == "yaml":
-            config = SegmentationInput.load_yaml(in_path)
+            config = SegmentationInput.load_yaml(Path(in_path))
 
         else:
             raise ValueError(f"Mode must be either 'hdf' or 'yaml', not {mode}")

@@ -15,10 +15,10 @@ from pathlib import Path
 from typing import Literal, Optional, Union
 import warnings
 
-import caf.toolkit as ctk
 import h5py
 import numpy as np
 import pandas as pd
+import caf.toolkit as ctk
 
 LOG = logging.getLogger(__name__)
 
@@ -114,6 +114,7 @@ class ZoningSystem:
         else:
             self.metadata = metadata
 
+    # pylint: disable=too-many-branches
     def _validate_unique_zones(
         self, zones: pd.DataFrame
     ) -> tuple[pd.DataFrame, tuple[str, ...]]:
@@ -209,6 +210,7 @@ class ZoningSystem:
             )
 
         return zones, tuple(subset_column)
+    # pylint: enable=too-many-branches
 
     @property
     def zones_data(self) -> pd.DataFrame:
@@ -327,7 +329,8 @@ class ZoningSystem:
 
         if self.n_zones != other.n_zones:
             return False
-
+        # TODO this sort_index is incompatible with pandas 2.0. At the moment
+        # we need <2.0 as it is required by toolkit, but should be noted.
         sorted_self = self._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
         sorted_other = other._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
         if not sorted_self.equals(sorted_other):
@@ -346,7 +349,9 @@ class ZoningSystem:
     def _generate_spatial_translation(self, other: ZoningSystem) -> pd.DataFrame:
         """Generate spatial translation using `caf.space`, if available."""
         try:
+            # pylint: disable=import-outside-toplevel
             import caf.space as cs
+            # pylint: enable=import-outside-toplevel
         except ModuleNotFoundError as exc:
             raise ImportError(
                 "caf.space is not installed in this environment. "
@@ -616,6 +621,7 @@ class ZoningSystem:
         if mode.lower() == "hdf":
             zoning = pd.read_hdf(in_path, key="zoning", mode="r")
             with h5py.File(in_path, "r") as h_file:
+                # pylint: disable=no-member
                 yam_load = h_file["zoning_meta"][()].decode("utf-8")
                 zoning_meta = ZoningSystemMetaData.from_yaml(yam_load)
         elif mode.lower() == "csv":

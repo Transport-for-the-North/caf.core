@@ -1,21 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Created on: 11/09/2023
-Updated on:
-
-Original author: Ben Taylor
-Last update made by:
-Other updates made by:
-
-File purpose:
-
+Module defining Segments class and enumeration
 """
 import enum
-import pandas as pd
-from caf.toolkit import BaseConfig
 from dataclasses import dataclass
-import pydantic
+from typing import Optional
 
+import pandas as pd
+import pydantic
+from caf.toolkit import BaseConfig
 
 # # # CONSTANTS # # #
 # # # CLASSES # # #
@@ -69,24 +62,26 @@ class Segment(BaseConfig):
     values: dict[int, str]
     exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
 
+    # pylint: disable=too-few-public-methods
     class Config:
+        """allow arbitrary types"""
         arbitrary_types_allowed = True
+    # pylint: disable=too-few-public-methods
 
     @property
-    def exclusion_segs(self):
+    def _exclusion_segs(self):
         return [seg.seg_name for seg in self.exclusions]
 
-    def drop_indices(self, other_seg: str):
-        if other_seg not in self.exclusion_segs:
+    def _drop_indices(self, other_seg: str):
+        if other_seg not in self._exclusion_segs:
             return None
-        else:
-            ind_tuples = []
-            for excl in self.exclusions:
-                if excl.seg_name == other_seg:
-                    for other in excl.other_vals:
-                        ind_tuples.append((excl.own_val, other))
-            drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
-            return drop_ind
+        ind_tuples = []
+        for excl in self.exclusions:
+            if excl.seg_name == other_seg:
+                for other in excl.other_vals:
+                    ind_tuples.append((excl.own_val, other))
+        drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
+        return drop_ind
 
 
 class SegmentsSuper(enum.Enum):
@@ -109,9 +104,10 @@ class SegmentsSuper(enum.Enum):
 
     @classmethod
     def values(cls):
+        """Return values from class"""
         return [e.value for e in cls]
 
-    def get_segment(self, subset: list[int] = None):
+    def get_segment(self, subset: Optional[list[int]] = None):
         """
         method to get a segments.
 
@@ -175,7 +171,7 @@ class SegmentsSuper(enum.Enum):
                     values={1: "Child", 2: "Male", 3: "Female"},
                     exclusions=[
                         Exclusion(
-                            seg_name=SegmentsSuper.SOC.value, own_val=1, other_vals=[1, 2, 3]
+                            seg_name=SegmentsSuper.SOC.value, own_val=1, other_vals=set([1, 2, 3])
                         )
                     ],
                 )
