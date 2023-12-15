@@ -210,6 +210,7 @@ class ZoningSystem:
             )
 
         return zones, tuple(subset_column)
+
     # pylint: enable=too-many-branches
 
     @property
@@ -351,6 +352,7 @@ class ZoningSystem:
         try:
             # pylint: disable=import-outside-toplevel
             import caf.space as cs
+
             # pylint: enable=import-outside-toplevel
         except ModuleNotFoundError as exc:
             raise ImportError(

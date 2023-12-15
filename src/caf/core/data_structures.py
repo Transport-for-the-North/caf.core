@@ -212,6 +212,7 @@ class TimeFormat(enum.Enum):
 
         return factors_fn()
 
+
 # pylint enable-all
 class DVector:
     """

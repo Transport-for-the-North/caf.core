@@ -102,6 +102,7 @@ class SegmentationInput(BaseConfig):
             raise ValueError("Names provided for naming_order do not match names in segments")
 
         return v
+
     # pylint: enable=no-self-argument
 
 

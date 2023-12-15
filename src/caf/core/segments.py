@@ -10,6 +10,7 @@ import pandas as pd
 import pydantic
 from caf.toolkit import BaseConfig
 
+
 # # # CONSTANTS # # #
 # # # CLASSES # # #
 @dataclass
@@ -65,7 +66,9 @@ class Segment(BaseConfig):
     # pylint: disable=too-few-public-methods
     class Config:
         """allow arbitrary types"""
+
         arbitrary_types_allowed = True
+
     # pylint: disable=too-few-public-methods
 
     @property
@@ -171,7 +174,9 @@ class SegmentsSuper(enum.Enum):
                     values={1: "Child", 2: "Male", 3: "Female"},
                     exclusions=[
                         Exclusion(
-                            seg_name=SegmentsSuper.SOC.value, own_val=1, other_vals=set([1, 2, 3])
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals=set([1, 2, 3]),
                         )
                     ],
                 )
