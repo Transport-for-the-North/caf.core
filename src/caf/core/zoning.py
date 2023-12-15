@@ -85,8 +85,6 @@ class ZoningSystem:
         self,
         name: str,
         unique_zones: pd.DataFrame,
-        # TODO(MB) Metadata to list extra unconstrained columns data, which aren't used by ZoningSystem
-        # TODO(MB) Metadata to optionally list subset columns, compare with those found
         metadata: Union[ZoningSystemMetaData, PathLike],
     ):
         """Builds a ZoningSystem
