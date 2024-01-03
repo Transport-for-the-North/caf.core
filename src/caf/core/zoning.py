@@ -52,7 +52,7 @@ class TranslationWeighting(enum.Enum):
             self.AVERAGE: "weighted_average",
         }
 
-        return lookup[self] # type: ignore
+        return lookup[self]  # type: ignore
 
 
 class ZoningSystem:
