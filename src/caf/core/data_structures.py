@@ -268,6 +268,7 @@ class DVector:
 
         self._zoning_system = zoning_system
         self._segmentation = segmentation
+        self._time_format = None
         if time_format is not None:
             self._time_format = self._validate_time_format(time_format)
 
