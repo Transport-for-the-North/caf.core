@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Module defining Segments class and enumeration
-"""
+"""Module defining Segments class and enumeration."""
 import enum
 from dataclasses import dataclass
 from typing import Optional
@@ -20,7 +18,6 @@ class Exclusion:
 
     Parameters
     ----------
-
     seg_name: str
         Name of the other segment this exclusion applies to
     own_val: int
@@ -34,17 +31,14 @@ class Exclusion:
     other_vals: set[int]
 
     def build_index(self):
-        """
-        Returns an index formed of the exclusions.
-        """
+        """Return an index formed of the exclusions."""
         tups = [(self.own_val, other) for other in self.other_vals]
         return pd.MultiIndex.from_tuples(tups)
 
 
 class Segment(BaseConfig):
     """
-    Class containing info on a Segment, which combined with other Segments form
-    a segmentation.
+    Class containing info on a Segment, which combined with other Segments form a segmentation.
 
     Parameters
     ----------
@@ -65,7 +59,7 @@ class Segment(BaseConfig):
 
     # pylint: disable=too-few-public-methods
     class Config:
-        """allow arbitrary types"""
+        """Allow arbitrary types."""
 
         arbitrary_types_allowed = True
 
@@ -89,9 +83,11 @@ class Segment(BaseConfig):
 
 class SegmentsSuper(enum.Enum):
     """
-    Getter for predefined segments. This should be where segments forming
-    segmentations come from. In most cases if a segment is not defined here it
-    should be added, rather than defined as a custom segment in a Segmentation
+    Getter for predefined segments.
+
+    This should be where segments forming segmentations come from. In most
+    cases if a segment is not defined here it should be added, rather than
+    defined as a custom segment in a Segmentation.
     """
 
     PURPOSE = "p"
@@ -107,12 +103,12 @@ class SegmentsSuper(enum.Enum):
 
     @classmethod
     def values(cls):
-        """Return values from class"""
+        """Return values from class."""
         return [e.value for e in cls]
 
     def get_segment(self, subset: Optional[list[int]] = None):
         """
-        method to get a segments.
+        Get a segment.
 
         Parameters
         ----------

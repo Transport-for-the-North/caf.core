@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Holds the ZoningSystem Class which stores all information on different zoning
-systems
-"""
+"""Holds the ZoningSystem Class which stores all information on different zoning systems."""
 # Allow class self hinting
 from __future__ import annotations
 
@@ -54,11 +51,11 @@ class TranslationWeighting(enum.Enum):
             self.NO_WEIGHT: "no_weighting",
             self.AVERAGE: "weighted_average",
         }
-        return lookup[self]
+        return lookup[self.value]
 
 
 class ZoningSystem:
-    """Zoning definitions to provide common interface
+    """Zoning definitions to provide common interface.
 
     Attributes
     ----------
@@ -87,7 +84,7 @@ class ZoningSystem:
         unique_zones: pd.DataFrame,
         metadata: Union[ZoningSystemMetaData, PathLike],
     ):
-        """Builds a ZoningSystem
+        """Build a ZoningSystem.
 
         This class should almost never be constructed directly. If an
         instance of ZoningSystem is needed, the classmethod
@@ -108,7 +105,7 @@ class ZoningSystem:
         self.n_zones = len(self._zones)
 
         if isinstance(metadata, PathLike):
-            self.metadata = ZoningSystemMetaData.load_yaml(metadata)
+            self.metadata = ZoningSystemMetaData.load_yaml(Path(metadata))
         else:
             self.metadata = metadata
 
@@ -213,13 +210,17 @@ class ZoningSystem:
 
     @property
     def zones_data(self) -> pd.DataFrame:
-        """Return a copy of the zones DataFrame, this contains zone ID as
-        the index and some optional columns for names, descriptions and subset flags."""
+        """
+        Return a copy of the zones DataFrame.
+
+        This contains zone ID as the index and some optional columns for names,
+        descriptions and subset flags.
+        """
         return self._zones.copy()
 
     @property
-    def zone_ids(self) -> np.ndarray[int]:
-        "Return a copy of the zone IDs array."
+    def zone_ids(self) -> np.ndarray:
+        """Return a copy of the zone IDs array."""
         return self._zones.index.values.copy()
 
     @property
@@ -228,7 +229,10 @@ class ZoningSystem:
         return self._subset_columns
 
     def get_column(self, column: str) -> pd.Series:
-        """Get `column` from zones data, normalises `column` name.
+        """
+        Get `column` from zones data.
+
+         Normalises `column` name.
 
         Raises
         ------
@@ -241,7 +245,8 @@ class ZoningSystem:
         return self._zones[normal].copy()
 
     def zone_descriptions(self) -> pd.Series:
-        """Description of zones, with the index as the zone ID.
+        """
+        Describe zones, with the index as the zone ID.
 
         Raises
         ------
@@ -251,7 +256,8 @@ class ZoningSystem:
         return self.get_column(self._desc_column)
 
     def zone_names(self) -> pd.Series:
-        """Name of zones, with the index as the zone ID.
+        """
+        Name of zones, with the index as the zone ID.
 
         Raises
         ------
@@ -274,8 +280,9 @@ class ZoningSystem:
 
         return mask
 
-    def get_subset(self, name: str) -> np.ndarray[int]:
-        """Get subset of zone IDs based on subset column `name`.
+    def get_subset(self, name: str) -> np.ndarray:
+        """
+        Get subset of zone IDs based on subset column `name`.
 
         Raises
         ------
@@ -291,8 +298,9 @@ class ZoningSystem:
         mask = self._get_mask_column(name)
         return mask[mask].index.values.copy()
 
-    def get_inverse_subset(self, name: str) -> np.ndarray[int]:
-        """Get inverse of the `name` subset.
+    def get_inverse_subset(self, name: str) -> np.ndarray:
+        """
+        Get inverse of the `name` subset.
 
         See Also
         --------
@@ -307,14 +315,15 @@ class ZoningSystem:
         return f"{self.name}_id".lower()
 
     def __copy__(self):
-        """Returns a copy of this class"""
+        """Return a copy of this class."""
         return self.copy()
 
     # TODO(MB) Define almost equals method which ignores optional columns and
     # just compares zone ID, zone name and zone description e.g. if 2 MSOA
     # zone systems were compared with different subsets of internal zones
     def __eq__(self, other) -> bool:
-        """Overrides the default implementation
+        """
+        Override the default implementation.
 
         Note: internal zones dataframe must be identical to `other`
         for the zone systems to be considered equal.
@@ -328,7 +337,7 @@ class ZoningSystem:
 
         if self.n_zones != other.n_zones:
             return False
-        # TODO this sort_index is incompatible with pandas 2.0. At the moment
+        # this sort_index is incompatible with pandas 2.0. At the moment
         # we need <2.0 as it is required by toolkit, but should be noted.
         sorted_self = self._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
         sorted_other = other._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
@@ -338,11 +347,11 @@ class ZoningSystem:
         return True
 
     def __ne__(self, other) -> bool:
-        """Overrides the default implementation"""
+        """Override the default implementation."""
         return not self.__eq__(other)
 
     def __len__(self) -> int:
-        """Get the length of the zoning system"""
+        """Get the length of the zoning system."""
         return self.n_zones
 
     def _generate_spatial_translation(self, other: ZoningSystem) -> pd.DataFrame:
@@ -378,7 +387,7 @@ class ZoningSystem:
         weighting: TranslationWeighting = TranslationWeighting.SPATIAL,
         trans_cache: Path = ZONE_TRANSLATION_CACHE,
     ) -> pd.DataFrame:
-        """Returns a zone translation between self and other."""
+        """Return a zone translation between self and other."""
         names = sorted([self.name, other.name])
         folder = f"{names[0]}_{names[1]}"
 
@@ -438,7 +447,8 @@ class ZoningSystem:
         return trans
 
     def translation_column_name(self, other: ZoningSystem) -> str:
-        """Expected name for translation factors column in translation data.
+        """
+        Return expected name for translation factors column in translation data.
 
         Expected to be lowercase in the format "{self.name}_to_{other.name}".
         """
@@ -449,7 +459,8 @@ class ZoningSystem:
         other: ZoningSystem,
         translation: pd.DataFrame,
     ) -> pd.DataFrame:
-        """Validate translation data, checking for missing zones and factors sum to 1.
+        """
+        Validate translation data, checking for missing zones and factors sum to 1.
 
         Normalises column names (`normalise_column_name`) before checking
         if columns are present.
@@ -490,13 +501,13 @@ class ZoningSystem:
 
         # Warn if any zone IDs are missing
         for zone_system in (self, other):
-            missing = ~np.isin(
+            missing_internal: np.ndarray = ~np.isin(
                 zone_system.zone_ids, translation[zone_system.column_name].values
             )
 
-            if np.sum(missing) > 0:
+            if np.sum(missing_internal) > 0:
                 warnings.warn(
-                    f"{np.sum(missing)} {zone_system.name} zones "
+                    f"{np.sum(missing_internal)} {zone_system.name} zones "
                     f"missing from translation {translation_name}",
                     TranslationWarning,
                 )
@@ -515,7 +526,7 @@ class ZoningSystem:
         return translation
 
     def copy(self):
-        """Returns a copy of this class"""
+        """Return a copy of this class."""
         return ZoningSystem(
             name=self.name,
             unique_zones=self._zones.copy().reset_index(),
@@ -529,7 +540,7 @@ class ZoningSystem:
         weighting: TranslationWeighting | str = TranslationWeighting.SPATIAL,
     ) -> pd.DataFrame:
         """
-        Finds, or generates, the translation data from `self` to `other`.
+        Find, or generates, the translation data from `self` to `other`.
 
         Parameters
         ----------
@@ -601,7 +612,8 @@ class ZoningSystem:
 
     @classmethod
     def load(cls, in_path: PathLike, mode: str):
-        """Creates a ZoningSystem instance from path_or_instance_dict
+        """
+        Create a ZoningSystem instance from path_or_instance_dict.
 
         If path_or_instance_dict is a path, the file is loaded in and
         the instance_dict extracted.
@@ -637,10 +649,11 @@ class ZoningSystem:
         cls,
         old_dir: PathLike,
         new_dir: PathLike = ZONE_CACHE_HOME,
-        mode: str = "csv",
+        mode: Literal["csv", "hdf"] = "csv",
     ) -> ZoningSystem:
         """
-        Converts zoning info stored in the old format to the new format.
+        Convert zoning info stored in the old format to the new format.
+
         Optionally returns the zoning as well, but this is primarily designed
         for read in -> write out.
 
@@ -687,7 +700,7 @@ class ZoningSystem:
 
     @classmethod
     def get_zoning(cls, name: str, search_dir: PathLike = ZONE_CACHE_HOME):
-        """Calls load method to return zoning info based on a name."""
+        """Call load method to return zoning info based on a name."""
         zone_dir = Path(search_dir) / name
         if zone_dir.is_dir():
             try:
@@ -703,17 +716,15 @@ class ZoningSystem:
 
 
 class ZoningSystemMetaData(ctk.BaseConfig):
-    """
-    Class to store metadata relating to zoning systems in normits_demand
-    """
+    """Class to store metadata relating to zoning systems in normits_demand."""
 
     name: Optional[str]
-    shapefile_id_col: Optional[str]
-    shapefile_path: Optional[Path]
-    extra_columns: Optional[list[str]]
+    shapefile_id_col: Optional[str] = None
+    shapefile_path: Optional[Path] = None
+    extra_columns: Optional[list[str]] = None
 
 
 def normalise_column_name(column: str) -> str:
-    """Convert column to lowercase and replace spaces with underscore."""
+    """Convert column to lowercase and replace spaces with underscores."""
     column = column.lower().strip()
     return re.sub(r"\s+", "_", column)

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Module containing the data structures used in the CAF package. Currently this is
-only the DVector class, but this may be expanded in the future.
+Module containing the data structures used in the CAF package.
 
+Currently this is only the DVector class, but this may be expanded in the future.
 """
 from __future__ import annotations
 
@@ -33,28 +33,30 @@ LOG = logging.getLogger(__name__)
 # pylint: disable-all
 @enum.unique
 class TimeFormat(enum.Enum):
+    """Class for time formats."""
+
     AVG_WEEK = "avg_week"
     AVG_DAY = "avg_day"
     AVG_HOUR = "avg_hour"
 
     @staticmethod
     def _valid_time_formats() -> list[str]:
-        """
-        Returns a list of valid strings to pass for time_format
-        """
+        """Return a list of valid strings to pass for time_format."""
         return [x.value for x in TimeFormat]
 
     @staticmethod
     def get_time_periods() -> list[int]:
+        """Get time periods."""
         return [1, 2, 3, 4, 5, 6]
 
     @staticmethod
     def conversion_order() -> list[TimeFormat]:
+        """Return a conversion order."""
         return [TimeFormat.AVG_WEEK, TimeFormat.AVG_DAY, TimeFormat.AVG_HOUR]
 
     @staticmethod
     def _week_to_hour_factors() -> dict[int, float]:
-        """Compound week to day and day to hour factors"""
+        """Compound week to day and day to hour factors."""
         return ctk.toolbox.combine_dict_list(
             dict_list=[TimeFormat._week_to_day_factors(), TimeFormat._day_to_hour_factors()],
             operation=operator.mul,
@@ -62,7 +64,7 @@ class TimeFormat(enum.Enum):
 
     @staticmethod
     def _hour_to_week_factors() -> dict[int, float]:
-        """Compound hour to day and day to week factors"""
+        """Compound hour to day and day to week factors."""
         return ctk.toolbox.combine_dict_list(
             dict_list=[TimeFormat._hour_to_day_factors(), TimeFormat._day_to_week_factors()],
             operation=operator.mul,
@@ -70,12 +72,12 @@ class TimeFormat(enum.Enum):
 
     @staticmethod
     def _hour_to_day_factors() -> dict[int, float]:
-        """Inverse of day to hour factors"""
+        """Inverse of day to hour factors."""
         return {k: 1 / v for k, v in TimeFormat._day_to_hour_factors().items()}
 
     @staticmethod
     def _day_to_week_factors() -> dict[int, float]:
-        """Inverse of week to day factors"""
+        """Inverse of week to day factors."""
         return {k: 1 / v for k, v in TimeFormat._week_to_day_factors().items()}
 
     @staticmethod
@@ -102,17 +104,17 @@ class TimeFormat(enum.Enum):
 
     @staticmethod
     def avg_hour_to_total_hour_factors() -> dict[int, float]:
-        """Get a dictionary of conversion factors"""
+        """Get a dictionary of conversion factors."""
         return TimeFormat._hour_to_day_factors()
 
     @staticmethod
     def total_hour_to_avg_hour_factors() -> dict[int, float]:
-        """Get a dictionary of conversion factors"""
+        """Get a dictionary of conversion factors."""
         return TimeFormat._day_to_hour_factors()
 
     @staticmethod
     def get(value: str) -> TimeFormat:
-        """Get an instance of this with value
+        """Get an instance of this with value.
 
         Parameters
         ----------
@@ -157,7 +159,8 @@ class TimeFormat(enum.Enum):
         self,
         to_time_format: TimeFormat,
     ) -> dict[int, float]:
-        """Get the conversion factors for each time period
+        """
+        Get the conversion factors for each time period.
 
         Get a dictionary of the values to multiply each time period by
         in order to convert between time formats
@@ -233,15 +236,22 @@ class DVector:
         val_col: Optional[str] = "val",
     ) -> None:
         """
-        segmentation: An instance of the segmentation class. This should usually
-        be built from enumerated options in the SegmentsSuper class, but custom
-        segments can be user defined if necesssary.
-        import_data: The DVector data. This should usually be a dataframe or path
-        to a dataframe, but there is also an option to read in and convert
-        DVectors in the old format from NorMITs-demand.
-        zoning_system: Instance of ZoningSystem. This must match import data.
-        If this is given, import data must contain zone info in the column names,
-        if this is not given import data must contain only 1 column.
+        Init method.
+
+        Parameters
+        ----------
+        segmentation: Segmentation
+            An instance of the segmentation class. This should usually be built
+            from enumerated options in the SegmentsSuper class, but custom
+            segments can be user defined if necesssary.
+        import_data: pd.Dataframe
+            The DVector data. This should usually be a dataframe or path to a
+            dataframe, but there is also an option to read in and convert
+            DVectors in the old format from NorMITs-demand.
+        zoning_system: Optional[ZoningSystem] = None
+            Instance of ZoningSystem. This must match import data. If this is
+            given, import data must contain zone info in the column names, if
+            this is not given import data must contain only 1 column.
         """
         if zoning_system is not None:
             if not isinstance(zoning_system, ZoningSystem):
@@ -258,7 +268,8 @@ class DVector:
 
         self._zoning_system = zoning_system
         self._segmentation = segmentation
-        self._time_format = self._validate_time_format(time_format)
+        if time_format is not None:
+            self._time_format = self._validate_time_format(time_format)
 
         # Set defaults if args not set
         self._val_col = val_col
@@ -279,38 +290,36 @@ class DVector:
 
     @property
     def zoning_system(self):
-        """_zoning_system getter"""
+        """_zoning_system getter."""
         return self._zoning_system
 
     @property
     def segmentation(self):
-        """_segmentation getter"""
+        """_segmentation getter."""
         return self._segmentation
 
     @property
     def data(self):
-        """_data getter"""
+        """_data getter."""
         return self._data
 
     @property
     def time_format(self):
-        """_time_format getter"""
+        """_time_format getter."""
         if self._time_format is None:
             return None
         return self._time_format.name
 
     @staticmethod
     def _valid_time_formats() -> list[str]:
-        """
-        Returns a list of valid strings to pass for time_format
-        """
+        """Return a list of valid strings to pass for time_format."""
         return [x.value for x in TimeFormat]
 
     def _validate_time_format(
         self,
         time_format: Union[str, TimeFormat],
     ) -> TimeFormat:
-        """Validate the time format is a valid value
+        """Validate the time format is a valid value.
 
         Parameters
         ----------
@@ -354,8 +363,9 @@ class DVector:
 
     def _dataframe_to_dvec(self, import_data: pd.DataFrame):
         """
-        Take dataframe and ensure it is in DVec data format. This requires the
-        dataframe to be in wide format.
+        Take a dataframe and ensure it is in DVec data format.
+
+        This requires the dataframe to be in wide format.
         """
         Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation)
 
@@ -391,13 +401,14 @@ class DVector:
 
     def save(self, out_path: PathLike):
         """
-        Method to save the DVector
+        Save the DVector.
 
-        DVector will be saved to a folder containing an hdf file and yaml files
+        DVector will be saved to a hdf file containing the DVector.
 
         Parameters
         ----------
-        out_path: Path to the DVector, which should be an HDF file.
+        out_path: PathLike
+            Path to the DVector, which should be an HDF file.
 
         Returns
         -------
@@ -413,11 +424,12 @@ class DVector:
     @classmethod
     def load(cls, in_path: PathLike):
         """
-        Method to load the DVector
+        Load the DVector.
 
         Parameters
         ----------
-        in_path: Path to where the DVector is saved. This should be a single hdf file.
+        in_path: PathLike
+            Path to where the DVector is saved. This should be a single hdf file.
         """
         in_path = Path(in_path)
         zoning = ZoningSystem.load(in_path, "hdf")
@@ -433,15 +445,17 @@ class DVector:
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
     ) -> DVector:
         """
-        Translates this DVector into another zoning system and returns a new
-        DVector.
+        Translate this DVector into another zoning system and returns a new DVector.
 
         Parameters
         ----------
-        new_zoning:
+        new_zoning: ZoningSystem
             The zoning system to translate into.
 
-        weighting : default TranslationWeighting.SPATIAL
+        cache_path: Optional[PathLike]
+            Path to a cache containing zoning translations.
+
+        weighting : str | TranslationWeighting = TranslationWeighting.SPATIAL
             The weighting to use when building the translation. Must be
             one of TranslationWeighting.
 
@@ -496,7 +510,7 @@ class DVector:
         )
 
     def copy(self):
-        """Class copy method"""
+        """Class copy method."""
         return DVector(
             segmentation=self._segmentation.copy(),
             zoning_system=self._zoning_system.copy(),
@@ -506,10 +520,7 @@ class DVector:
         )
 
     def overlap(self, other):
-        """
-        Calls segmentation overlap method to check two DVector's contain
-        overlapping segments
-        """
+        """Call segmentation overlap method to check two DVectors contain overlapping segments."""
         overlap = self.segmentation.overlap(other.segmentation)
         if overlap == []:
             raise NotImplementedError(
@@ -522,7 +533,9 @@ class DVector:
         self, other, df_method, series_method, escalate_warnings: bool = False
     ):
         """
-        A generic dunder method which is called by each of the duneder methods.
+        Stop telling me to use the imperative mood pydocstyle.
+
+        A generic dunder method which is called by each of the dunder methods.
         """
         if escalate_warnings:
             warnings.filterwarnings("error", category=SegmentationWarning)
@@ -579,23 +592,23 @@ class DVector:
         return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
 
     def __mul__(self, other):
-        """Multiply dunder method for DVector"""
+        """Multiply dunder method for DVector."""
         return self._generic_dunder(other, pd.DataFrame.mul, pd.Series.mul)
 
     def __add__(self, other):
-        """Add dunder method for DVector"""
+        """Add dunder method for DVector."""
         return self._generic_dunder(other, pd.DataFrame.add, pd.Series.add)
 
     def __sub__(self, other):
-        """Subtract dunder method for DVector"""
+        """Subtract dunder method for DVector."""
         return self._generic_dunder(other, pd.DataFrame.sub, pd.Series.sub)
 
     def __truediv__(self, other):
-        """Division dunder method for DVector"""
+        """Division dunder method for DVector."""
         return self._generic_dunder(other, pd.DataFrame.div, pd.Series.div)
 
     def __eq__(self, other):
-        """Equals dunder for DVector"""
+        """Equals dunder for DVector."""
         if self.zoning_system != other.zoning_system:
             return False
         if self.segmentation != other.segmentation:
@@ -605,7 +618,7 @@ class DVector:
         return True
 
     def __ne__(self, other):
-        """Note equals dunder for DVector"""
+        """Note equals dunder for DVector."""
         return not self.__eq__(other)
 
     def aggregate(self, segs: list[str]):
@@ -634,7 +647,9 @@ class DVector:
     @staticmethod
     def old_to_new_dvec(import_data: dict):
         """
-        Converts the old format of DVector into the new - this only applies to the new dataframe.
+        Convert the old format of DVector into the new.
+
+        This only applies to the new dataframe.
         """
         zoning = import_data["zoning_system"]["unique_zones"]
         data = import_data["data"].values()

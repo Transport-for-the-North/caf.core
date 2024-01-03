@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Module for handling segmentation objects. This imports the Segment class from
-caf.core.segments, and the SegmentsSuper enumeration from caf.core.segments. Both
-are used for building segmentations.
+Module for handling segmentation objects.
+
+This imports the Segment class from caf.core.segments, and the SegmentsSuper
+enumeration from caf.core.segments. Both are used for building segmentations.
 """
 from __future__ import annotations
 
@@ -31,7 +32,7 @@ from caf.core.segments import Segment, SegmentsSuper
 
 # # # CLASSES # # #
 class SegmentationWarning(Warning):
-    """Warning class for segmentation objects"""
+    """Warn about segmentation objects."""
 
 
 class SegmentationInput(BaseConfig):
@@ -40,7 +41,6 @@ class SegmentationInput(BaseConfig):
 
     Parameters
     ----------
-
     enum_segments: list[SegmentsSuper]
         Provide as strings matching enumerations in SegmentsSuper. In 99% of
         cases segments should be provided in this form. If a segment doesn't
@@ -65,7 +65,7 @@ class SegmentationInput(BaseConfig):
 
     @pydantic.validator("subsets", always=True)
     def enums(cls, v, values):
-        """Validate the subsets match segments"""
+        """Validate the subsets match segments."""
         # validator is a class method pylint: disable=no-self-argument
         for seg in v.keys():
             if SegmentsSuper(seg) not in values["enum_segments"]:
@@ -77,7 +77,7 @@ class SegmentationInput(BaseConfig):
     # pylint: disable=no-self-argument
     @pydantic.validator("custom_segments", always=True)
     def no_copied_names(cls, v):
-        """Validate the custom_segments do not clash with existing segments"""
+        """Validate the custom_segments do not clash with existing segments."""
         for seg in v:
             if seg.name in SegmentsSuper.values():
                 raise ValueError(
@@ -93,7 +93,7 @@ class SegmentationInput(BaseConfig):
 
     @pydantic.validator("naming_order")
     def names_match_segments(cls, v, values):
-        """Validate that naming order names match segment names"""
+        """Validate that naming order names match segment names."""
         seg_names = [i.value for i in values["enum_segments"]]
         if "custom_segments" in values.keys():
             seg_names += [i.name for i in values["custom_segments"]]
@@ -140,29 +140,30 @@ class Segmentation:
 
     @property
     def seg_dict(self):
-        """Method to access segments in dict form."""
+        """Access segments in dict form."""
         return {seg.name: seg for seg in self.segments}
 
     @property
     def names(self):
-        """Returns the names of all segments."""
+        """Return the names of all segments."""
         return [seg.name for seg in self.segments]
 
     @property
     def seg_descriptions(self):
-        """Returns a list of segment descriptions."""
+        """Return a list of segment descriptions."""
         return [seg.values.values() for seg in self.segments]
 
     @property
     def seg_vals(self):
-        """Return all segmentation values"""
+        """Return all segmentation values."""
         return [seg.values.keys() for seg in self.segments]
 
     def ind(self):
         """
-        Returns a pandas MultiIndex of the segmentation. This is by default
-        just a product of all segments given, taking exclusions into account if
-        any exist between segments.
+        Return a pandas MultiIndex of the segmentation.
+
+        This is by default just a product of all segments given, taking
+        exclusions into account if any exist between segments.
         """
         index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
         df = pd.DataFrame(index=index)
@@ -182,7 +183,7 @@ class Segmentation:
         return df.reset_index().set_index(self.naming_order).index
 
     def has_time_period_segments(self) -> bool:
-        """Checks whether this segmentation has time period segmentation
+        """Check whether this segmentation has time period segmentation.
 
         Returns
         -------
@@ -298,8 +299,7 @@ class Segmentation:
 
     def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"] = "hdf"):
         """
-        Save a segmentation to either a yaml file or an hdf file if part of a
-        DVector.
+        Save a segmentation to either a yaml file or an hdf file if part of a DVector.
 
         Parameters
         ----------
@@ -353,11 +353,11 @@ class Segmentation:
         return cls(config)
 
     def __copy__(self):
-        """Returns a copy of this class"""
+        """Return a copy of this class."""
         return self.copy()
 
     def __eq__(self, other) -> bool:
-        """Overrides the default implementation"""
+        """Override the default implementation."""
         if not isinstance(other, Segmentation):
             return False
 
@@ -371,8 +371,7 @@ class Segmentation:
 
     @staticmethod
     def ordered_set(list_1: list, list_2: list) -> list:
-        """Takes in two lists and combines them, removing duplicates but
-        preserving order."""
+        """Take in two lists and combine them, removing duplicates but preserving order."""
         combined_list = list_1 + list_2
         unique_list = []
         for item in combined_list:
@@ -381,10 +380,13 @@ class Segmentation:
         return unique_list
 
     def __add__(self, other):
-        """Combine two segmentations without duplicates. Order of naming_order
-        in resulting segmentation will have self before other. This name may be
-        misleading as this is the method used for most of the dunder methods
-        in DVector for combining resulting segmentations."""
+        """
+        Combine two segmentations without duplicates.
+
+        Order of naming_order in resulting segmentation will have self before
+        other. This name may be misleading as this is the method used for most
+        of the dunder methods in DVector for combining resulting segmentations.
+        """
         enum_in = set(self.input.enum_segments + other.input.enum_segments)
         cust_in = self.input.custom_segments
         for seg in other.input.custom_segments:
@@ -402,15 +404,15 @@ class Segmentation:
         return Segmentation(config)
 
     def overlap(self, other):
-        """Check the overlap in segments between two segmentations"""
+        """Check the overlap in segments between two segmentations."""
         return [seg for seg in self.names if seg in other.names]
 
     def __ne__(self, other) -> bool:
-        """Overrides the default implementation"""
+        """Override the default implementation."""
         return not self.__eq__(other)
 
     def copy(self):
-        """Copy method of class."""
+        """Copy an instance of this class."""
         return Segmentation(config=self.input.copy())
 
     def aggregate(self, new_segs: list[str]):
@@ -435,9 +437,9 @@ class Segmentation:
                     custom.remove(seg)
 
         enum_segs = self.input.enum_segments.copy()
-        for seg in self.input.enum_segments:
-            if seg.value not in new_segs:
-                enum_segs.remove(seg)
+        for enum_seg in self.input.enum_segments:
+            if enum_seg.value not in new_segs:
+                enum_segs.remove(enum_seg)
 
         if self.input.subsets is not None:
             subsets = dict()
