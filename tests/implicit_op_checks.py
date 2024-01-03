@@ -29,6 +29,7 @@ class Segment:
     I'm using strings here as a unique ID with `name`, but imagine there's
     something better.
     """
+
     name: str
     vals: list[Any]
 
@@ -103,6 +104,7 @@ def simple_all_combinations_perm() -> InputAndResults:
         expected_output=df,
     )
 
+
 def simple_subset() -> InputAndResults:
     """Simple example where all combinations are ok."""
     purpose = SegmentDef.PURPOSE.get()
@@ -126,33 +128,39 @@ def simple_subset() -> InputAndResults:
 
 def non_product_segmentations():
     # At Tfn, g segment cannot be defined with anything other than soc 4
-    df = pd.DataFrame([
-        {"g": 1, "soc": 4},
-        {"g": 2, "soc": 1},
-        {"g": 3, "soc": 1},
-        {"g": 2, "soc": 2},
-        {"g": 3, "soc": 2},
-        {"g": 2, "soc": 3},
-        {"g": 3, "soc": 3},
-        {"g": 2, "soc": 4},
-        {"g": 3, "soc": 4},
-    ])
+    df = pd.DataFrame(
+        [
+            {"g": 1, "soc": 4},
+            {"g": 2, "soc": 1},
+            {"g": 3, "soc": 1},
+            {"g": 2, "soc": 2},
+            {"g": 3, "soc": 2},
+            {"g": 2, "soc": 3},
+            {"g": 3, "soc": 3},
+            {"g": 2, "soc": 4},
+            {"g": 3, "soc": 4},
+        ]
+    )
 
     # If we merge with anything that contains JUST soc or g, there's no problem
 
     # But if we merge on something that contains both, there's a potential issue
     # df2 and 3 below are fine to combine with, they follow the TfN rules
 
-    df2 = pd.DataFrame([
-        {"g": 1, "soc": 4},
-        {"g": 2, "soc": 4},
-        {"g": 3, "soc": 4},
-    ])
+    df2 = pd.DataFrame(
+        [
+            {"g": 1, "soc": 4},
+            {"g": 2, "soc": 4},
+            {"g": 3, "soc": 4},
+        ]
+    )
 
-    df3 = pd.DataFrame([
-        {"g": 2, "soc": 3},
-        {"g": 3, "soc": 3},
-    ])
+    df3 = pd.DataFrame(
+        [
+            {"g": 2, "soc": 3},
+            {"g": 3, "soc": 3},
+        ]
+    )
 
     # TODO: What do we do if a new segment comes along that doesn't follow this rule?
     #  TfN might update it's segments, or another person might have different rules.
@@ -171,16 +179,18 @@ def non_product_segmentations():
     #  We could do an outer merge and check for NA values. This wouldn't work when only those two segments are being used.
     #  An exhaustive check (of every row) every time would be too expensive, especially for large segments.
 
-    df4 = pd.DataFrame([
-        {"g": 1, "soc": 1},
-        {"g": 1, "soc": 2},
-        {"g": 1, "soc": 3},
-        {"g": 1, "soc": 4},
-        {"g": 2, "soc": 1},
-        {"g": 2, "soc": 2},
-        {"g": 2, "soc": 3},
-        {"g": 2, "soc": 4},
-    ])
+    df4 = pd.DataFrame(
+        [
+            {"g": 1, "soc": 1},
+            {"g": 1, "soc": 2},
+            {"g": 1, "soc": 3},
+            {"g": 1, "soc": 4},
+            {"g": 2, "soc": 1},
+            {"g": 2, "soc": 2},
+            {"g": 2, "soc": 3},
+            {"g": 2, "soc": 4},
+        ]
+    )
 
 
 def simple_merge_method():
@@ -191,10 +201,11 @@ def simple_merge_method():
 
     # Fine
     data = [simple_all_combinations(), simple_all_combinations_perm()]
-    print("---"*20)
+    print("---" * 20)
     for io in data:
         df = combine_fn(io)
         pd.testing.assert_frame_equal(io.expected_output, df)
+
 
 def main():
     simple_merge_method()

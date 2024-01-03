@@ -8,20 +8,25 @@ dynamic = ["version"]
 description = "Package Description"
 readme = "README.md"
 license = {"file"= "LICENSE"}
-requires-python = ">=3.9"
+requires-python = ">=3.10, <3.12"
 authors = [
     { name = "Transport for the North" },
 ]
 classifiers = [
     "Programming Language :: Python3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
     "numpy>=1.19.0",
-    "pandas>=1.4.0, <2.0.0" ,
+    "pandas<2.0.0" ,
+    "caf.toolkit>=0.4.0",
+    "h5py>=3.9.0",
+    "pydantic>=1.10.12",
+    "scipy>=1.11.3",
+    "strictyaml>=1.7.3",
+    "tables>=3.9.1",
 ]
 
 [project.optional-dependencies]
@@ -60,7 +65,7 @@ where = ["src"]
 # Linters
 [tool.black]
 line-length = 95
-target-version = ['py39']
+target-version = ['py310']
 
 [tool.pylint.messages_control]
 disable = [
@@ -104,6 +109,7 @@ add-ignore = [
 [tool.pytest.ini_options]
 addopts = "--cov=caf.core --cov-report=xml --doctest-modules -n auto"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
+pythonpath = "src"
 
 [tool.coverage.run]
 omit = ["*/_version.py"]
