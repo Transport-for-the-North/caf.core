@@ -259,8 +259,8 @@ class TestZoning:
 
         out_data = pd.read_csv(new_dir / "zoning.csv")
         for i in (0, 1):
-            out_data = out_data.sort_index(i)
-            zoning_data.data = zoning_data.data.sort_index(i)
+            out_data = out_data.sort_index()
+            zoning_data.data = zoning_data.data.sort_index()
 
         assert_frame_equal(out_data, zoning_data.data)
 

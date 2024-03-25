@@ -7,6 +7,7 @@ from typing import Optional
 import pandas as pd
 import pydantic
 from caf.toolkit import BaseConfig
+from pydantic import ConfigDict
 
 
 # # # CONSTANTS # # #
@@ -56,12 +57,7 @@ class Segment(BaseConfig):
     name: str
     values: dict[int, str]
     exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
-
-    # pylint: disable=too-few-public-methods
-    class Config:
-        """Allow arbitrary types."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # pylint: disable=too-few-public-methods
 

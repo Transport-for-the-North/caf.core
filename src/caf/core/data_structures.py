@@ -584,8 +584,8 @@ class DVector:
         # the addition of the two segmentations (see __add__ method in segmentation)
         new_seg = self.segmentation + other.segmentation
         warnings.warn(
-            f"This operation has changed the segmentation of the DVector"
-            f"from {self.segmentation} to {new_seg}. This can happen"
+            f"This operation has changed the segmentation of the DVector "
+            f"from {self.segmentation.names} to {new_seg.names}. This can happen"
             "but it can also be a sign of an error. Check the output DVector.",
             SegmentationWarning,
         )

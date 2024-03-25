@@ -186,14 +186,14 @@ class ZoningSystem:
                 if column.min() < 0 or column.max() > 1:
                     non_bool_columns.append(name)
                 else:
-                    zones.loc[:, name] = column.astype(bool)
+                    zones[name] = column.astype(bool)
                     subset_column.append(name)
                 continue
 
             # Check if column contains strings "TRUE" and "FALSE"
             column = column.astype(str).str.strip().str.upper()
             if np.isin(column.unique(), ("TRUE", "FALSE")).all():
-                zones.loc[:, name] = column.replace({"TRUE": True, "FALSE": False})
+                zones[name] = column.replace({"TRUE": True, "FALSE": False})
                 subset_column.append(name)
                 continue
 
@@ -340,8 +340,8 @@ class ZoningSystem:
             return False
         # this sort_index is incompatible with pandas 2.0. At the moment
         # we need <2.0 as it is required by toolkit, but should be noted.
-        sorted_self = self._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
-        sorted_other = other._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
+        sorted_self = self._zones.sort_index(axis=0, inplace=False).sort_index(axis=1, inplace=False)
+        sorted_other = other._zones.sort_index(axis=0, inplace=False).sort_index(axis=1, inplace=False)
         if not sorted_self.equals(sorted_other):
             return False
 
