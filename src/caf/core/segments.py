@@ -168,7 +168,7 @@ class SegmentsSuper(enum.Enum):
                         Exclusion(
                             seg_name=SegmentsSuper.SOC.value,
                             own_val=1,
-                            other_vals=set([1, 2, 3]),
+                            other_vals={1, 2, 3},
                         )
                     ],
                 )
