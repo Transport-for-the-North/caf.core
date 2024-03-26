@@ -340,8 +340,12 @@ class ZoningSystem:
             return False
         # this sort_index is incompatible with pandas 2.0. At the moment
         # we need <2.0 as it is required by toolkit, but should be noted.
-        sorted_self = self._zones.sort_index(axis=0, inplace=False).sort_index(axis=1, inplace=False)
-        sorted_other = other._zones.sort_index(axis=0, inplace=False).sort_index(axis=1, inplace=False)
+        sorted_self = self._zones.sort_index(axis=0, inplace=False).sort_index(
+            axis=1, inplace=False
+        )
+        sorted_other = other._zones.sort_index(axis=0, inplace=False).sort_index(
+            axis=1, inplace=False
+        )
         if not sorted_self.equals(sorted_other):
             return False
 
