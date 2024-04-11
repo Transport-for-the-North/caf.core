@@ -191,10 +191,7 @@ class SegmentsSuper(enum.Enum):
                     values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
                 )
             case SegmentsSuper.TFN_TT:
-                seg = Segment(
-                    name=self.value,
-                    values={i: 'no desc' for i in range(1, 761)}
-                )
+                seg = Segment(name=self.value, values={i: "no desc" for i in range(1, 761)})
 
         if subset:
             if seg is not None:

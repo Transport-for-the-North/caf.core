@@ -398,9 +398,11 @@ class DVector:
                     " names should be the zone IDs (integers) for the given zone system."
                 )
             if len(missing) > 0:
-                warnings.warn(f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
-                              f" aren't found in the DVector data. This may be by design"
-                              f" e.g. you are using a subset of a zoning system.")
+                warnings.warn(
+                    f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
+                    f" aren't found in the DVector data. This may be by design"
+                    f" e.g. you are using a subset of a zoning system."
+                )
 
         return import_data
 
@@ -640,9 +642,11 @@ class DVector:
         naming order will be preserved.
         """
         if not isinstance(segs, list):
-            raise TypeError("Aggregate expects a list of strings. Even if you "
-                             "are aggregating to a single level, this should be a "
-                             "list of length 1.")
+            raise TypeError(
+                "Aggregate expects a list of strings. Even if you "
+                "are aggregating to a single level, this should be a "
+                "list of length 1."
+            )
         segmentation = self.segmentation.aggregate(segs)
         data = self.data.groupby(level=segs).sum()
         return DVector(
