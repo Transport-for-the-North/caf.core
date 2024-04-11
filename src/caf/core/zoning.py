@@ -41,6 +41,8 @@ class TranslationWeighting(enum.Enum):
     EMPLOYMENT = "employment"
     NO_WEIGHT = "no_weight"
     AVERAGE = "average"
+    POP = 'pop'
+    EMP = 'emp'
 
     def get_suffix(self) -> str:
         """Get filename suffix for weighting."""
@@ -50,6 +52,8 @@ class TranslationWeighting(enum.Enum):
             self.EMPLOYMENT: "employment_weight",
             self.NO_WEIGHT: "no_weighting",
             self.AVERAGE: "weighted_average",
+            self.POP: "pop",
+            self.EMP: "emp"
         }
 
         return lookup[self]  # type: ignore
