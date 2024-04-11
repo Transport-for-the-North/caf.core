@@ -94,6 +94,7 @@ class SegmentsSuper(enum.Enum):
     SIC = "sic"
     CA = "ca"
     TFN_AT = "tfn_at"
+    TFN_TT = "tfn_tt"
     USERCLASS = "uc"
     NS = "ns"
 
@@ -188,6 +189,11 @@ class SegmentsSuper(enum.Enum):
                 seg = Segment(
                     name=self.value,
                     values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
+                )
+            case SegmentsSuper.TFN_TT:
+                seg = Segment(
+                    name=self.value,
+                    values={i: 'no desc' for i in range(1, 761)}
                 )
 
         if subset:
