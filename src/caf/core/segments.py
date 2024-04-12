@@ -10,7 +10,6 @@ from pydantic import ConfigDict
 from caf.toolkit import BaseConfig
 
 
-
 # # # CLASSES # # #
 @dataclass
 class Exclusion:
