@@ -294,26 +294,10 @@ class DVector:
         """_zoning_system getter."""
         return self._zoning_system
 
-    @zoning_system.setter
-    def zoning_system(self, value):
-        """_zoning_system setter."""
-        if not isinstance(value, ZoningSystem):
-            raise TypeError("zoning_system must be a ZoningSystem. Input value "
-                            f"is {value.type}.")
-        self._zoning_system = value
-
     @property
     def segmentation(self):
         """_segmentation getter."""
         return self._segmentation
-
-    @segmentation.setter
-    def segmentation(self, value):
-        """_segmentation setter."""
-        if not isinstance(value, Segmentation):
-            raise TypeError("segmentation must be a Segmentation. Input value is "
-                            f"{value.type}.")
-        self._segmentation = value
 
     @property
     def data(self):
@@ -323,9 +307,10 @@ class DVector:
     @data.setter
     def data(self, value):
         """_data setter"""
-        if not isinstance(value, [pd.DataFrame, pd.Series]):
-            raise TypeError("data must be a pandas DataFrame or Series. Input "
-                            f"value is {value.type}.")
+        if not isinstance(value, (pd.DataFrame, pd.Series)):
+            raise TypeError(
+                "data must be a pandas DataFrame or Series. Input " f"value is {value.type}."
+            )
         self._data = self._dataframe_to_dvec(value)
 
     @property
