@@ -306,11 +306,13 @@ class DVector:
 
     @data.setter
     def data(self, value):
-        """_data setter"""
+        """_data setter."""
         if not isinstance(value, (pd.DataFrame, pd.Series)):
             raise TypeError(
                 "data must be a pandas DataFrame or Series. Input " f"value is {value.type}."
             )
+        if isinstance(value, pd.Series):
+            value = value.to_frame()
         self._data = self._dataframe_to_dvec(value)
 
     @property
