@@ -291,22 +291,22 @@ class DVector:
 
     @property
     def zoning_system(self):
-        """_zoning_system getter."""
+        """Get _zoning_system."""
         return self._zoning_system
 
     @property
     def segmentation(self):
-        """_segmentation getter."""
+        """Get _segmentation."""
         return self._segmentation
 
     @property
     def data(self):
-        """_data getter."""
+        """Get _data."""
         return self._data
 
     @data.setter
     def data(self, value):
-        """_data setter."""
+        """Set _data."""
         if not isinstance(value, (pd.DataFrame, pd.Series)):
             raise TypeError(
                 "data must be a pandas DataFrame or Series. Input " f"value is {value.type}."
@@ -317,7 +317,7 @@ class DVector:
 
     @property
     def time_format(self):
-        """_time_format getter."""
+        """Get _time_format."""
         if self._time_format is None:
             return None
         return self._time_format.name
