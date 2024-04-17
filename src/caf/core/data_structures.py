@@ -385,14 +385,19 @@ class DVector:
             import_data.columns = [self.val_col]
             return import_data
 
-        # Check columns are labelled with zone IDs
-        try:
-            import_data.columns = import_data.columns.astype(int)
-        except ValueError as exc:
-            raise TypeError(
-                "DataFrame columns should be integers corresponding "
-                f"to zone IDs not {import_data.columns.dtype}"
-            ) from exc
+        # TODO: consider replacing with alternative checks that allow string IDs
+        ### This chunk of code requires the zone names to be integers
+        ### This has been commented out to allow LSOA (or other) zone codes to be used
+        ### directly instead to avoid the added step of providing zone lookups with
+        ### integer zone numbers for all zone systems
+        # # Check columns are labelled with zone IDs
+        # try:
+        #     import_data.columns = import_data.columns.astype(int)
+        # except ValueError as exc:
+        #     raise TypeError(
+        #         "DataFrame columns should be integers corresponding "
+        #         f"to zone IDs not {import_data.columns.dtype}"
+        #     ) from exc
 
         if set(import_data.columns) != set(self.zoning_system.zone_ids):
             missing = self.zoning_system.zone_ids[
