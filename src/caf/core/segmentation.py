@@ -286,7 +286,11 @@ class Segmentation:
 
         built_segmentation = cls(conf)
         # Check for equality again after subset checks
-        if read_index.equal_levels(built_segmentation.ind):
+        if isinstance(read_index, pd.MultiIndex):
+            check_method = read_index.equal_levels
+        else:
+            check_method = read_index.equals
+        if check_method(built_segmentation.ind):
             return built_segmentation
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.

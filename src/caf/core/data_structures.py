@@ -598,7 +598,11 @@ class DVector:
                 "to match the other."
             )
         # Index unchanged, aside from possible order. Segmentation remained the same
-        if prod.index.equal_levels(self._data.index):
+        if isinstance(prod.index, pd.MultiIndex):
+            comparison_method = prod.index.equal_levels
+        else:
+            comparison_method = prod.index.equals
+        if comparison_method(self._data.index):
             return DVector(
                 segmentation=self.segmentation, import_data=prod, zoning_system=zoning
             )
