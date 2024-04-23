@@ -466,6 +466,8 @@ class DVector:
         new_zoning: ZoningSystem,
         cache_path: Optional[PathLike],
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
+        check_totals: bool = True,
+        one_to_one: bool = False,
     ) -> DVector:
         """
         Translate this DVector into another zoning system and returns a new DVector.
@@ -481,6 +483,16 @@ class DVector:
         weighting : str | TranslationWeighting = TranslationWeighting.SPATIAL
             The weighting to use when building the translation. Must be
             one of TranslationWeighting.
+
+        check_totals: bool = True
+            Whether to raise a warning if the translated total doesn't match the
+            input total. Should be set to False for one-to-one translations.
+
+        one-to-one: bool = False
+            Whether to run as a one-to-one translation, e.g. all data will be
+            multiplied by one, and zone numbers will change. This should only be
+            used for perfectly nesting zone systems when disaggregating, e.g.
+            msoa to lsoa.
 
         Returns
         -------
@@ -514,6 +526,11 @@ class DVector:
         translation = self.zoning_system.translate(
             new_zoning, weighting=weighting, cache_path=cache_path
         )
+        factor_col = self.zoning_system.translation_column_name(new_zoning)
+        # factors equal one to propagate perfectly
+        # This only works for perfect nesting
+        if one_to_one:
+            translation[factor_col] = 1
 
         transposed = self.data.transpose()
         transposed.index.names = [self.zoning_system.column_name]
@@ -522,7 +539,8 @@ class DVector:
             translation,
             translation_from_col=self.zoning_system.column_name,
             translation_to_col=new_zoning.column_name,
-            translation_factors_col=self.zoning_system.translation_column_name(new_zoning),
+            translation_factors_col=factor_col,
+            check_totals=check_totals,
         )
 
         return DVector(
