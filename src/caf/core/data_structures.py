@@ -462,7 +462,7 @@ class DVector:
         cache_path: Optional[PathLike],
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
         check_totals: bool = True,
-        one_to_one: bool = False
+        one_to_one: bool = False,
     ) -> DVector:
         """
         Translate this DVector into another zoning system and returns a new DVector.
@@ -535,7 +535,7 @@ class DVector:
             translation_from_col=self.zoning_system.column_name,
             translation_to_col=new_zoning.column_name,
             translation_factors_col=factor_col,
-            check_totals=check_totals
+            check_totals=check_totals,
         )
 
         return DVector(
