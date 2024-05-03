@@ -290,7 +290,7 @@ class Segmentation:
             check_method = read_index.equal_levels
         else:
             check_method = read_index.equals
-        if check_method(built_segmentation.ind):
+        if check_method(built_segmentation.ind()):
             return built_segmentation
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.
