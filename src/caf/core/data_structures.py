@@ -6,6 +6,8 @@ Currently this is only the DVector class, but this may be expanded in the future
 """
 from __future__ import annotations
 
+import psutil
+import tempfile
 import enum
 import logging
 import operator
@@ -582,6 +584,43 @@ class DVector:
             warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
+
+        # Check for low memory
+        low_memory = False
+        vmem = psutil.virtual_memory()
+        self_size = self.data.memory_usage().sum()
+        other_size = other.data.memory_usage().sum()
+        # Alternatively could just try the normal method and use the low memory is an exception is raised
+        if max(self_size, other_size) * 2 > vmem.available:
+            warnings.warn(f"Low memory detected. {vmem.available / 2 ** 30}gb of {vmem.total / 2 ** 30}gb available."
+                          f"DVectors take up {self_size / 2 ** 30}gb and {other_size / 2 ** 30}gb respectively. Falling back to low "
+                          f"memory methods.")
+            low_memory = True
+            common_segs = self.segmentation.overlap(other.segmentation)
+            max_len = 0
+            storage_seg = None
+            for seg in common_segs:
+                seg_len = len(self.segmentation.seg_dict[seg])
+                # Indexing the temp storage by the longest segment
+                if seg_len > max_len:
+                    max_len = seg_len
+                    storage_seg = seg
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_self = Path(temp_dir) / 'temp_self.h5'
+                temp_other = Path(temp_dir) / 'temp_other.h5'
+                for ind in self.segmentation.seg_dict[storage_seg]:
+                    self.data.xs(ind, level=storage_seg).to_hdf(temp_self, mode='a', key=ind)
+                    other.data.xs(ind, level=storage_seg).to_hdf(temp_other, mode='a', key=ind)
+                del self.data
+                del other.data
+                out_data = {}
+                for ind in self.segmentation.seg_dict[storage_seg]:
+                    self_section = pd.read_hdf(temp_self, key=ind)
+                    other_section = pd.read_hdf(temp_other, key=ind)
+                    out_data[ind] = df_method(self_section, other_section)
+                prod = pd.concat(out_data)
+
+
         # for the same zoning a simple * gives the desired result
         # This drops any nan values (intersecting index level but missing val)
         if self.zoning_system == other.zoning_system:

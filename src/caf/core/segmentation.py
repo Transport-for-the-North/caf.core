@@ -161,6 +161,7 @@ class Segmentation:
         """Return all segmentation values."""
         return [seg.values.keys() for seg in self.segments]
 
+
     def ind(self):
         """
         Return a pandas MultiIndex of the segmentation.
@@ -412,7 +413,7 @@ class Segmentation:
 
     def overlap(self, other):
         """Check the overlap in segments between two segmentations."""
-        return [seg for seg in self.names if seg in other.names]
+        return set(self.names).intersection(set(other.names))
 
     def __ne__(self, other) -> bool:
         """Override the default implementation."""
