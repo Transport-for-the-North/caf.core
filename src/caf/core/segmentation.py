@@ -161,7 +161,6 @@ class Segmentation:
         """Return all segmentation values."""
         return [seg.values.keys() for seg in self.segments]
 
-
     def ind(self):
         """
         Return a pandas MultiIndex of the segmentation.

@@ -587,15 +587,16 @@ class DVector:
         self.overlap(other)
 
         # Check for low memory
-        low_memory = False
         vmem = psutil.virtual_memory()
         self_size = self.data.memory_usage().sum()
         other_size = other.data.memory_usage().sum()
         # Alternatively could just try the normal method and use the low memory is an exception is raised
         if max(self_size, other_size) * 2 > vmem.available:
-            warnings.warn(f"Low memory detected. {vmem.available / 2 ** 30}gb of {vmem.total / 2 ** 30}gb available."
-                          f"DVectors take up {self_size / 2 ** 30}gb and {other_size / 2 ** 30}gb respectively. Falling back to low "
-                          f"memory methods.")
+            warnings.warn(
+                f"Low memory detected. {vmem.available / 2 ** 30}gb of {vmem.total / 2 ** 30}gb available."
+                f"DVectors take up {self_size / 2 ** 30}gb and {other_size / 2 ** 30}gb respectively. Falling back to low "
+                f"memory methods."
+            )
             if self.zoning_system != other.zoning_system:
                 raise ValueError("Zonings don't match.")
             zoning = self.zoning_system
@@ -609,13 +610,15 @@ class DVector:
                     max_len = seg_len
                     storage_seg = seg
             with tempfile.TemporaryDirectory() as temp_dir:
-                temp_self = Path(temp_dir) / 'temp_self.hdf'
-                temp_other = Path(temp_dir) / 'temp_other.hdf'
+                temp_self = Path(temp_dir) / "temp_self.hdf"
+                temp_other = Path(temp_dir) / "temp_other.hdf"
                 for ind in self.segmentation.seg_dict[storage_seg].values.keys():
-                    self.data.xs(ind, level=storage_seg).to_hdf(temp_self, mode='a', key=f"node_{ind}")
-                    other.data.xs(ind, level=storage_seg).to_hdf(temp_other, mode='a', key=f"node_{ind}")
-                # del self
-                # del other
+                    self.data.xs(ind, level=storage_seg).to_hdf(
+                        temp_self, mode="a", key=f"node_{ind}"
+                    )
+                    other.data.xs(ind, level=storage_seg).to_hdf(
+                        temp_other, mode="a", key=f"node_{ind}"
+                    )
                 out_data = {}
                 for ind in self.segmentation.seg_dict[storage_seg].values.keys():
                     self_section = pd.read_hdf(temp_self, key=f"node_{ind}")

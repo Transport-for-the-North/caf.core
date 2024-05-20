@@ -76,7 +76,6 @@ class Segment(BaseConfig):
         drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
         return drop_ind
 
-
     def __len__(self):
         return len(self.values)
 
