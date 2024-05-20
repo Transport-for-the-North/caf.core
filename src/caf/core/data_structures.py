@@ -233,6 +233,7 @@ class DVector:
         self,
         segmentation: Segmentation,
         import_data: pd.DataFrame,
+        in_memory: bool = True,
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = "val",
@@ -595,7 +596,9 @@ class DVector:
             warnings.warn(f"Low memory detected. {vmem.available / 2 ** 30}gb of {vmem.total / 2 ** 30}gb available."
                           f"DVectors take up {self_size / 2 ** 30}gb and {other_size / 2 ** 30}gb respectively. Falling back to low "
                           f"memory methods.")
-            low_memory = True
+            if self.zoning_system != other.zoning_system:
+                raise ValueError("Zonings don't match.")
+            zoning = self.zoning_system
             common_segs = self.segmentation.overlap(other.segmentation)
             max_len = 0
             storage_seg = None
@@ -606,54 +609,54 @@ class DVector:
                     max_len = seg_len
                     storage_seg = seg
             with tempfile.TemporaryDirectory() as temp_dir:
-                temp_self = Path(temp_dir) / 'temp_self.h5'
-                temp_other = Path(temp_dir) / 'temp_other.h5'
-                for ind in self.segmentation.seg_dict[storage_seg]:
-                    self.data.xs(ind, level=storage_seg).to_hdf(temp_self, mode='a', key=ind)
-                    other.data.xs(ind, level=storage_seg).to_hdf(temp_other, mode='a', key=ind)
-                del self.data
-                del other.data
+                temp_self = Path(temp_dir) / 'temp_self.hdf'
+                temp_other = Path(temp_dir) / 'temp_other.hdf'
+                for ind in self.segmentation.seg_dict[storage_seg].values.keys():
+                    self.data.xs(ind, level=storage_seg).to_hdf(temp_self, mode='a', key=f"node_{ind}")
+                    other.data.xs(ind, level=storage_seg).to_hdf(temp_other, mode='a', key=f"node_{ind}")
+                # del self
+                # del other
                 out_data = {}
-                for ind in self.segmentation.seg_dict[storage_seg]:
-                    self_section = pd.read_hdf(temp_self, key=ind)
-                    other_section = pd.read_hdf(temp_other, key=ind)
+                for ind in self.segmentation.seg_dict[storage_seg].values.keys():
+                    self_section = pd.read_hdf(temp_self, key=f"node_{ind}")
+                    other_section = pd.read_hdf(temp_other, key=f"node_{ind}")
                     out_data[ind] = df_method(self_section, other_section)
-                prod = pd.concat(out_data)
+                prod = pd.concat(out_data, names=[seg] + out_data[ind].index.names)
 
-
-        # for the same zoning a simple * gives the desired result
-        # This drops any nan values (intersecting index level but missing val)
-        if self.zoning_system == other.zoning_system:
-            if isinstance(self.data, pd.Series):
-                prod = series_method(self.data, other.data)
-            else:
-                prod = df_method(self.data, other.data)
-            # Either None if both are None, or the right zone system
-            zoning = self.zoning_system
-
-        # For a dataframe by a series the mul is broadcast across
-        # for this to work axis needs to be set to 'index'
-        elif self.zoning_system is None:
-            # Allowed but warned
-            logging.warning(
-                "For this method to work between a DVector with "
-                "a zoning system and a DVector without one, the "
-                "DVector with a zoning system must come first. "
-                "This is being changed internally but if this was "
-                "not expected, check your inputs"
-            )
-            prod = df_method(other.data, self.data.squeeze(), axis="index")
-            zoning = other.zoning_system
-        elif other.zoning_system is None:
-            prod = df_method(self.data, other.data.squeeze(), axis="index")
-            zoning = self.zoning_system
-        # Different zonings raise an error rather than trying to translate
         else:
-            raise NotImplementedError(
-                "The two DVectors have different zonings. "
-                "To multiply them, one must be translated "
-                "to match the other."
-            )
+            # for the same zoning a simple * gives the desired result
+            # This drops any nan values (intersecting index level but missing val)
+            if self.zoning_system == other.zoning_system:
+                if isinstance(self.data, pd.Series):
+                    prod = series_method(self.data, other.data)
+                else:
+                    prod = df_method(self.data, other.data)
+                # Either None if both are None, or the right zone system
+                zoning = self.zoning_system
+
+            # For a dataframe by a series the mul is broadcast across
+            # for this to work axis needs to be set to 'index'
+            elif self.zoning_system is None:
+                # Allowed but warned
+                logging.warning(
+                    "For this method to work between a DVector with "
+                    "a zoning system and a DVector without one, the "
+                    "DVector with a zoning system must come first. "
+                    "This is being changed internally but if this was "
+                    "not expected, check your inputs"
+                )
+                prod = df_method(other.data, self.data.squeeze(), axis="index")
+                zoning = other.zoning_system
+            elif other.zoning_system is None:
+                prod = df_method(self.data, other.data.squeeze(), axis="index")
+                zoning = self.zoning_system
+            # Different zonings raise an error rather than trying to translate
+            else:
+                raise NotImplementedError(
+                    "The two DVectors have different zonings. "
+                    "To multiply them, one must be translated "
+                    "to match the other."
+                )
         # Index unchanged, aside from possible order. Segmentation remained the same
         if isinstance(prod.index, pd.MultiIndex):
             comparison_method = prod.index.equal_levels

@@ -78,7 +78,7 @@ class Segment(BaseConfig):
 
 
     def __len__(self):
-        return len(values)
+        return len(self.values)
 
     # pylint: enable=not-an-iterable
 
