@@ -325,6 +325,10 @@ class DVector:
             return None
         return self._time_format.name
 
+    @property
+    def total(self):
+        return self.data.values.sum()
+
     @staticmethod
     def _valid_time_formats() -> list[str]:
         """Return a list of valid strings to pass for time_format."""
@@ -609,6 +613,7 @@ class DVector:
                 if seg_len > max_len:
                     max_len = seg_len
                     storage_seg = seg
+            # Temp dir to save inputs in
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_self = Path(temp_dir) / "temp_self.hdf"
                 temp_other = Path(temp_dir) / "temp_other.hdf"
@@ -619,6 +624,7 @@ class DVector:
                     other.data.xs(ind, level=storage_seg).to_hdf(
                         temp_other, mode="a", key=f"node_{ind}"
                     )
+                # TODO potentially delete one or both of the input DVectors
                 out_data = {}
                 for ind in self.segmentation.seg_dict[storage_seg].values.keys():
                     self_section = pd.read_hdf(temp_self, key=f"node_{ind}")
