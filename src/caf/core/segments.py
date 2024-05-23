@@ -100,8 +100,19 @@ class SegmentsSuper(enum.Enum):
     TFN_AT = "tfn_at"
     USERCLASS = "uc"
     NS = "ns"
+    ACCOMODATION_TYPE_H = "accom_h"
+    ACCOMODATION_TYPE_HR = "accom_hr"
+    ADULTS = "adults"
+    CHILDREN = "children"
+    CAR_AVAILABILITY = "car_availability"
+    AGE = "age_9"
     AGE_11 = "age_11"
+    AGE_AGG = "age_5"
+    GENDER_DEMO = "gender_demo"
     ECONOMIC_STATUS = "economic_status"
+    POP_EMP = "pop_emp"
+    POP_ECON = "pop_econ"
+    NS_SEC = "ns_sec"
 
     @classmethod
     def values(cls):
@@ -263,6 +274,21 @@ class SegmentsSuper(enum.Enum):
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=3,
                             other_vals=set([1, 2, 3, 4, 5, 6]),
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals=set([1, 2, 3]),
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=2,
+                            other_vals=set([1, 2, 3]),
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=3,
+                            other_vals=set([1, 2, 3]),
                         )
                     ],
                 )
