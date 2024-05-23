@@ -253,11 +253,13 @@ class Segmentation:
         # Perfect match, return segmentation with no more checks
         if read_index.equals(built_index):
             return
-        if len(read_index) != len(built_index):
+        if len(read_index) > len(built_index):
             raise IndexError(
                 "The segmentation of the read in dvector data "
                 "does not match the expected segmentation. This "
                 "is likely due to unconsidered exclusions."
+                f"{read_index.difference(built_index)} in read in index but not "
+                f"in expected index."
             )
         for name in built_index.names:
             built_level = set(built_index.get_level_values(name))

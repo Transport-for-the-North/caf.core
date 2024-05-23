@@ -689,7 +689,7 @@ class DVector:
         if not prod.index.equals(new_seg.ind()):
             warnings.warn(
                 "This operation has dropped some rows due to exclusions "
-                f"in the resulting segmentation. {len(prod.index) - len(new_seg.ind())} "
+                f"in the resulting segmentation. {prod.index.difference(new_seg.ind())} "
                 f"rows have been dropped from the pure product."
             )
             prod = prod.loc[new_seg.ind()]
