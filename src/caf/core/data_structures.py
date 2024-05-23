@@ -693,9 +693,7 @@ class DVector:
                 f"rows have been dropped from the pure product."
             )
             prod = prod.loc[new_seg.ind()]
-        return DVector(
-            segmentation=new_seg, import_data=prod, zoning_system=zoning
-        )
+        return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
 
     def __mul__(self, other):
         """Multiply dunder method for DVector."""

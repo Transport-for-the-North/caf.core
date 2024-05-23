@@ -367,7 +367,9 @@ class ZoningSystem:
         """Get the length of the zoning system."""
         return self.n_zones
 
-    def _generate_spatial_translation(self, other: ZoningSystem) -> pd.DataFrame:
+    def _generate_spatial_translation(
+        self, other: ZoningSystem, cache_path: Path = ZONE_CACHE_HOME
+    ) -> pd.DataFrame:
         """Generate spatial translation using `caf.space`, if available."""
         try:
             # pylint: disable=import-outside-toplevel
@@ -385,12 +387,13 @@ class ZoningSystem:
             shapefile=self.metadata.shapefile_path,
             id_col=self.metadata.shapefile_id_col,
         )
+
         zone_2 = cs.TransZoneSystemInfo(
             name=other.name,
             shapefile=other.metadata.shapefile_path,
             id_col=other.metadata.shapefile_id_col,
         )
-        conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2)
+        conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2, cache_path=cache_path)
 
         return cs.ZoneTranslation(conf).spatial_translation()
 
