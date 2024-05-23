@@ -9,7 +9,7 @@ from __future__ import annotations
 
 # Built-Ins
 import warnings
-from typing import Union, Literal
+from typing import Union, Literal, Optional
 from os import PathLike
 from pathlib import Path
 
@@ -465,6 +465,36 @@ class Segmentation:
             custom_segments=custom,
             naming_order=new_order,
         )
+        return Segmentation(conf)
+
+    def add_segment(
+        self,
+        new_seg: Segment | SegmentsSuper,
+        subset: Optional[dict[str, list[int]]] = None,
+        new_naming_order: Optional[list[str]] = None,
+    ):
+        """
+        Add a new segment to a segmentation.
+        """
+        if isinstance(new_seg, SegmentsSuper):
+            new_name = new_seg
+            custom = False
+        elif isinstance(new_seg, Segment):
+            new_name = new_seg.name
+            custom = True
+        else:
+            raise ValueError("new_seg is not a segment.")
+        if new_name in self.names:
+            raise ValueError(f"{new_name} already contained in segmentation.")
+        conf = self.input
+        if custom:
+            conf.custom_segments.append(new_seg)
+        else:
+            conf.enum_segments.append(new_seg)
+        if new_naming_order is not None:
+            conf.naming_order = new_naming_order
+        if subset is not None:
+            conf.subsets.update(subset)
         return Segmentation(conf)
 
 
