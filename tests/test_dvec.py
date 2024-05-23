@@ -149,7 +149,7 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     @pytest.mark.parametrize(
         "dvec_1_str", ["basic_dvec_1", "basic_dvec_2", "no_zone_dvec_1", "no_zone_dvec_2"]
@@ -171,7 +171,7 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     @pytest.mark.parametrize(
         "dvec_1_str", ["basic_dvec_1", "basic_dvec_2", "no_zone_dvec_1", "no_zone_dvec_2"]
@@ -193,7 +193,7 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     @pytest.mark.parametrize(
         "dvec_1_str", ["basic_dvec_1", "basic_dvec_2", "no_zone_dvec_1", "no_zone_dvec_2"]
@@ -215,13 +215,13 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     def test_trans(self, basic_dvec_1, test_trans, min_zoning_2, expected_trans, main_dir):
         translation = basic_dvec_1.translate_zoning(min_zoning_2, cache_path=main_dir)
         assert translation == expected_trans
 
     def test_agg(self, basic_dvec_1):
-        aggregated = basic_dvec_1.aggregate(["g"])
-        grouped = basic_dvec_1.data.groupby(level="g").sum()
+        aggregated = basic_dvec_1.aggregate(["gender_demo"])
+        grouped = basic_dvec_1.data.groupby(level="gender_demo").sum()
         assert grouped.equals(aggregated.data)

@@ -59,27 +59,28 @@ class SegmentationInput(BaseConfig):
     """
 
     enum_segments: list[SegmentsSuper]
+    naming_order: list[str]
     custom_segments: list[Segment] = pydantic.Field(default_factory=list)
     subsets: dict[str, list[int]] = pydantic.Field(default_factory=dict)
-    naming_order: list[str]
 
-    @pydantic.field_validator("subsets", check_fields=True)
-    @classmethod
-    def enums(cls, v, values):
-        """Validate the subsets match segments."""
-        # validator is a class method pylint: disable=no-self-argument
-        for seg in v.keys():
-            if SegmentsSuper(seg) not in values.data["enum_segments"]:
-                raise ValueError(
-                    f"{v} is not a valid segment  " ", and so can't be a subset value."
-                )
-        return v
+    # @pydantic.field_validator("enum_segments")
+    # @classmethod
+    # def make_enum(cls, v):
+    #     out = []
+    #     for val in v:
+    #         if isinstance(val, SegmentsSuper):
+    #             out.append(val)
+    #         else:
+    #             out.append(SegmentsSuper(val))
+    #     return out
 
-    # pylint: disable=no-self-argument
-    @pydantic.field_validator("custom_segments")
+    @pydantic.model_validator(mode="before")
     @classmethod
-    def no_copied_names(cls, v):
+    def no_copied_names(cls, values):
         """Validate the custom_segments do not clash with existing segments."""
+        if "custom_segments" not in values:
+            return values
+        v = values["custom_segments"]
         for seg in v:
             if seg.name in SegmentsSuper.values():
                 raise ValueError(
@@ -91,22 +92,34 @@ class SegmentationInput(BaseConfig):
                     "more than one clash. 'caf.core.SegmentsSuper.values' "
                     "will list all existing segment names."
                 )
-        return v
+        return values
 
-    @pydantic.field_validator("naming_order")
+    @pydantic.model_validator(mode="after")
     @classmethod
-    def names_match_segments(cls, v, values):
+    def names_match_segments(cls, values):
         """Validate that naming order names match segment names."""
-        seg_names = [i.value for i in values.data["enum_segments"]]
-        if "custom_segments" in values.data.keys():
-            seg_names += [i.name for i in values.data["custom_segments"]]
+        v = values.naming_order
+        seg_names = [i.value for i in values.enum_segments]
+        if len(values.custom_segments) > 0:
+            seg_names += [i.name for i in values.custom_segments]
 
         if set(seg_names) != set(v):
             raise ValueError("Names provided for naming_order do not match names in segments")
 
-        return v
+        return values
 
-    # pylint: enable=no-self-argument
+    @pydantic.model_validator(mode="after")
+    @classmethod
+    def enums(cls, values):
+        """Validate the subsets match segments."""
+        if len(values.subsets) == 0:
+            return values
+        for seg in values.subsets.keys():
+            if seg not in [i.value for i in values.enum_segments]:
+                raise ValueError(
+                    f"{seg} is not a valid segment  " ", and so can't be a subset value."
+                )
+        return values
 
 
 class Segmentation:
@@ -493,6 +506,8 @@ class Segmentation:
             conf.enum_segments.append(new_seg)
         if new_naming_order is not None:
             conf.naming_order = new_naming_order
+        else:
+            conf.naming_order.append(new_name)
         if subset is not None:
             conf.subsets.update(subset)
         return Segmentation(conf)
