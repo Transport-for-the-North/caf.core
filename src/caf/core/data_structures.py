@@ -14,7 +14,7 @@ import operator
 import warnings
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 
 import numpy as np
 import pandas as pd
@@ -24,6 +24,7 @@ import caf.toolkit as ctk
 # pylint: disable=no-name-in-module,import-error
 from caf.core.segmentation import Segmentation, SegmentationWarning
 from caf.core.zoning import ZoningSystem, TranslationWeighting
+from caf.core.segments import Segment, SegmentsSuper
 
 # pylint: enable=no-name-in-module,import-error
 
@@ -233,7 +234,6 @@ class DVector:
         self,
         segmentation: Segmentation,
         import_data: pd.DataFrame,
-        in_memory: bool = True,
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = "val",
@@ -592,8 +592,14 @@ class DVector:
 
         # Check for low memory
         vmem = psutil.virtual_memory()
-        self_size = self.data.memory_usage().sum()
-        other_size = other.data.memory_usage().sum()
+        if isinstance(self.data, pd.DataFrame):
+            self_size = self.data.memory_usage().sum()
+        else:
+            self_size = self.data.memory_usage()
+        if isinstance(other.data, pd.DataFrame):
+            other_size = other.data.memory_usage().sum()
+        else:
+            other_size = other.data.memory_usage()
         # Alternatively could just try the normal method and use the low memory is an exception is raised
         if max(self_size, other_size) * 2 > vmem.available:
             warnings.warn(
@@ -752,6 +758,27 @@ class DVector:
             zoning_system=self.zoning_system,
             time_format=self.time_format,
             val_col=self.val_col,
+        )
+
+    def add_segment(
+        self,
+        new_seg: Segment | SegmentsSuper,
+        subset: Optional[dict[str, list[int]]] = None,
+        new_naming_order: Optional[list[str]] = None,
+        split_method: Literal["split", "duplicate"] = "duplicate",
+    ):
+        new_segmentation = self.segmentation.add_segment(new_seg, subset, new_naming_order)
+
+        splitter = pd.Series(index=new_segmentation.ind(), data=1)
+        if split_method == "split":
+            # This method should split evenly, even in the case of exclusions
+            factor = splitter.groupby(level=self.segmentation.naming_order).sum()
+            splitter /= factor
+        new_data = self._data * splitter
+        return DVector(
+            segmentation=new_segmentation,
+            zoning_system=self.zoning_system,
+            import_data=new_data,
         )
 
     @staticmethod
