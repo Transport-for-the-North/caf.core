@@ -6,10 +6,10 @@ from typing import Optional
 
 import pandas as pd
 import pydantic
+from pydantic import ConfigDict
 from caf.toolkit import BaseConfig
 
 
-# # # CONSTANTS # # #
 # # # CLASSES # # #
 @dataclass
 class Exclusion:
@@ -56,15 +56,11 @@ class Segment(BaseConfig):
     name: str
     values: dict[int, str]
     exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # pylint: disable=too-few-public-methods
-    class Config:
-        """Allow arbitrary types."""
-
-        arbitrary_types_allowed = True
-
-    # pylint: disable=too-few-public-methods
-
+    # pylint: disable=not-an-iterable
+    # Pylint doesn't seem to understand pydantic.Field
     @property
     def _exclusion_segs(self):
         return [seg.seg_name for seg in self.exclusions]
@@ -79,6 +75,11 @@ class Segment(BaseConfig):
                     ind_tuples.append((excl.own_val, other))
         drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
         return drop_ind
+
+    def __len__(self):
+        return len(self.values)
+
+    # pylint: enable=not-an-iterable
 
 
 class SegmentsSuper(enum.Enum):
@@ -98,6 +99,7 @@ class SegmentsSuper(enum.Enum):
     SIC = "sic"
     CA = "ca"
     TFN_AT = "tfn_at"
+    TFN_TT = "tfn_tt"
     USERCLASS = "uc"
     ACCOMODATION_TYPE_H = "accom_h"
     ACCOMODATION_TYPE_HR = "accom_hr"

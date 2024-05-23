@@ -41,6 +41,8 @@ class TranslationWeighting(enum.Enum):
     EMPLOYMENT = "employment"
     NO_WEIGHT = "no_weight"
     AVERAGE = "average"
+    POP = "pop"
+    EMP = "emp"
 
     def get_suffix(self) -> str:
         """Get filename suffix for weighting."""
@@ -50,6 +52,8 @@ class TranslationWeighting(enum.Enum):
             self.EMPLOYMENT: "employment_weight",
             self.NO_WEIGHT: "no_weighting",
             self.AVERAGE: "weighted_average",
+            self.POP: "pop",
+            self.EMP: "emp",
         }
 
         return lookup[self]  # type: ignore
@@ -139,13 +143,17 @@ class ZoningSystem:
             raise ValueError(
                 f"mandatory ID column ({self._id_column}) missing from zones data"
             )
-
-        try:
-            zones.loc[:, self._id_column] = zones[self._id_column].astype(int)
-        except ValueError as exc:
-            raise ValueError(
-                f"zone IDs should be integers not {zones[self._id_column].dtype}"
-            ) from exc
+        # TODO: consider replacing with alternative checks that allow string IDs
+        ### This chunk of code requires the zone names to be integers
+        ### This has been commented out to allow LSOA (or other) zone codes to be used
+        ### directly instead to avoid the added step of providing zone lookups with
+        ### integer zone numbers for all zone systems
+        # try:
+        #     zones.loc[:, self._id_column] = zones[self._id_column].astype(int)
+        # except ValueError as exc:
+        #     raise ValueError(
+        #         f"zone IDs should be integers not {zones[self._id_column].dtype}"
+        #     ) from exc
 
         try:
             zones = zones.set_index(self._id_column, verify_integrity=True)
@@ -186,14 +194,14 @@ class ZoningSystem:
                 if column.min() < 0 or column.max() > 1:
                     non_bool_columns.append(name)
                 else:
-                    zones.loc[:, name] = column.astype(bool)
+                    zones[name] = column.astype(bool)
                     subset_column.append(name)
                 continue
 
             # Check if column contains strings "TRUE" and "FALSE"
             column = column.astype(str).str.strip().str.upper()
             if np.isin(column.unique(), ("TRUE", "FALSE")).all():
-                zones.loc[:, name] = column.replace({"TRUE": True, "FALSE": False})
+                zones[name] = column.replace({"TRUE": True, "FALSE": False})
                 subset_column.append(name)
                 continue
 
@@ -340,8 +348,12 @@ class ZoningSystem:
             return False
         # this sort_index is incompatible with pandas 2.0. At the moment
         # we need <2.0 as it is required by toolkit, but should be noted.
-        sorted_self = self._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
-        sorted_other = other._zones.sort_index(0, inplace=False).sort_index(1, inplace=False)
+        sorted_self = self._zones.sort_index(axis=0, inplace=False).sort_index(
+            axis=1, inplace=False
+        )
+        sorted_other = other._zones.sort_index(axis=0, inplace=False).sort_index(
+            axis=1, inplace=False
+        )
         if not sorted_self.equals(sorted_other):
             return False
 

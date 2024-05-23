@@ -6,6 +6,8 @@ Currently this is only the DVector class, but this may be expanded in the future
 """
 from __future__ import annotations
 
+import psutil
+import tempfile
 import enum
 import logging
 import operator
@@ -231,6 +233,7 @@ class DVector:
         self,
         segmentation: Segmentation,
         import_data: pd.DataFrame,
+        in_memory: bool = True,
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = "val",
@@ -291,25 +294,40 @@ class DVector:
 
     @property
     def zoning_system(self):
-        """_zoning_system getter."""
+        """Get _zoning_system."""
         return self._zoning_system
 
     @property
     def segmentation(self):
-        """_segmentation getter."""
+        """Get _segmentation."""
         return self._segmentation
 
     @property
     def data(self):
-        """_data getter."""
+        """Get _data."""
         return self._data
+
+    @data.setter
+    def data(self, value):
+        """Set _data."""
+        if not isinstance(value, (pd.DataFrame, pd.Series)):
+            raise TypeError(
+                "data must be a pandas DataFrame or Series. Input " f"value is {value.type}."
+            )
+        if isinstance(value, pd.Series):
+            value = value.to_frame()
+        self._data = self._dataframe_to_dvec(value)
 
     @property
     def time_format(self):
-        """_time_format getter."""
+        """Get _time_format."""
         if self._time_format is None:
             return None
         return self._time_format.name
+
+    @property
+    def total(self):
+        return self.data.values.sum()
 
     @staticmethod
     def _valid_time_formats() -> list[str]:
@@ -374,29 +392,40 @@ class DVector:
             import_data.columns = [self.val_col]
             return import_data
 
-        # Check columns are labelled with zone IDs
-        try:
-            import_data.columns = import_data.columns.astype(int)
-        except ValueError as exc:
-            raise TypeError(
-                "DataFrame columns should be integers corresponding "
-                f"to zone IDs not {import_data.columns.dtype}"
-            ) from exc
+        # TODO: consider replacing with alternative checks that allow string IDs
+        ### This chunk of code requires the zone names to be integers
+        ### This has been commented out to allow LSOA (or other) zone codes to be used
+        ### directly instead to avoid the added step of providing zone lookups with
+        ### integer zone numbers for all zone systems
+        # # Check columns are labelled with zone IDs
+        # try:
+        #     import_data.columns = import_data.columns.astype(int)
+        # except ValueError as exc:
+        #     raise TypeError(
+        #         "DataFrame columns should be integers corresponding "
+        #         f"to zone IDs not {import_data.columns.dtype}"
+        #     ) from exc
 
         if set(import_data.columns) != set(self.zoning_system.zone_ids):
             missing = self.zoning_system.zone_ids[
-                np.isin(self.zoning_system.zone_ids, import_data.columns)
+                ~np.isin(self.zoning_system.zone_ids, import_data.columns)
             ]
             extra = import_data.columns.values[
-                np.isin(import_data.columns.values, self.zoning_system.zone_ids)
+                ~np.isin(import_data.columns.values, self.zoning_system.zone_ids)
             ]
-
-            raise ValueError(
-                f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
-                f" aren't found in the DVector data and {len(extra)} column names are"
-                " found which don't correspond to zone IDs.\nDVector DataFrame column"
-                " names should be the zone IDs (integers) for the given zone system."
-            )
+            if len(extra) > 0:
+                raise ValueError(
+                    f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
+                    f" aren't found in the DVector data and {len(extra)} column names are"
+                    " found which don't correspond to zone IDs.\nDVector DataFrame column"
+                    " names should be the zone IDs (integers) for the given zone system."
+                )
+            if len(missing) > 0:
+                warnings.warn(
+                    f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
+                    f" aren't found in the DVector data. This may be by design"
+                    f" e.g. you are using a subset of a zoning system."
+                )
 
         return import_data
 
@@ -444,6 +473,8 @@ class DVector:
         new_zoning: ZoningSystem,
         cache_path: Optional[PathLike],
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
+        check_totals: bool = True,
+        one_to_one: bool = False,
     ) -> DVector:
         """
         Translate this DVector into another zoning system and returns a new DVector.
@@ -459,6 +490,16 @@ class DVector:
         weighting : str | TranslationWeighting = TranslationWeighting.SPATIAL
             The weighting to use when building the translation. Must be
             one of TranslationWeighting.
+
+        check_totals: bool = True
+            Whether to raise a warning if the translated total doesn't match the
+            input total. Should be set to False for one-to-one translations.
+
+        one-to-one: bool = False
+            Whether to run as a one-to-one translation, e.g. all data will be
+            multiplied by one, and zone numbers will change. This should only be
+            used for perfectly nesting zone systems when disaggregating, e.g.
+            msoa to lsoa.
 
         Returns
         -------
@@ -492,6 +533,11 @@ class DVector:
         translation = self.zoning_system.translate(
             new_zoning, weighting=weighting, cache_path=cache_path
         )
+        factor_col = self.zoning_system.translation_column_name(new_zoning)
+        # factors equal one to propagate perfectly
+        # This only works for perfect nesting
+        if one_to_one:
+            translation[factor_col] = 1
 
         transposed = self.data.transpose()
         transposed.index.names = [self.zoning_system.column_name]
@@ -500,7 +546,8 @@ class DVector:
             translation,
             translation_from_col=self.zoning_system.column_name,
             translation_to_col=new_zoning.column_name,
-            translation_factors_col=self.zoning_system.translation_column_name(new_zoning),
+            translation_factors_col=factor_col,
+            check_totals=check_totals,
         )
 
         return DVector(
@@ -542,41 +589,89 @@ class DVector:
             warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
-        # for the same zoning a simple * gives the desired result
-        # This drops any nan values (intersecting index level but missing val)
-        if self.zoning_system == other.zoning_system:
-            if isinstance(self.data, pd.Series):
-                prod = series_method(self.data, other.data)
-            else:
-                prod = df_method(self.data, other.data)
-            # Either None if both are None, or the right zone system
-            zoning = self.zoning_system
 
-        # For a dataframe by a series the mul is broadcast across
-        # for this to work axis needs to be set to 'index'
-        elif self.zoning_system is None:
-            # Allowed but warned
-            logging.warning(
-                "For this method to work between a DVector with "
-                "a zoning system and a DVector without one, the "
-                "DVector with a zoning system must come first. "
-                "This is being changed internally but if this was "
-                "not expected, check your inputs"
+        # Check for low memory
+        vmem = psutil.virtual_memory()
+        self_size = self.data.memory_usage().sum()
+        other_size = other.data.memory_usage().sum()
+        # Alternatively could just try the normal method and use the low memory is an exception is raised
+        if max(self_size, other_size) * 2 > vmem.available:
+            warnings.warn(
+                f"Low memory detected. {vmem.available / 2 ** 30}gb of {vmem.total / 2 ** 30}gb available."
+                f"DVectors take up {self_size / 2 ** 30}gb and {other_size / 2 ** 30}gb respectively. Falling back to low "
+                f"memory methods."
             )
-            prod = df_method(other.data, self.data.squeeze(), axis="index")
-            zoning = other.zoning_system
-        elif other.zoning_system is None:
-            prod = df_method(self.data, other.data.squeeze(), axis="index")
+            if self.zoning_system != other.zoning_system:
+                raise ValueError("Zonings don't match.")
             zoning = self.zoning_system
-        # Different zonings raise an error rather than trying to translate
+            common_segs = self.segmentation.overlap(other.segmentation)
+            max_len = 0
+            storage_seg = None
+            for seg in common_segs:
+                seg_len = len(self.segmentation.seg_dict[seg])
+                # Indexing the temp storage by the longest segment
+                if seg_len > max_len:
+                    max_len = seg_len
+                    storage_seg = seg
+            # Temp dir to save inputs in
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_self = Path(temp_dir) / "temp_self.hdf"
+                temp_other = Path(temp_dir) / "temp_other.hdf"
+                for ind in self.segmentation.seg_dict[storage_seg].values.keys():
+                    self.data.xs(ind, level=storage_seg).to_hdf(
+                        temp_self, mode="a", key=f"node_{ind}"
+                    )
+                    other.data.xs(ind, level=storage_seg).to_hdf(
+                        temp_other, mode="a", key=f"node_{ind}"
+                    )
+                # TODO potentially delete one or both of the input DVectors
+                out_data = {}
+                for ind in self.segmentation.seg_dict[storage_seg].values.keys():
+                    self_section = pd.read_hdf(temp_self, key=f"node_{ind}")
+                    other_section = pd.read_hdf(temp_other, key=f"node_{ind}")
+                    out_data[ind] = df_method(self_section, other_section)
+                prod = pd.concat(out_data, names=[seg] + out_data[ind].index.names)
+
         else:
-            raise NotImplementedError(
-                "The two DVectors have different zonings. "
-                "To multiply them, one must be translated "
-                "to match the other."
-            )
+            # for the same zoning a simple * gives the desired result
+            # This drops any nan values (intersecting index level but missing val)
+            if self.zoning_system == other.zoning_system:
+                if isinstance(self.data, pd.Series):
+                    prod = series_method(self.data, other.data)
+                else:
+                    prod = df_method(self.data, other.data)
+                # Either None if both are None, or the right zone system
+                zoning = self.zoning_system
+
+            # For a dataframe by a series the mul is broadcast across
+            # for this to work axis needs to be set to 'index'
+            elif self.zoning_system is None:
+                # Allowed but warned
+                logging.warning(
+                    "For this method to work between a DVector with "
+                    "a zoning system and a DVector without one, the "
+                    "DVector with a zoning system must come first. "
+                    "This is being changed internally but if this was "
+                    "not expected, check your inputs"
+                )
+                prod = df_method(other.data, self.data.squeeze(), axis="index")
+                zoning = other.zoning_system
+            elif other.zoning_system is None:
+                prod = df_method(self.data, other.data.squeeze(), axis="index")
+                zoning = self.zoning_system
+            # Different zonings raise an error rather than trying to translate
+            else:
+                raise NotImplementedError(
+                    "The two DVectors have different zonings. "
+                    "To multiply them, one must be translated "
+                    "to match the other."
+                )
         # Index unchanged, aside from possible order. Segmentation remained the same
-        if prod.index.equal_levels(self._data.index):
+        if isinstance(prod.index, pd.MultiIndex):
+            comparison_method = prod.index.equal_levels
+        else:
+            comparison_method = prod.index.equals
+        if comparison_method(self._data.index):
             return DVector(
                 segmentation=self.segmentation, import_data=prod, zoning_system=zoning
             )
@@ -584,8 +679,8 @@ class DVector:
         # the addition of the two segmentations (see __add__ method in segmentation)
         new_seg = self.segmentation + other.segmentation
         warnings.warn(
-            f"This operation has changed the segmentation of the DVector"
-            f"from {self.segmentation} to {new_seg}. This can happen"
+            f"This operation has changed the segmentation of the DVector "
+            f"from {self.segmentation.names} to {new_seg.names}. This can happen"
             "but it can also be a sign of an error. Check the output DVector.",
             SegmentationWarning,
         )
@@ -635,6 +730,12 @@ class DVector:
         segs: Segments to aggregate to. Must be a subset of self.segmentation.naming_order,
         naming order will be preserved.
         """
+        if not isinstance(segs, list):
+            raise TypeError(
+                "Aggregate expects a list of strings. Even if you "
+                "are aggregating to a single level, this should be a "
+                "list of length 1."
+            )
         segmentation = self.segmentation.aggregate(segs)
         data = self.data.groupby(level=segs).sum()
         return DVector(
