@@ -250,14 +250,15 @@ class Segmentation:
                 "The segment names are not correct."
             )
 
-        try:
-            # Perfect match, return segmentation with no more checks
-            if read_index.equal_levels(built_index):
-                return segmentation
-        # Different method for a single level index
-        except AttributeError:
-            if read_index.equals(built_index):
-                return segmentation
+        # Perfect match, return segmentation with no more checks
+        if read_index.equals(built_index):
+            return
+        if len(read_index) != len(built_index):
+            raise IndexError(
+                "The segmentation of the read in dvector data "
+                "does not match the expected segmentation. This "
+                "is likely due to unconsidered exclusions."
+            )
         for name in built_index.names:
             built_level = set(built_index.get_level_values(name))
             read_level = set(read_index.get_level_values(name))

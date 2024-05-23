@@ -684,8 +684,18 @@ class DVector:
             "but it can also be a sign of an error. Check the output DVector.",
             SegmentationWarning,
         )
+
         prod = prod.reorder_levels(new_seg.naming_order)
-        return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
+        if not prod.index.equals(new_seg.ind()):
+            warnings.warn(
+                "This operation has dropped some rows due to exclusions "
+                f"in the resulting segmentation. {len(prod.index) - len(new_seg.ind())} "
+                f"rows have been dropped from the pure product."
+            )
+            prod = prod.loc[new_seg.ind()]
+        return DVector(
+            segmentation=new_seg, import_data=prod, zoning_system=zoning
+        )
 
     def __mul__(self, other):
         """Multiply dunder method for DVector."""
