@@ -316,7 +316,7 @@ class SegmentsSuper(enum.Enum):
                     name=self.value,
                     values={
                         1: "HRP managerial / professional",
-                        2: "HRP managerial / professional",
+                        2: "HRP intermediate / technical",
                         3: "HRP semi-routine / routine",
                         4: "HRP never worked / long-term unemployed",
                         5: "HRP full-time student",
