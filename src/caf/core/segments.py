@@ -99,7 +99,6 @@ class SegmentsSuper(enum.Enum):
     CA = "ca"
     TFN_AT = "tfn_at"
     USERCLASS = "uc"
-    NS = "ns"
     ACCOMODATION_TYPE_H = "accom_h"
     ACCOMODATION_TYPE_HR = "accom_hr"
     ADULTS = "adults"
@@ -151,6 +150,7 @@ class SegmentsSuper(enum.Enum):
                         18: "NHB Holiday / Day trip",
                     },
                 )
+
             case SegmentsSuper.TIMEPERIOD:
                 seg = Segment(
                     name=self.value,
@@ -165,7 +165,6 @@ class SegmentsSuper(enum.Enum):
                         8: "Average Day",
                     },
                 )
-
 
             case SegmentsSuper.ACCOMODATION_TYPE_H:
                 seg = Segment(
@@ -211,7 +210,7 @@ class SegmentsSuper(enum.Enum):
                         Exclusion(
                             seg_name=SegmentsSuper.AGE_11.value,
                             own_val=1,
-                            other_vals=set([1, 2, 3]),
+                            other_vals={1, 2, 3},
                         )
                     ],
                 )
@@ -242,7 +241,6 @@ class SegmentsSuper(enum.Enum):
                     },
                 )
 
-
             case SegmentsSuper.AGE_11:
                 seg = Segment(
                     name=self.value,
@@ -257,39 +255,39 @@ class SegmentsSuper(enum.Enum):
                         8: "50 to 64 years",
                         9: "65 to 74 years",
                         10: "75 to 84 years",
-                        11: "85 + years"
+                        11: "85 + years",
                     },
                     exclusions=[
                         Exclusion(
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=1,
-                            other_vals=set([1, 2, 3, 4, 5, 6]),
+                            other_vals={1, 2, 3, 4, 5, 6},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=2,
-                            other_vals=set([1, 2, 3, 4, 5, 6]),
+                            other_vals={1, 2, 3, 4, 5, 6},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=3,
-                            other_vals=set([1, 2, 3, 4, 5, 6]),
+                            other_vals={1, 2, 3, 4, 5, 6},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.SOC.value,
                             own_val=1,
-                            other_vals=set([1, 2, 3]),
+                            other_vals={1, 2, 3},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.SOC.value,
                             own_val=2,
-                            other_vals=set([1, 2, 3]),
+                            other_vals={1, 2, 3},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.SOC.value,
                             own_val=3,
-                            other_vals=set([1, 2, 3]),
-                        )
+                            other_vals={1, 2, 3},
+                        ),
                     ],
                 )
 
@@ -301,17 +299,14 @@ class SegmentsSuper(enum.Enum):
                         2: "aged 16 to 24 years",
                         3: "aged 25 to 34 years",
                         4: "aged 35 to 49 years",
-                        5: "aged 50 years and over"
+                        5: "aged 50 years and over",
                     },
                 )
 
             case SegmentsSuper.GENDER:
                 seg = Segment(
                     name=self.value,
-                    values={
-                        1: "male",
-                        2: "female"
-                    },
+                    values={1: "male", 2: "female"},
                 )
 
             case SegmentsSuper.NS_SEC:
@@ -322,40 +317,35 @@ class SegmentsSuper(enum.Enum):
                         2: "HRP managerial / professional",
                         3: "HRP semi-routine / routine",
                         4: "HRP never worked / long-term unemployed",
-                        5: "HRP full-time student"
+                        5: "HRP full-time student",
                     },
                 )
 
             case SegmentsSuper.SOC:
                 seg = Segment(
                     name=self.value,
-                    values={
-                        1: "SOC1",
-                        2: "SOC2",
-                        3: "SOC3",
-                        4: "SOC4"
-                    },
+                    values={1: "SOC1", 2: "SOC2", 3: "SOC3", 4: "SOC4"},
                     exclusions=[
                         Exclusion(
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=1,
-                            other_vals=set([2, 4, 5, 6]),
+                            other_vals={2, 4, 5, 6},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=2,
-                            other_vals=set([2, 4, 5, 6]),
+                            other_vals={2, 4, 5, 6},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=3,
-                            other_vals=set([2, 4, 5, 6]),
+                            other_vals={2, 4, 5, 6},
                         ),
                         Exclusion(
                             seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
                             own_val=4,
-                            other_vals=set([1, 3]),
-                        )
+                            other_vals={1, 3},
+                        ),
                     ],
                 )
 
@@ -363,11 +353,11 @@ class SegmentsSuper(enum.Enum):
                 seg = Segment(
                     name=self.value,
                     values={
-                        1: 'full_time',
-                        2: 'part_time',
-                        3: 'unemployed',
-                        4: 'students',
-                        5: 'non-working_age'
+                        1: "full_time",
+                        2: "part_time",
+                        3: "unemployed",
+                        4: "students",
+                        5: "non-working_age",
                     },
                 )
 
@@ -375,10 +365,10 @@ class SegmentsSuper(enum.Enum):
                 seg = Segment(
                     name=self.value,
                     values={
-                        1: 'Economically active employees',
-                        2: 'Economically active unemployed',
-                        3: 'Economically inactive',
-                        4: 'Students'
+                        1: "Economically active employees",
+                        2: "Economically active unemployed",
+                        3: "Economically inactive",
+                        4: "Students",
                     },
                 )
 
@@ -386,12 +376,12 @@ class SegmentsSuper(enum.Enum):
                 seg = Segment(
                     name=self.value,
                     values={
-                        1: 'Economically active employment',
-                        2: 'Economically active unemployed',
-                        3: 'Economically active student employment',
-                        4: 'Economically active student unemployed',
-                        5: 'Economically inactive student',
-                        6: 'Economically inactive',
+                        1: "Economically active employment",
+                        2: "Economically active unemployed",
+                        3: "Economically active student employment",
+                        4: "Economically active student unemployed",
+                        5: "Economically inactive student",
+                        6: "Economically inactive",
                     },
                 )
 
@@ -411,27 +401,18 @@ class SegmentsSuper(enum.Enum):
             case SegmentsSuper.GENDER_DEMO:
                 seg = Segment(
                     name=self.value,
-                    values={
-                        1: "Child",
-                        2: "Male",
-                        3: "Female"},
+                    values={1: "Child", 2: "Male", 3: "Female"},
                     exclusions=[
                         Exclusion(
                             seg_name=SegmentsSuper.SOC.value,
                             own_val=1,
-                            other_vals=set([1, 2, 3]),
+                            other_vals={1, 2, 3},
                         )
                     ],
                 )
 
-
             case SegmentsSuper.CA:
                 seg = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
-            case SegmentsSuper.NS:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
-                )
 
         if subset:
             if seg is not None:
