@@ -237,6 +237,7 @@ class DVector:
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = "val",
+        low_memory: bool = False
     ) -> None:
         """
         Init method.
@@ -269,6 +270,7 @@ class DVector:
                 f"Got a {type(segmentation)} object instead."
             )
 
+        self.low_memory = low_memory
         self._zoning_system = zoning_system
         self._segmentation = segmentation
         self._time_format = None
@@ -590,23 +592,9 @@ class DVector:
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
 
-        # Check for low memory
-        vmem = psutil.virtual_memory()
-        if isinstance(self.data, pd.DataFrame):
-            self_size = self.data.memory_usage().sum()
-        else:
-            self_size = self.data.memory_usage()
-        if isinstance(other.data, pd.DataFrame):
-            other_size = other.data.memory_usage().sum()
-        else:
-            other_size = other.data.memory_usage()
         # Alternatively could just try the normal method and use the low memory is an exception is raised
-        if max(self_size, other_size) * 2 > vmem.available:
-            warnings.warn(
-                f"Low memory detected. {vmem.available / 2 ** 30}gb of {vmem.total / 2 ** 30}gb available."
-                f"DVectors take up {self_size / 2 ** 30}gb and {other_size / 2 ** 30}gb respectively. Falling back to low "
-                f"memory methods."
-            )
+        if self.low_memory:
+            # Assume that low memory means there are zoning systems
             if self.zoning_system != other.zoning_system:
                 raise ValueError("Zonings don't match.")
             zoning = self.zoning_system
