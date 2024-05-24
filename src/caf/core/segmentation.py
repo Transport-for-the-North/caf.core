@@ -322,6 +322,7 @@ class Segmentation:
     # pylint: enable=too-many-branches
 
     def reinit(self):
+        """Regenerate Segmentation from its input."""
         return Segmentation(self.input)
 
     def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"] = "hdf"):
@@ -486,12 +487,31 @@ class Segmentation:
 
     def add_segment(
         self,
-        new_seg: Segment | SegmentsSuper,
+        new_seg: Segment,
         subset: Optional[dict[str, list[int]]] = None,
         new_naming_order: Optional[list[str]] = None,
     ):
         """
         Add a new segment to a segmentation.
+
+        Parameters
+        ----------
+        new_seg: Segment
+            The new segment to be added. This will be checked and added as an
+            enum_segment if it exists as such, and as a custom segment if not.
+            This must be provided as a Segment type, and can't be a string to pass
+            to the SegmentSuper enum class
+
+        subset: Optional[dict[str, list[int]]] = None
+            A subset definition if the new segmentation is a subset of an existing
+            segmentation. This need only be provided for an enum_segment.
+
+        new_naming_order: Optional[list[str]] = None
+            The naming order of the resultant segmentation. If not provided,
+            the new segment will be appended to the end.
+        Returns
+        -------
+        Segmentation
         """
         out_segmentation = self.copy()
         custom = True
