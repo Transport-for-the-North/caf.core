@@ -12,6 +12,7 @@ import warnings
 from typing import Union, Literal, Optional
 from os import PathLike
 from pathlib import Path
+from copy import deepcopy
 
 # Third Party
 import pandas as pd
@@ -320,6 +321,9 @@ class Segmentation:
 
     # pylint: enable=too-many-branches
 
+    def reinit(self):
+        return Segmentation(self.input)
+
     def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"] = "hdf"):
         """
         Save a segmentation to either a yaml file or an hdf file if part of a DVector.
@@ -436,7 +440,7 @@ class Segmentation:
 
     def copy(self):
         """Copy an instance of this class."""
-        return Segmentation(config=self.input.copy())
+        return Segmentation(config=deepcopy(self.input))
 
     def aggregate(self, new_segs: list[str]):
         """
@@ -489,28 +493,25 @@ class Segmentation:
         """
         Add a new segment to a segmentation.
         """
-        if isinstance(new_seg, SegmentsSuper):
-            new_name = new_seg
+        out_segmentation = self.copy()
+        custom = True
+        new_name = new_seg.name
+        if new_name in SegmentsSuper.values():
             custom = False
-        elif isinstance(new_seg, Segment):
-            new_name = new_seg.name
-            custom = True
-        else:
-            raise ValueError("new_seg is not a segment.")
+
         if new_name in self.names:
             raise ValueError(f"{new_name} already contained in segmentation.")
-        conf = self.input
         if custom:
-            conf.custom_segments.append(new_seg)
+            out_segmentation.input.custom_segments.append(new_seg)
         else:
-            conf.enum_segments.append(new_seg)
+            out_segmentation.input.enum_segments.append(SegmentsSuper(new_name))
         if new_naming_order is not None:
-            conf.naming_order = new_naming_order
+            out_segmentation.input.naming_order = new_naming_order
         else:
-            conf.naming_order.append(new_name)
+            out_segmentation.input.naming_order.append(new_name)
         if subset is not None:
-            conf.subsets.update(subset)
-        return Segmentation(conf)
+            out_segmentation.input.subsets.update(subset)
+        return out_segmentation.reinit()
 
 
 # # # FUNCTIONS # # #

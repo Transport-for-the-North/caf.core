@@ -774,7 +774,7 @@ class DVector:
             # This method should split evenly, even in the case of exclusions
             factor = splitter.groupby(level=self.segmentation.naming_order).sum()
             splitter /= factor
-        new_data = self._data * splitter
+        new_data = self._data.mul(splitter, axis=0)
         return DVector(
             segmentation=new_segmentation,
             zoning_system=self.zoning_system,
