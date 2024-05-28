@@ -735,6 +735,7 @@ class ZoningSystemMetaData(ctk.BaseConfig):
     shapefile_path: Optional[Path] = None
     extra_columns: Optional[list[str]] = None
 
+
 class BalancingZones:
     """
     Stores the zoning systems for the attraction model balancing.
@@ -756,17 +757,21 @@ class BalancingZones:
         the zoning system for that segment (value).
     """
 
-    def __init__(self,
-                 segmentation: Segmentation,
-                 default_zoning: ZoningSystem,
-                 segment_zoning: dict[str, ZoningSystem]):
+    def __init__(
+        self,
+        segmentation: Segmentation,
+        default_zoning: ZoningSystem,
+        segment_zoning: dict[str, ZoningSystem],
+    ):
 
         # Validate inputs
         if not isinstance(segmentation, Segmentation):
             raise ValueError(f"segmentation should be Segmentation not {type(segmentation)}")
 
         if not isinstance(default_zoning, ZoningSystem):
-            raise ValueError(f"default_zoning should be ZoningSystem not {type(default_zoning)}")
+            raise ValueError(
+                f"default_zoning should be ZoningSystem not {type(default_zoning)}"
+            )
 
         # Assign attributes
         self._segmentation = segmentation
@@ -795,9 +800,9 @@ class BalancingZones:
     @property
     def unique_zoning(self) -> dict[str, ZoningSystem]:
         """Dict[str, ZoningSystem]: Dictionary containing a lookup of all
-            the unique `ZoningSystem` provided for the different segments.
-            The keys are the zone system name and values are the
-            `ZoningSystem` objects.
+        the unique `ZoningSystem` provided for the different segments.
+        The keys are the zone system name and values are the
+        `ZoningSystem` objects.
         """
         if self._unique_zoning is None:
             self._unique_zoning = dict()
@@ -846,11 +851,12 @@ class BalancingZones:
         for name, zoning in self._segment_zoning.items():
             seg_zon_dict[name] = zoning.metadata
 
-        out_conf = self.BalancingConfClass(seg_conf=self._segmentation.input,
-                                           zon_conf=self._default_zoning.metadata,
-                                           seg_zon=seg_zon_dict)
+        out_conf = self.BalancingConfClass(
+            seg_conf=self._segmentation.input,
+            zon_conf=self._default_zoning.metadata,
+            seg_zon=seg_zon_dict,
+        )
         out_conf.save_yaml(path)
-
 
     @classmethod
     def load(cls, path: Path) -> BalancingZones:
