@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import enum
+import itertools
 import logging
 import os
 import re
@@ -16,6 +17,8 @@ import h5py
 import numpy as np
 import pandas as pd
 import caf.toolkit as ctk
+from caf.core.segmentation import Segmentation, SegmentationInput
+import strictyaml
 
 LOG = logging.getLogger(__name__)
 
@@ -731,6 +734,147 @@ class ZoningSystemMetaData(ctk.BaseConfig):
     shapefile_id_col: Optional[str] = None
     shapefile_path: Optional[Path] = None
     extra_columns: Optional[list[str]] = None
+
+class BalancingZones:
+    """
+    Stores the zoning systems for the attraction model balancing.
+
+    Allows a different zone system to be defined for each segment
+    and a default zone system. An instance of this class can be
+    iterated through to give the groups of segments defined for
+    each unique zone system.
+
+    Parameters
+    ----------
+    segmentation : Segmentation
+        Segmentation level of the attractions being balanced.
+    default_zoning : ZoningSystem
+        Default zoning system to use for any segments which aren't
+        given in `segment_zoning`.
+    segment_zoning : Dict[str, ZoningSystem]
+        Dictionary containing the name of the segment (key) and
+        the zoning system for that segment (value).
+    """
+
+    def __init__(self,
+                 segmentation: Segmentation,
+                 default_zoning: ZoningSystem,
+                 segment_zoning: dict[str, ZoningSystem]):
+
+        # Validate inputs
+        if not isinstance(segmentation, Segmentation):
+            raise ValueError(f"segmentation should be Segmentation not {type(segmentation)}")
+
+        if not isinstance(default_zoning, ZoningSystem):
+            raise ValueError(f"default_zoning should be ZoningSystem not {type(default_zoning)}")
+
+        # Assign attributes
+        self._segmentation = segmentation
+        self._default_zoning = default_zoning
+        self._segment_zoning = segment_zoning
+        self._unique_zoning = None
+
+    def get_zoning(self, segment_name: str) -> ZoningSystem:
+        """Return `ZoningSystem` for given `segment_name`
+
+        Parameters
+        ----------
+        segment_name : str
+            Name of the segment to return, if a zone system isn't
+            defined for this name then the default is used.
+
+        Returns
+        -------
+        ZoningSystem
+            Zone system for given segment, or default.
+        """
+        if segment_name not in self._segment_zoning:
+            return self._default_zoning
+        return self._segment_zoning[segment_name]
+
+    @property
+    def unique_zoning(self) -> dict[str, ZoningSystem]:
+        """Dict[str, ZoningSystem]: Dictionary containing a lookup of all
+            the unique `ZoningSystem` provided for the different segments.
+            The keys are the zone system name and values are the
+            `ZoningSystem` objects.
+        """
+        if self._unique_zoning is None:
+            self._unique_zoning = dict()
+            for zoning in self._segment_zoning.values():
+                if zoning.name not in self._unique_zoning:
+                    self._unique_zoning[zoning.name] = zoning
+            self._unique_zoning[self._default_zoning.name] = self._default_zoning
+        return self._unique_zoning
+
+    def zoning_groups(self) -> tuple[ZoningSystem, list[str]]:
+        """Iterates through the unique zoning systems and provides list of segments.
+
+        Yields
+        ------
+        ZoningSystem
+            Zone system for this group of segments.
+        List[str]
+            List of segment names which use this zone system.
+        """
+        zone_name = lambda s: self.get_zoning(s).name
+        zone_ls = sorted(self._segmentation.names, key=zone_name)
+        for zone_name, segments in itertools.groupby(zone_ls, key=zone_name):
+            zoning = self.unique_zoning[zone_name]
+            yield zoning, list(segments)
+
+    def __iter__(self) -> tuple[ZoningSystem, list[str]]:
+        """See `BalancingZones.zoning_groups`."""
+        return self.zoning_groups()
+
+    class BalancingConfClass(ctk.BaseConfig):
+        seg_conf: SegmentationInput
+        zon_conf: ZoningSystemMetaData
+        seg_zon: dict[str, ZoningSystemMetaData]
+
+    def save(self, path: Path) -> None:
+        """Saves balancing zones to output file.
+
+        Output file is saved to a yaml file
+
+        Parameters
+        ----------
+        path : Path
+            Path to output file to save.
+        """
+        seg_zon_dict = dict()
+        for name, zoning in self._segment_zoning.items():
+            seg_zon_dict[name] = zoning.metadata
+
+        out_conf = self.BalancingConfClass(seg_conf=self._segmentation.input,
+                                           zon_conf=self._default_zoning.metadata,
+                                           seg_zon=seg_zon_dict)
+        out_conf.save_yaml(path)
+
+
+    @classmethod
+    def load(cls, path: Path) -> BalancingZones:
+        """Load balancing zones from config file.
+
+        Parameters
+        ----------
+        path : Path
+            Path to config file, should be the format defined
+            by `configparser` with section names defined in
+            `BalancingZones.OUTPUT_FILE_SECTIONS`.
+
+        Returns
+        -------
+        BalancingZones
+            Balancing zones with loaded parameters.
+        """
+        conf = cls.BalancingConfClass.load(path)
+        segmentation = Segmentation(conf.seg_conf)
+        default_zoning = ZoningSystem.get_zoning(conf.zon_conf.name)
+        segment_zoning = {}
+        for name, meta in conf.seg_zon:
+            segment_zoning[name] = ZoningSystem.get_zoning(name)
+        return cls(segmentation, default_zoning, segment_zoning)
 
 
 def normalise_column_name(column: str) -> str:
