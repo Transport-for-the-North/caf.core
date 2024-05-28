@@ -237,7 +237,7 @@ class DVector:
         zoning_system: Optional[ZoningSystem] = None,
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = "val",
-        low_memory: bool = False
+        low_memory: bool = False,
     ) -> None:
         """
         Init method.
@@ -256,6 +256,8 @@ class DVector:
             Instance of ZoningSystem. This must match import data. If this is
             given, import data must contain zone info in the column names, if
             this is not given import data must contain only 1 column.
+        low_memory: bool = False
+            Set to True for low_memory dunder_methods.
         """
         if zoning_system is not None:
             if not isinstance(zoning_system, ZoningSystem):
