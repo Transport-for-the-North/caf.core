@@ -146,6 +146,9 @@ class Segmentation:
         """Access segments in dict form."""
         return {seg.name: seg for seg in self.segments}
 
+    def __iter__(self):
+        return self.seg_dict.__iter__()
+
     @property
     def names(self):
         """Return the names of all segments."""

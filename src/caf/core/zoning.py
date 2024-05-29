@@ -10,7 +10,7 @@ import os
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Union, Any
 import warnings
 
 import h5py
@@ -881,6 +881,82 @@ class BalancingZones:
         for name, meta in conf.seg_zon:
             segment_zoning[name] = ZoningSystem.get_zoning(name)
         return cls(segmentation, default_zoning, segment_zoning)
+
+    @staticmethod
+    def build_single_segment_group(
+        segmentation: Segmentation,
+        default_zoning: ZoningSystem,
+        segment_column: str,
+        segment_zones: dict[Any, ZoningSystem],
+    ) -> BalancingZones:
+        """Build `BalancingZones` for a single segment group.
+
+        Defines different zone systems for all unique values
+        in a single segment column.
+
+        Parameters
+        ----------
+        segmentation : nd.SegmentationLevel
+            Segmentation to use for the balancing.
+        default_zoning : ZoningSystem
+            Default zone system for any undefined segments.
+        segment_column : str
+            Name of the segment column which will have
+            different zone system for each unique value.
+        segment_zones : Dict[Any, ZoningSystem]
+            The unique segment values for `segment_column` and
+            their corresponding zone system. Any values not
+            include will use `default_zoning`.
+
+        Returns
+        -------
+        BalancingZones
+            Instance of class with different zone systems for
+            each segment corresponding to the `segment_zones`
+            given.
+
+        Raises
+        ------
+        ValueError
+            - If `segmentation` is not an instance of `SegmentationLevel`.
+            - If `group_name` is not the name of a `segmentation` column.
+            - If any keys in `segment_zones` aren't found in the `group_name`
+              segmentation column.
+
+        Examples
+        --------
+        The example below will create an instance for `hb_p_m` attraction balancing with
+        the zone system `lad_2020` for all segments with mode 1 and `msoa` for all with mode 2.
+        >>> hb_p_m_balancing = BalancingZones.build_single_segment_group(
+        >>>     Segmentation(SegmentationInput(enum_segments=['p','m'],
+        >>>                                    naming_order=['p','m'])),
+        >>>     ZoningSystem.get_zoning("gor"),
+        >>>     "m",
+        >>>     {1: ZoningSystem.get_zoning("lad_2020"), 2: ZoningSystem.get_zoning("msoa")},
+        >>> )
+        """
+        if not isinstance(segmentation, Segmentation):
+            raise ValueError(
+                f"segmentation should be SegmentationLevel not {type(segmentation)}"
+            )
+        if segment_column not in segmentation.naming_order:
+            raise ValueError(
+                f"group_name should be one of {segmentation.naming_order}"
+                f" for, not {segment_column}"
+            )
+        # Check all segment values refer to a possible value for that column
+        unique_params = set(segmentation.seg_dict[segment_column])
+        missing = [i for i in segment_zones if i not in unique_params]
+        if missing:
+            raise ValueError(
+                "segment values not present in segment " f"column {segment_column}: {missing}"
+            )
+        segment_zoning = {}
+        for value in segmentation.seg_dict[segment_column]:
+            if value in segment_zones.keys():
+                name = f"{segment_column}_{value}"
+                segment_zoning[name] = segment_zones[value]
+        return BalancingZones(segmentation, default_zoning, segment_zoning)
 
 
 def normalise_column_name(column: str) -> str:
