@@ -9,9 +9,10 @@ from __future__ import annotations
 
 # Built-Ins
 import warnings
-from typing import Union, Literal
+from typing import Union, Literal, Optional
 from os import PathLike
 from pathlib import Path
+from copy import deepcopy
 
 # Third Party
 import pandas as pd
@@ -64,27 +65,28 @@ class SegmentationInput(BaseConfig):
     """
 
     enum_segments: list[SegmentsSuper]
+    naming_order: list[str]
     custom_segments: list[Segment] = pydantic.Field(default_factory=list)
     subsets: dict[str, list[int]] = pydantic.Field(default_factory=dict)
-    naming_order: list[str]
 
-    @pydantic.field_validator("subsets", check_fields=True)
-    @classmethod
-    def enums(cls, v, values):
-        """Validate the subsets match segments."""
-        # validator is a class method pylint: disable=no-self-argument
-        for seg in v.keys():
-            if SegmentsSuper(seg) not in values.data["enum_segments"]:
-                raise ValueError(
-                    f"{v} is not a valid segment  " ", and so can't be a subset value."
-                )
-        return v
+    # @pydantic.field_validator("enum_segments")
+    # @classmethod
+    # def make_enum(cls, v):
+    #     out = []
+    #     for val in v:
+    #         if isinstance(val, SegmentsSuper):
+    #             out.append(val)
+    #         else:
+    #             out.append(SegmentsSuper(val))
+    #     return out
 
-    # pylint: disable=no-self-argument
-    @pydantic.field_validator("custom_segments")
+    @pydantic.model_validator(mode="before")
     @classmethod
-    def no_copied_names(cls, v):
+    def no_copied_names(cls, values):
         """Validate the custom_segments do not clash with existing segments."""
+        if "custom_segments" not in values:
+            return values
+        v = values["custom_segments"]
         for seg in v:
             if seg.name in SegmentsSuper.values():
                 raise ValueError(
@@ -96,22 +98,34 @@ class SegmentationInput(BaseConfig):
                     "more than one clash. 'caf.core.SegmentsSuper.values' "
                     "will list all existing segment names."
                 )
-        return v
+        return values
 
-    @pydantic.field_validator("naming_order")
+    @pydantic.model_validator(mode="after")
     @classmethod
-    def names_match_segments(cls, v, values):
+    def names_match_segments(cls, values):
         """Validate that naming order names match segment names."""
-        seg_names = [i.value for i in values.data["enum_segments"]]
-        if "custom_segments" in values.data.keys():
-            seg_names += [i.name for i in values.data["custom_segments"]]
+        v = values.naming_order
+        seg_names = [i.value for i in values.enum_segments]
+        if len(values.custom_segments) > 0:
+            seg_names += [i.name for i in values.custom_segments]
 
         if set(seg_names) != set(v):
             raise ValueError("Names provided for naming_order do not match names in segments")
 
-        return v
+        return values
 
-    # pylint: enable=no-self-argument
+    @pydantic.model_validator(mode="after")
+    @classmethod
+    def enums(cls, values):
+        """Validate the subsets match segments."""
+        if len(values.subsets) == 0:
+            return values
+        for seg in values.subsets.keys():
+            if seg not in [i.value for i in values.enum_segments]:
+                raise ValueError(
+                    f"{seg} is not a valid segment  " ", and so can't be a subset value."
+                )
+        return values
 
 
 class Segmentation:
@@ -258,14 +272,17 @@ class Segmentation:
                 "The segment names are not correct."
             )
 
-        try:
-            # Perfect match, return segmentation with no more checks
-            if read_index.equal_levels(built_index):
-                return segmentation
-        # Different method for a single level index
-        except AttributeError:
-            if read_index.equals(built_index):
-                return segmentation
+        # Perfect match, return segmentation with no more checks
+        if read_index.equals(built_index):
+            return
+        if len(read_index) > len(built_index):
+            raise IndexError(
+                "The segmentation of the read in dvector data "
+                "does not match the expected segmentation. This "
+                "is likely due to unconsidered exclusions."
+                f"{read_index.difference(built_index)} in read in index but not "
+                f"in expected index."
+            )
         for name in built_index.names:
             built_level = set(built_index.get_level_values(name))
             read_level = set(read_index.get_level_values(name))
@@ -294,7 +311,11 @@ class Segmentation:
 
         built_segmentation = cls(conf)
         # Check for equality again after subset checks
-        if read_index.equal_levels(built_segmentation.ind):
+        if isinstance(read_index, pd.MultiIndex):
+            check_method = read_index.equal_levels
+        else:
+            check_method = read_index.equals
+        if check_method(built_segmentation.ind()):
             return built_segmentation
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.
@@ -307,6 +328,10 @@ class Segmentation:
         )
 
     # pylint: enable=too-many-branches
+
+    def reinit(self):
+        """Regenerate Segmentation from its input."""
+        return Segmentation(self.input)
 
     def save(self, out_path: PathLike, mode: Literal["hdf", "yaml"] = "hdf"):
         """
@@ -416,7 +441,7 @@ class Segmentation:
 
     def overlap(self, other):
         """Check the overlap in segments between two segmentations."""
-        return [seg for seg in self.names if seg in other.names]
+        return set(self.names).intersection(set(other.names))
 
     def __ne__(self, other) -> bool:
         """Override the default implementation."""
@@ -424,7 +449,7 @@ class Segmentation:
 
     def copy(self):
         """Copy an instance of this class."""
-        return Segmentation(config=self.input.copy())
+        return Segmentation(config=deepcopy(self.input))
 
     def aggregate(self, new_segs: list[str]):
         """
@@ -474,6 +499,54 @@ class Segmentation:
             naming_order=new_order,
         )
         return Segmentation(conf)
+
+    def add_segment(
+        self,
+        new_seg: Segment,
+        subset: Optional[dict[str, list[int]]] = None,
+        new_naming_order: Optional[list[str]] = None,
+    ):
+        """
+        Add a new segment to a segmentation.
+
+        Parameters
+        ----------
+        new_seg: Segment
+            The new segment to be added. This will be checked and added as an
+            enum_segment if it exists as such, and as a custom segment if not.
+            This must be provided as a Segment type, and can't be a string to pass
+            to the SegmentSuper enum class
+
+        subset: Optional[dict[str, list[int]]] = None
+            A subset definition if the new segmentation is a subset of an existing
+            segmentation. This need only be provided for an enum_segment.
+
+        new_naming_order: Optional[list[str]] = None
+            The naming order of the resultant segmentation. If not provided,
+            the new segment will be appended to the end.
+        Returns
+        -------
+        Segmentation
+        """
+        out_segmentation = self.copy()
+        custom = True
+        new_name = new_seg.name
+        if new_name in SegmentsSuper.values():
+            custom = False
+
+        if new_name in self.names:
+            raise ValueError(f"{new_name} already contained in segmentation.")
+        if custom:
+            out_segmentation.input.custom_segments.append(new_seg)
+        else:
+            out_segmentation.input.enum_segments.append(SegmentsSuper(new_name))
+        if new_naming_order is not None:
+            out_segmentation.input.naming_order = new_naming_order
+        else:
+            out_segmentation.input.naming_order.append(new_name)
+        if subset is not None:
+            out_segmentation.input.subsets.update(subset)
+        return out_segmentation.reinit()
 
 
 # # # FUNCTIONS # # #

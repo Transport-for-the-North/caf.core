@@ -76,6 +76,9 @@ class Segment(BaseConfig):
         drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
         return drop_ind
 
+    def __len__(self):
+        return len(self.values)
+
     # pylint: enable=not-an-iterable
 
 
@@ -98,7 +101,19 @@ class SegmentsSuper(enum.Enum):
     TFN_AT = "tfn_at"
     TFN_TT = "tfn_tt"
     USERCLASS = "uc"
-    NS = "ns"
+    ACCOMODATION_TYPE_H = "accom_h"
+    ACCOMODATION_TYPE_HR = "accom_hr"
+    ADULTS = "adults"
+    CHILDREN = "children"
+    CAR_AVAILABILITY = "car_availability"
+    AGE = "age_9"
+    AGE_11 = "age_11"
+    AGE_AGG = "age_5"
+    GENDER_DEMO = "gender_demo"
+    ECONOMIC_STATUS = "economic_status"
+    POP_EMP = "pop_emp"
+    POP_ECON = "pop_econ"
+    NS_SEC = "ns_sec"
 
     @classmethod
     def values(cls):
@@ -137,6 +152,7 @@ class SegmentsSuper(enum.Enum):
                         18: "NHB Holiday / Day trip",
                     },
                 )
+
             case SegmentsSuper.TIMEPERIOD:
                 seg = Segment(
                     name=self.value,
@@ -151,6 +167,226 @@ class SegmentsSuper(enum.Enum):
                         8: "Average Day",
                     },
                 )
+
+            case SegmentsSuper.ACCOMODATION_TYPE_H:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "Whole house or bungalow: Detached",
+                        2: "Whole house or bungalow: Semi-detached",
+                        3: "Whole house or bungalow: Terraced",
+                        4: "Flat, maisonette or apartment",
+                        5: "A caravan or other mobile or temporary structure",
+                    },
+                )
+
+            case SegmentsSuper.ACCOMODATION_TYPE_HR:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "Whole house or bungalow: Detached",
+                        2: "Whole house or bungalow: Semi-detached",
+                        3: "Whole house or bungalow: Terraced",
+                        4: "Flat, maisonette or apartment",
+                    },
+                )
+
+            case SegmentsSuper.ADULTS:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "No adults or 1 adult in household",
+                        2: "2 adults in household",
+                        3: "3 or more adults in household",
+                    },
+                )
+
+            case SegmentsSuper.CHILDREN:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "Household with no children or all children non-dependent",
+                        2: "Household with one or more dependent children",
+                    },
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE_11.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        )
+                    ],
+                )
+
+            case SegmentsSuper.CAR_AVAILABILITY:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "No cars or vans in household",
+                        2: "1 car or van in household",
+                        3: "2 or more cars or vans in household",
+                    },
+                )
+
+            case SegmentsSuper.AGE:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "0 to 4 years",
+                        2: "5 to 9 years",
+                        3: "10 to 15 years",
+                        4: "16 to 19 years",
+                        5: "20 to 34 years",
+                        6: "35 to 49 years",
+                        7: "50 to 64 years",
+                        8: "65 to 74 years",
+                        9: "75+ years",
+                    },
+                )
+
+            case SegmentsSuper.AGE_11:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "0 to 4 years",
+                        2: "5 to 9 years",
+                        3: "10 to 15 years",
+                        4: "16 to 19 years",
+                        5: "20 to 24 years",
+                        6: "25 to 34 years",
+                        7: "35 to 49 years",
+                        8: "50 to 64 years",
+                        9: "65 to 74 years",
+                        10: "75 to 84 years",
+                        11: "85 + years",
+                    },
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=1,
+                            other_vals={1, 2, 3, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=2,
+                            other_vals={1, 2, 3, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=3,
+                            other_vals={1, 2, 3, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=2,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=3,
+                            other_vals={1, 2, 3},
+                        ),
+                    ],
+                )
+
+            case SegmentsSuper.AGE_AGG:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "aged 15 years and under",
+                        2: "aged 16 to 24 years",
+                        3: "aged 25 to 34 years",
+                        4: "aged 35 to 49 years",
+                        5: "aged 50 years and over",
+                    },
+                )
+
+            case SegmentsSuper.GENDER:
+                seg = Segment(
+                    name=self.value,
+                    values={1: "male", 2: "female"},
+                )
+
+            case SegmentsSuper.NS_SEC:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "HRP managerial / professional",
+                        2: "HRP intermediate / technical",
+                        3: "HRP semi-routine / routine",
+                        4: "HRP never worked / long-term unemployed",
+                        5: "HRP full-time student",
+                    },
+                )
+
+            case SegmentsSuper.SOC:
+                seg = Segment(
+                    name=self.value,
+                    values={1: "SOC1", 2: "SOC2", 3: "SOC3", 4: "SOC4"},
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=1,
+                            other_vals={2, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=2,
+                            other_vals={2, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=3,
+                            other_vals={2, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=4,
+                            other_vals={1, 3},
+                        ),
+                    ],
+                )
+
+            case SegmentsSuper.POP_EMP:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "full_time",
+                        2: "part_time",
+                        3: "unemployed",
+                        4: "students",
+                        5: "non-working_age",
+                    },
+                )
+
+            case SegmentsSuper.POP_ECON:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "Economically active employees",
+                        2: "Economically active unemployed",
+                        3: "Economically inactive",
+                        4: "Students",
+                    },
+                )
+
+            case SegmentsSuper.ECONOMIC_STATUS:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "Economically active employment",
+                        2: "Economically active unemployed",
+                        3: "Economically active student employment",
+                        4: "Economically active student unemployed",
+                        5: "Economically inactive student",
+                        6: "Economically inactive",
+                    },
+                )
+
             case SegmentsSuper.MODE:
                 seg = Segment(
                     name=self.value,
@@ -163,7 +399,8 @@ class SegmentsSuper(enum.Enum):
                         6: "Rail / underground",
                     },
                 )
-            case SegmentsSuper.GENDER:
+
+            case SegmentsSuper.GENDER_DEMO:
                 seg = Segment(
                     name=self.value,
                     values={1: "Child", 2: "Male", 3: "Female"},
@@ -175,25 +412,9 @@ class SegmentsSuper(enum.Enum):
                         )
                     ],
                 )
-            case SegmentsSuper.SOC:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "High Skilled",
-                        2: "High Skilled",
-                        3: "High Skilled",
-                        4: "Skilled",
-                    },
-                )
+
             case SegmentsSuper.CA:
                 seg = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
-            case SegmentsSuper.NS:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
-                )
-            case SegmentsSuper.TFN_TT:
-                seg = Segment(name=self.value, values={i: "no desc" for i in range(1, 761)})
 
         if subset:
             if seg is not None:
