@@ -35,6 +35,11 @@ class SegmentationWarning(Warning):
     """Warn about segmentation objects."""
 
 
+class SegmentationError(Exception):
+    """Error for segmentation objects."""
+    pass
+
+
 class SegmentationInput(BaseConfig):
     """
     Input class for segmentation objects.
@@ -435,6 +440,13 @@ class Segmentation:
         """
         custom = None
         subsets = None
+
+        for i in new_segs:
+            if i not in self.names:
+                raise SegmentationError(f"{i} is not in the current segmentation, "
+                                        "so cannot be aggregated to. This is the "
+                                        "first segment raising an error, and there "
+                                        "may be more.")
 
         if self.input.custom_segments is not None:
             custom = self.input.custom_segments.copy()

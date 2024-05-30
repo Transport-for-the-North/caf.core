@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import enum
 import logging
+import math
 import operator
 import warnings
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -657,7 +658,7 @@ class DVector:
         """Note equals dunder for DVector."""
         return not self.__eq__(other)
 
-    def aggregate(self, segs: list[str]):
+    def aggregate(self, segs: list[str] | Segmentation):
         """
         Aggregate DVector to new segmentation.
 
@@ -670,6 +671,8 @@ class DVector:
         segs: Segments to aggregate to. Must be a subset of self.segmentation.naming_order,
         naming order will be preserved.
         """
+        if isinstance(segs, Segmentation):
+            segs = segs.segments
         if not isinstance(segs, list):
             raise TypeError(
                 "Aggregate expects a list of strings. Even if you "
@@ -706,5 +709,130 @@ class DVector:
         ind = pd.MultiIndex.from_frame(pd.DataFrame(dict_list))
         return pd.DataFrame(data=data, index=ind, columns=zoning)
 
+    def remove_zoning(self, fn: Callable = pd.DataFrame.sum) -> DVector:
+        """
+        Aggregates all the zone values in DVector into a single value using fn.
 
+        Returns a copy of Dvector.
+
+        Parameters
+        ----------
+        fn:
+            The function to use when aggregating all zone values. fn must
+            be able to take a np.array of values and return a single value
+            in order for this to work.
+
+        Returns
+        -------
+        summed_dvector:
+            A copy of DVector, without any zoning.
+        """
+        # Validate fn
+        if not callable(fn):
+            raise ValueError(
+                "fn is not callable. fn must be a function that "
+                "takes an np.array of values and return a single value."
+            )
+
+        if self.zoning_system is None:
+            raise ValueError("There is no zoning to remove.")
+
+        # Aggregate all the data
+        summed = fn(self.data, axis=1)
+
+        return DVector(
+            zoning_system=None,
+            segmentation=self.segmentation,
+            time_format=self.time_format,
+            import_data=summed,
+        )
+
+    def sum_zoning(self):
+
+        return self.remove_zoning()
+
+    def write_sector_reports(self,
+                             segment_totals_path: PathLike,
+                             ca_sector_path: PathLike,
+                             ie_sector_path: PathLike,
+                             lad_report_path: PathLike = None,
+                             lad_report_seg: Segmentation = None,
+                             ) -> None:
+        """
+        Writes segment, CA sector, and IE sector reports to disk
+
+        Parameters
+        ----------
+        segment_totals_path:
+            Path to write the segment totals report to
+
+        ca_sector_path:
+            Path to write the CA sector report to
+
+        ie_sector_path:
+            Path to write the IE sector report to
+
+        lad_report_path:
+            Path to write the LAD report to
+
+        lad_report_seg:
+            The segmentation to output the LAD report at
+
+        Returns
+        -------
+        None
+        """
+        # Check that not just one argument has been set
+        if bool(lad_report_path) != bool(lad_report_seg):
+            raise ValueError(
+                "Only one of lad_report_path and lad_report_seg has been set. "
+                "Either both values need to be set, or neither."
+            )
+
+        # Segment totals report
+        df = self.sum_zoning().data
+        df.to_csv(segment_totals_path)
+
+        # Segment by CA Sector total reports - 1 to 1, No weighting
+        try:
+            tfn_ca_sectors = ZoningSystem.get_zoning('ca_sector_2020')
+            dvec = self.translate_zoning(tfn_ca_sectors)
+            dvec.data.to_csv(ca_sector_path)
+        except Exception as err:
+            LOG.error("Error creating CA sector report: %s", err)
+
+        # Segment by IE Sector total reports - 1 to 1, No weighting
+        try:
+            ie_sectors = ZoningSystem.get_zoning('ie_sector')
+            dvec = self.translate_zoning(ie_sectors)
+            dvec.data.to_csv(ie_sector_path)
+        except Exception as err:
+            LOG.error("Error creating IE sector report: %s", err)
+
+        if lad_report_seg is None:
+            return
+
+        # Segment by LAD segment total reports - 1 to 1, No weighting
+        try:
+            lad = ZoningSystem.get_zoning('lad_2020')
+            dvec = self.aggregate(lad_report_seg)
+            dvec = dvec.translate_zoning(lad)
+            dvec.data.to_csv(lad_report_path)
+        except Exception as err:
+            LOG.error("Error creating LAD report: %s", err)
+
+    def sum(self):
+        """
+
+        """
+        if isinstance(self.data, pd.DataFrame):
+            return self.data.values.sum()
+        if isinstance(self.data, pd.Series):
+            return self.data.sum()
+
+    def sum_is_close(self, other, rel_tol, abs_tol):
+        return math.isclose(self.sum(),
+                            other.sum(),
+                            rel_tol=rel_tol,
+                            abs_tol=abs_tol)
 # # # FUNCTIONS # # #
