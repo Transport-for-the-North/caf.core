@@ -754,6 +754,38 @@ class DVector:
             val_col=self.val_col,
         )
 
+    def split_by_other(self, other: DVector):
+        """
+        Split a DVector adding new segments.
+
+        Uses other as weighting, such that the returned DVector sums to the same
+        as the input.
+
+        Parameters
+        ----------
+        other: DVector
+            The DVector to use for splitting. Returned DVector will have the
+            segmentation of this DVector, with splitting weighted by this DVector.
+        """
+        if other.zoning_system != self.zoning_system:
+            raise ValueError(
+                "The 'other' DVector used for splitting must be "
+                "of the same zoning as 'self'. Self has zoning system "
+                f"{self.zoning_system.name}, other has {other.zoning_system.name}."
+            )
+        common = self.segmentation.overlap(other.segmentation)
+        other_grouped_data = other.data.groupby(level=common).sum()
+        splitting_data = other.data / other_grouped_data
+        splitting_dvec = DVector(
+            import_data=splitting_data,
+            segmentation=other.segmentation,
+            zoning_system=other.zoning_system,
+            time_format=other.time_format,
+            val_col=other.val_col,
+            low_memory=other.low_memory,
+        )
+        return self * splitting_dvec
+
     def add_segment(
         self,
         new_seg: Segment,
@@ -807,6 +839,41 @@ class DVector:
             zoning_system=self.zoning_system,
             import_data=new_data,
         )
+
+    def filter_segment_value(self, segment_name: str, segment_values: int | list[int]):
+        """
+        Filters a DVector on a given segment.
+
+        Equivalent to .loc/.xs in pandas.
+
+        Parameters
+        ----------
+        segment_name: str
+            The name of the segment to filter by.
+        segment_values: int | list[int]
+            The segment values to filter by. If an int is given, the segment is
+            dropped from the returned DVector, otherwise the output DVector will
+            contain a subset of the segment.
+        """
+        new_data = self.data.copy()
+        if isinstance(self.segmentation.ind, pd.MultiIndex):
+            new_data = new_data.xs(segment_values, level=segment_name)
+        else:
+            new_data = new_data.loc[segment_values]
+        if isinstance(segment_values, int):
+            new_seg = self.segmentation.remove_segment(segment_name)
+        else:
+            new_seg = self.segmentation.update_subsets({segment_name, segment_values})
+        return DVector(
+            import_data=new_data,
+            segmentation=new_seg,
+            zoning_system=self.zoning_system,
+            time_format=self.time_format,
+            val_col=self.val_col,
+            low_memory=self.low_memory,
+        )
+
+        pass
 
     @staticmethod
     def old_to_new_dvec(import_data: dict):
@@ -870,13 +937,14 @@ class DVector:
 
         return self.remove_zoning()
 
-    def write_sector_reports(self,
-                             segment_totals_path: PathLike,
-                             ca_sector_path: PathLike,
-                             ie_sector_path: PathLike,
-                             lad_report_path: PathLike = None,
-                             lad_report_seg: Segmentation = None,
-                             ) -> None:
+    def write_sector_reports(
+        self,
+        segment_totals_path: PathLike,
+        ca_sector_path: PathLike,
+        ie_sector_path: PathLike,
+        lad_report_path: PathLike = None,
+        lad_report_seg: Segmentation = None,
+    ) -> None:
         """
         Writes segment, CA sector, and IE sector reports to disk
 
@@ -914,7 +982,7 @@ class DVector:
 
         # Segment by CA Sector total reports - 1 to 1, No weighting
         try:
-            tfn_ca_sectors = ZoningSystem.get_zoning('ca_sector_2020')
+            tfn_ca_sectors = ZoningSystem.get_zoning("ca_sector_2020")
             dvec = self.translate_zoning(tfn_ca_sectors)
             dvec.data.to_csv(ca_sector_path)
         except Exception as err:
@@ -922,7 +990,7 @@ class DVector:
 
         # Segment by IE Sector total reports - 1 to 1, No weighting
         try:
-            ie_sectors = ZoningSystem.get_zoning('ie_sector')
+            ie_sectors = ZoningSystem.get_zoning("ie_sector")
             dvec = self.translate_zoning(ie_sectors)
             dvec.data.to_csv(ie_sector_path)
         except Exception as err:
@@ -933,7 +1001,7 @@ class DVector:
 
         # Segment by LAD segment total reports - 1 to 1, No weighting
         try:
-            lad = ZoningSystem.get_zoning('lad_2020')
+            lad = ZoningSystem.get_zoning("lad_2020")
             dvec = self.aggregate(lad_report_seg)
             dvec = dvec.translate_zoning(lad)
             dvec.data.to_csv(lad_report_path)
@@ -941,17 +1009,14 @@ class DVector:
             LOG.error("Error creating LAD report: %s", err)
 
     def sum(self):
-        """
-
-        """
+        """ """
         if isinstance(self.data, pd.DataFrame):
             return self.data.values.sum()
         if isinstance(self.data, pd.Series):
             return self.data.sum()
 
     def sum_is_close(self, other, rel_tol, abs_tol):
-        return math.isclose(self.sum(),
-                            other.sum(),
-                            rel_tol=rel_tol,
-                            abs_tol=abs_tol)
+        return math.isclose(self.sum(), other.sum(), rel_tol=rel_tol, abs_tol=abs_tol)
+
+
 # # # FUNCTIONS # # #

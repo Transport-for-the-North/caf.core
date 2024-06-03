@@ -11,4 +11,3 @@ from caf.core.zoning import ZoningSystem
 from caf.core.segments import Segment
 
 from caf.core.segmentation import Segmentation, SegmentationInput
-

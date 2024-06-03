@@ -38,6 +38,7 @@ class SegmentationWarning(Warning):
 
 class SegmentationError(Exception):
     """Error for segmentation objects."""
+
     pass
 
 
@@ -468,10 +469,12 @@ class Segmentation:
 
         for i in new_segs:
             if i not in self.names:
-                raise SegmentationError(f"{i} is not in the current segmentation, "
-                                        "so cannot be aggregated to. This is the "
-                                        "first segment raising an error, and there "
-                                        "may be more.")
+                raise SegmentationError(
+                    f"{i} is not in the current segmentation, "
+                    "so cannot be aggregated to. This is the "
+                    "first segment raising an error, and there "
+                    "may be more."
+                )
 
         if self.input.custom_segments is not None:
             custom = self.input.custom_segments.copy()
@@ -547,6 +550,55 @@ class Segmentation:
         if subset is not None:
             out_segmentation.input.subsets.update(subset)
         return out_segmentation.reinit()
+
+    def remove_segment(self, segment_name: str, inplace: bool = False):
+        """
+        Remove a segment from a segmentation.
+
+        Parameters
+        ----------
+        segment_name: str
+            The name of the segment to remove
+        inplace: bool = False
+            Whether to apply in place
+        """
+        if inplace:
+            self.input.naming_order.remove(segment_name)
+            if segment_name in self.input.enum_segments:
+                self.input.enum_segments.remove(segment_name)
+            else:
+                self.input.custom_segments.remove(segment_name)
+            if segment_name in self.input.subsets.keys():
+                del self.input.subsets[segment_name]
+            self.reinit()
+            return
+        out_seg = self.input.copy()
+        out_seg.naming_order.remove(segment_name)
+        if segment_name in out_seg.enum_segments:
+            out_seg.enum_segments.remove(segment_name)
+        else:
+            out_seg.custom_segments.remove(segment_name)
+        if segment_name in out_seg.subsets.keys():
+            del out_seg.subsets[segment_name]
+        return Segmentation(out_seg)
+
+    def update_subsets(self, extension: dict[str, int]):
+        """
+        Add to subsets dict.
+
+        Parameters
+        ----------
+        extension: dict[str, int]
+            Values to add to the subsets dict. This will still work if subsets
+            is currently empty.
+        """
+        out_seg = self.input.copy()
+        for key, val in extension.items():
+            if key in out_seg.subsets:
+                out_seg.subsets[key] = list(set(out_seg[key] + val))
+            else:
+                out_seg.subsets.update({key: val})
+        return Segmentation(out_seg)
 
 
 # # # FUNCTIONS # # #
