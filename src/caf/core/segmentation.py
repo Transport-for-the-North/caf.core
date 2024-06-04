@@ -440,9 +440,11 @@ class Segmentation:
         )
         return Segmentation(config)
 
-    def overlap(self, other):
+    def overlap(self, other: Segmentation | list[str]):
         """Check the overlap in segments between two segmentations."""
-        return set(self.names).intersection(set(other.names))
+        if isinstance(other, Segmentation):
+            return set(self.names).intersection(other.names)
+        return set(self.names).intersection(other)
 
     def __ne__(self, other) -> bool:
         """Override the default implementation."""
