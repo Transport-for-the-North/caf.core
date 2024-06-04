@@ -584,7 +584,7 @@ class Segmentation:
             del out_seg.subsets[segment_name]
         return Segmentation(out_seg)
 
-    def update_subsets(self, extension: dict[str, int]):
+    def update_subsets(self, extension: dict[str, int | list[int]], remove=False):
         """
         Add to subsets dict.
 
@@ -596,9 +596,21 @@ class Segmentation:
         """
         out_seg = self.input.copy()
         for key, val in extension.items():
+
+            if key not in self.names:
+                raise ValueError(f"{key} not in current segmentation, so can't "
+                                 "be added to subsets")
+            if isinstance(val, int):
+                val = [val]
             if key in out_seg.subsets:
-                out_seg.subsets[key] = list(set(out_seg[key] + val))
+                if remove:
+                    out_seg.subsets[key] = list(set(out_seg.subsets[key]) - set(val))
+                else:
+                    out_seg.subsets[key] = list(set(out_seg.subsets[key] + val))
             else:
+                if remove:
+                    out_seg.subsets[key] = list(set(self.seg_dict[key]) - set(val))
+
                 out_seg.subsets.update({key: val})
         return Segmentation(out_seg)
 

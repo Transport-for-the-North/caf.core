@@ -914,7 +914,10 @@ class DVector:
         """
         new_data = self.data.copy()
         if isinstance(self.segmentation.ind, pd.MultiIndex):
-            new_data = new_data.xs(segment_values, level=segment_name)
+            if isinstance(segment_values, list):
+                new_data = new_data[new_data.index.get_level_values(level=segment_name).isin(segment_values)]
+            else:
+                new_data = new_data.xs(segment_values, level=segment_name)
         else:
             new_data = new_data.loc[segment_values]
         if isinstance(segment_values, int):
@@ -930,7 +933,22 @@ class DVector:
             low_memory=self.low_memory,
         )
 
-        pass
+    def drop_by_segment_values(self, segment_name, segment_values):
+        new_data = self.data.copy()
+        if isinstance(self.segmentation.ind, pd.MultiIndex):
+            new_data = self.data.drop(segment_values, level=segment_name)
+        else:
+            new_data = new_data.drop[segment_values]
+
+        new_seg = self.segmentation.update_subsets({segment_name, segment_values}, remove=True)
+        return DVector(
+            import_data=new_data,
+            segmentation=new_seg,
+            zoning_system=self.zoning_system,
+            time_format=self.time_format,
+            val_col=self.val_col,
+            low_memory=self.low_memory,
+        )
 
     @staticmethod
     def old_to_new_dvec(import_data: dict):
@@ -1075,35 +1093,36 @@ class DVector:
     def sum_is_close(self, other, rel_tol, abs_tol):
         return math.isclose(self.sum(), other.sum(), rel_tol=rel_tol, abs_tol=abs_tol)
 
-    def _balance_zones_internal(self, other, balancing_zones):
-        self_trans = self.zoning_system.translate(balancing_zones)
+    @staticmethod
+    def _balance_zones_internal(self_data: pd.DataFrame, self_zoning: ZoningSystem, other_data: pd.DataFrame, other_zoning: ZoningSystem, balancing_zones: ZoningSystem):
+        self_trans = self_zoning.translate(balancing_zones)
         self_trans_dic = ZoningSystem.trans_df_to_dict(
             self_trans,
-            self.zoning_system.column_name,
+            self_zoning.column_name,
             balancing_zones.column_name,
-            self.zoning_system.translation_column_name(balancing_zones),
+            self_zoning.translation_column_name(balancing_zones),
         )
-        if self.zoning_system == other.zoning_system:
+        if self_zoning == other_zoning:
             other_trans_dic = self_trans_dic
         else:
-            other_trans = other.zoning_system.translate(balancing_zones)
+            other_trans = other_zoning.translate(balancing_zones)
             other_trans_dic = ZoningSystem.trans_df_to_dict(
                 other_trans,
-                other.zoning_system.column_name,
+                other_zoning.column_name,
                 balancing_zones.column_name,
-                other.zoning_system.translation_column_name(balancing_zones),
+                other_zoning.translation_column_name(balancing_zones),
             )
-        self_agg = self.data.rename(columns=self_trans_dic).groupby(level=0, axis=1).sum()
-        other_agg = other.data.rename(columns=other_trans_dic).groupby(level=0, axis=1).sum()
+        self_agg = self_data.rename(columns=self_trans_dic).groupby(level=0, axis=1).sum()
+        other_agg = other_data.rename(columns=other_trans_dic).groupby(level=0, axis=1).sum()
         agg_factors = other_agg / self_agg
         factors = ctk.translation.pandas_vector_zone_translation(agg_factors,
                                                                  self_trans,
                                                                  balancing_zones.column_name,
-                                                                 self.zoning_system.column_name,
-                                                                 self.zoning_system.translation_column_name(
+                                                                 self_zoning.column_name,
+                                                                 self_zoning.translation_column_name(
                                                                      balancing_zones),
                                                                  check_totals=False)
-        return self.data * factors
+        return factors
 
     def balance_by_segments(
         self,
@@ -1122,11 +1141,37 @@ class DVector:
             factor = other.data.sum(axis=1) / self.data.sum(axis=1)
             balanced = self.data * factor
         elif isinstance(balancing_zones, ZoningSystem):
-            return self._balance_zones_internal(other, balancing_zones)
+            factors = self._balance_zones_internal(self.data, self.zoning_system, other.data, other.zoning_system, balancing_zones)
+            balanced = self.data * factors
         elif isinstance(balancing_zones, BalancingZones):
             if balancing_zones._segment_values is not None:
-                pass
+                for seg, vals in balancing_zones._segment_values:
+                    zone = balancing_zones._segment_zoning[seg]
+                    self_slice = self.filter_segment_value(seg, vals)
+                    self_remaining = self.drop_by_segment_values(seg, vals)
+                    other_slice = other.filter_segment_value(seg, vals)
+                    other_remaining = other.drop_by_segment_values(seg, vals)
+                    slice_factors = self._balance_zones_internal(self_slice, self.zoning_system, other_slice, other.zoning_system, zone)
+                    remaining_factors = self._balance_zones_internal(self_remaining, self.zoning_system, other_remaining, other.zoning_system, balancing_zones._default_zoning)
+                    balanced = pd.concat([self_slice * slice_factors, self_remaining * remaining_factors])
             else:
-                pass
+                balanced = self.data.copy()
+                for zon, segs in balancing_zones.zoning_groups():
+                    grouped_self = self.data.groupby(level=segs).sum()
+                    grouped_other = other.data.groupby(level=segs).sum()
+                    factors = self._balance_zones_internal(grouped_self, self.zoning_system, grouped_other, other.zoning_system, zon)
+                    balanced *= factors
+                factor = other.data.sum(axis=1) / balanced.sum(axis=1)
+                balanced *= factor
+        else:
+            raise ValueError("balancing_zones must be either BalancingZones, ZoningSystem, or None"
+                             f"type provided: {type(balancing_zones)}")
+        return DVector(import_data=balanced,
+                       segmentation=self.segmentation,
+                       zoning_system=self.zoning_system,
+                       time_format=self.time_format,
+                       )
+
+
 
 # # # FUNCTIONS # # #
