@@ -598,8 +598,9 @@ class Segmentation:
         for key, val in extension.items():
 
             if key not in self.names:
-                raise ValueError(f"{key} not in current segmentation, so can't "
-                                 "be added to subsets")
+                raise ValueError(
+                    f"{key} not in current segmentation, so can't " "be added to subsets"
+                )
             if isinstance(val, int):
                 val = [val]
             if key in out_seg.subsets:

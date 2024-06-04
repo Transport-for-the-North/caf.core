@@ -775,7 +775,7 @@ class BalancingZones:
         segmentation: Segmentation,
         default_zoning: ZoningSystem,
         segment_zoning: dict[str, ZoningSystem],
-        segment_values: dict[str, int | list[int]] = None
+        segment_values: dict[str, int | list[int]] = None,
     ):
 
         # Validate inputs
