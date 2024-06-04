@@ -25,7 +25,12 @@ import caf.toolkit as ctk
 
 # pylint: disable=no-name-in-module,import-error
 from caf.core.segmentation import Segmentation, SegmentationWarning
-from caf.core.zoning import ZoningSystem, TranslationWeighting
+from caf.core.zoning import (
+    ZoningSystem,
+    TranslationWeighting,
+    TranslationError,
+    BalancingZones,
+)
 from caf.core.segments import Segment, SegmentsSuper
 
 # pylint: enable=no-name-in-module,import-error
@@ -772,7 +777,7 @@ class DVector:
             val_col=self.val_col,
         )
 
-    def split_by_other(self, other: DVector):
+    def split_by_other(self, other: DVector, agg_zone: ZoningSystem = None):
         """
         Split a DVector adding new segments.
 
@@ -791,9 +796,43 @@ class DVector:
                 "of the same zoning as 'self'. Self has zoning system "
                 f"{self.zoning_system.name}, other has {other.zoning_system.name}."
             )
+
         common = self.segmentation.overlap(other.segmentation)
         other_grouped_data = other.data.groupby(level=common).sum()
-        splitting_data = other.data / other_grouped_data
+        if agg_zone is not None:
+            translation = self.zoning_system.translate(agg_zone)
+            if not (
+                translation[self.zoning_system.translation_column_name(agg_zone)] == 1
+            ).all():
+                raise TranslationError(
+                    "Current zoning must nest perfectly within agg_zone, "
+                    "i.e. all factors should be 1. The retrieved translation "
+                    "has non-one factors. If this should not be the case "
+                    "double check the translation."
+                )
+            translation_dict = translation.set_index(self.zoning_system.column_name)[
+                agg_zone.column_name
+            ].to_dict()
+            translated_grouped = (
+                other_grouped_data.rename(columns=translation_dict)
+                .groupby(level=0, axis=1)
+                .sum()
+            )
+            translated_ungrouped = (
+                other.data.rename(columns=translation_dict).groupby(level=0, axis=1).sum()
+            )
+            # factors at common segmentation and agg zoning
+            translated = translated_ungrouped / translated_grouped
+            # Translate zoning back to DVec zoning to apply to DVector
+            splitting_data = ctk.translation.pandas_vector_zone_translation(
+                vector=translated.T,
+                translation=translation,
+                translation_from_col=agg_zone.column_name,
+                translation_to_col=self.zoning_system.column_name,
+                translation_factors_col=self.zoning_system.translation_column_name(agg_zone),
+            ).T
+        else:
+            splitting_data = other.data / other_grouped_data
         splitting_dvec = DVector(
             import_data=splitting_data,
             segmentation=other.segmentation,
@@ -1036,13 +1075,58 @@ class DVector:
     def sum_is_close(self, other, rel_tol, abs_tol):
         return math.isclose(self.sum(), other.sum(), rel_tol=rel_tol, abs_tol=abs_tol)
 
-    def balance_by_segments(self, other: DVector, segments: list[str] = None):
+    def _balance_zones_internal(self, other, balancing_zones):
+        self_trans = self.zoning_system.translate(balancing_zones)
+        self_trans_dic = ZoningSystem.trans_df_to_dict(
+            self_trans,
+            self.zoning_system.column_name,
+            balancing_zones.column_name,
+            self.zoning_system.translation_column_name(balancing_zones),
+        )
+        if self.zoning_system == other.zoning_system:
+            other_trans_dic = self_trans_dic
+        else:
+            other_trans = other.zoning_system.translate(balancing_zones)
+            other_trans_dic = ZoningSystem.trans_df_to_dict(
+                other_trans,
+                other.zoning_system.column_name,
+                balancing_zones.column_name,
+                other.zoning_system.translation_column_name(balancing_zones),
+            )
+        self_agg = self.data.rename(columns=self_trans_dic).groupby(level=0, axis=1).sum()
+        other_agg = other.data.rename(columns=other_trans_dic).groupby(level=0, axis=1).sum()
+        agg_factors = other_agg / self_agg
+        factors = ctk.translation.pandas_vector_zone_translation(agg_factors,
+                                                                 self_trans,
+                                                                 balancing_zones.column_name,
+                                                                 self.zoning_system.column_name,
+                                                                 self.zoning_system.translation_column_name(
+                                                                     balancing_zones),
+                                                                 check_totals=False)
+        return self.data * factors
+
+    def balance_by_segments(
+        self,
+        other: DVector,
+        segments: list[str] = None,
+        balancing_zones: ZoningSystem | BalancingZones = None,
+    ):
         if segments is not None:
             # All segments to balance by must be in both DVectors
             assert self.segmentation.overlap(segments) == segments
             assert other.segmentation.overlap(segments) == segments
         else:
             segments = self.segmentation.overlap(other.segmentation)
-
+        if balancing_zones is None:
+            # Zone agnostic, just making sure DVectors matched along common segments
+            factor = other.data.sum(axis=1) / self.data.sum(axis=1)
+            balanced = self.data * factor
+        elif isinstance(balancing_zones, ZoningSystem):
+            return self._balance_zones_internal(other, balancing_zones)
+        elif isinstance(balancing_zones, BalancingZones):
+            if balancing_zones._segment_values is not None:
+                pass
+            else:
+                pass
 
 # # # FUNCTIONS # # #

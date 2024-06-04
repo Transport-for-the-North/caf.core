@@ -603,6 +603,12 @@ class ZoningSystem:
 
         return translation_df
 
+    @staticmethod
+    def trans_df_to_dict(trans_df, from_col, to_col, factor_col):
+        if not (trans_df[factor_col] == 1).all():
+            raise TranslationError("This method only works for nested zoning systems.")
+        return trans_df.set_index(from_col)[to_col].to_dict()
+
     def save(self, path: PathLike, mode: Literal["csv", "hdf"] = "csv"):
         """
         Save zoning data as a dataframe and a yml file.
@@ -769,6 +775,7 @@ class BalancingZones:
         segmentation: Segmentation,
         default_zoning: ZoningSystem,
         segment_zoning: dict[str, ZoningSystem],
+        segment_values: dict[str, int | list[int]] = None
     ):
 
         # Validate inputs
@@ -784,6 +791,7 @@ class BalancingZones:
         self._segmentation = segmentation
         self._default_zoning = default_zoning
         self._segment_zoning = segment_zoning
+        self._segment_values = segment_values
         self._unique_zoning = None
 
     def get_zoning(self, segment_name: str) -> ZoningSystem:
