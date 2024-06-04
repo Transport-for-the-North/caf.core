@@ -544,6 +544,19 @@ class DVector:
         # This only works for perfect nesting
         if one_to_one:
             translation[factor_col] = 1
+        # Use a simple replace and group for nested zoning
+        if (translation[factor_col] == 1).all():
+            if set(translation[self.zoning_system.column_name]).intersection(self.zoning_system.zone_ids) != self.zoning_system.zone_ids:
+                warnings.warn("Not all zones in the DVector or defined in the translation.")
+            translation = translation.set_index(self.zoning_system.column_name)[new_zoning.column_name].to_dict()
+            translated = self.data.rename(columns=translation).groupby(level=0, axis=1).sum()
+            return DVector(
+                zoning_system=new_zoning,
+                segmentation=self.segmentation,
+                time_format=self.time_format,
+                import_data=translated,
+                low_memory=self.low_memory
+            )
 
         transposed = self.data.transpose()
         transposed.index.names = [self.zoning_system.column_name]
@@ -561,6 +574,7 @@ class DVector:
             segmentation=self.segmentation,
             time_format=self.time_format,
             import_data=translated.transpose(),
+            low_memory=self.low_memory
         )
 
     def copy(self):
@@ -1017,6 +1031,14 @@ class DVector:
 
     def sum_is_close(self, other, rel_tol, abs_tol):
         return math.isclose(self.sum(), other.sum(), rel_tol=rel_tol, abs_tol=abs_tol)
+
+    def balance_by_segments(self, other: DVector, segments: list[str] = None):
+        if segments is not None:
+            # All segments to balance by must be in both DVectors
+            assert self.segmentation.overlap(segments) == segments
+            assert other.segmentation.overlap(segments) == segments
+        else:
+            segments = self.segmentation.overlap(other.segmentation)
 
 
 # # # FUNCTIONS # # #
