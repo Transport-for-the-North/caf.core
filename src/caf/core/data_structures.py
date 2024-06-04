@@ -789,6 +789,12 @@ class DVector:
         other: DVector
             The DVector to use for splitting. Returned DVector will have the
             segmentation of this DVector, with splitting weighted by this DVector.
+
+        agg_zone: DVector
+            The zoning level the splits will be calculated at. This should be more aggregate
+            the more confident you are in your attractions distribution spatially, on a scale from
+            None if you are very confident in attractions, to model zoning for no confidence
+            (choosing model zoning means attractions will essentially mirror productions exactly).
         """
         if other.zoning_system != self.zoning_system:
             raise ValueError(
@@ -832,7 +838,9 @@ class DVector:
                 translation_factors_col=self.zoning_system.translation_column_name(agg_zone),
             ).T
         else:
+            # No spatial detail at all
             splitting_data = other.data / other_grouped_data
+        # Put splitting factors into DVector to apply
         splitting_dvec = DVector(
             import_data=splitting_data,
             segmentation=other.segmentation,
@@ -1138,6 +1146,21 @@ class DVector:
         other: DVector,
         balancing_zones: ZoningSystem | BalancingZones = None,
     ):
+        """
+        Balance one DVector to another, meaning in the end the DVectors will
+        match at some level of detail.
+
+        Parameters
+        ----------
+        other: DVector
+            The DVector to balance self to. Must have the same segmentation.
+
+        balancing_zones: ZoningSystem | BalancingZones = None
+            The zoning to perform balancing at. If None, rows will be balanced as
+            a whole, conserving the spatial distribution of self, and only scaling up
+            or down rows to match other. The more detailed the zoning system provided
+            is, the closer self's spatial distribution will be matched to other's.
+        """
         if balancing_zones is None:
             # Zone agnostic, just making sure DVectors matched along common segments
             factor = other.data.sum(axis=1) / self.data.sum(axis=1)
@@ -1149,25 +1172,33 @@ class DVector:
             balanced = self.data * factors
         elif isinstance(balancing_zones, BalancingZones):
             if balancing_zones._segment_values is not None:
-                for seg, vals in balancing_zones._segment_values:
-                    zone = balancing_zones._segment_zoning[seg]
-                    self_slice = self.filter_segment_value(seg, vals)
-                    self_remaining = self.drop_by_segment_values(seg, vals)
-                    other_slice = other.filter_segment_value(seg, vals)
-                    other_remaining = other.drop_by_segment_values(seg, vals)
-                    slice_factors = self._balance_zones_internal(
-                        self_slice, self.zoning_system, other_slice, other.zoning_system, zone
+                if len(balancing_zones._segment_values.keys()) > 1:
+                    # TODO implement this
+                    raise ValueError(
+                        "This method is not currently implemented for "
+                        "balancing zones with individual values defined "
+                        "for multiple segments."
                     )
-                    remaining_factors = self._balance_zones_internal(
-                        self_remaining,
-                        self.zoning_system,
-                        other_remaining,
-                        other.zoning_system,
-                        balancing_zones._default_zoning,
-                    )
-                    balanced = pd.concat(
-                        [self_slice * slice_factors, self_remaining * remaining_factors]
-                    )
+                seg = balancing_zones._segment_values.keys()[0]
+                vals = balancing_zones._segment_values[seg]
+                zone = balancing_zones._segment_zoning[seg]
+                self_slice = self.filter_segment_value(seg, vals)
+                self_remaining = self.drop_by_segment_values(seg, vals)
+                other_slice = other.filter_segment_value(seg, vals)
+                other_remaining = other.drop_by_segment_values(seg, vals)
+                slice_factors = self._balance_zones_internal(
+                    self_slice, self.zoning_system, other_slice, other.zoning_system, zone
+                )
+                remaining_factors = self._balance_zones_internal(
+                    self_remaining,
+                    self.zoning_system,
+                    other_remaining,
+                    other.zoning_system,
+                    balancing_zones._default_zoning,
+                )
+                balanced = pd.concat(
+                    [self_slice * slice_factors, self_remaining * remaining_factors]
+                )
             else:
                 balanced = self.data.copy()
                 for zon, segs in balancing_zones.zoning_groups():
@@ -1181,6 +1212,20 @@ class DVector:
                         zon,
                     )
                     balanced *= factors
+                remaining_segs = set(self.segmentation.names) - set(
+                    balancing_zones._segment_zoning.keys()
+                )
+                grouped_self = self.data.groupby(level=list(remaining_segs)).sum()
+                grouped_other = other.data.groupby(level=list(remaining_segs)).sum()
+                factors = self._balance_zones_internal(
+                    grouped_self,
+                    self.zoning_system,
+                    grouped_other,
+                    other.zoning_system,
+                    balancing_zones._default_zoning,
+                )
+                balanced *= factors
+                # Factors have been applied multiple times at different segmentation levels, so need to balance once more over whole rows to make totals match
                 factor = other.data.sum(axis=1) / balanced.sum(axis=1)
                 balanced *= factor
         else:
