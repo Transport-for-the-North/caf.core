@@ -546,16 +546,20 @@ class DVector:
             translation[factor_col] = 1
         # Use a simple replace and group for nested zoning
         if (translation[factor_col] == 1).all():
-            if set(translation[self.zoning_system.column_name]).intersection(self.zoning_system.zone_ids) != self.zoning_system.zone_ids:
+            if set(translation[self.zoning_system.column_name]).intersection(
+                self.zoning_system.zone_ids
+            ) != set(self.zoning_system.zone_ids):
                 warnings.warn("Not all zones in the DVector or defined in the translation.")
-            translation = translation.set_index(self.zoning_system.column_name)[new_zoning.column_name].to_dict()
+            translation = translation.set_index(self.zoning_system.column_name)[
+                new_zoning.column_name
+            ].to_dict()
             translated = self.data.rename(columns=translation).groupby(level=0, axis=1).sum()
             return DVector(
                 zoning_system=new_zoning,
                 segmentation=self.segmentation,
                 time_format=self.time_format,
                 import_data=translated,
-                low_memory=self.low_memory
+                low_memory=self.low_memory,
             )
 
         transposed = self.data.transpose()
@@ -574,7 +578,7 @@ class DVector:
             segmentation=self.segmentation,
             time_format=self.time_format,
             import_data=translated.transpose(),
-            low_memory=self.low_memory
+            low_memory=self.low_memory,
         )
 
     def copy(self):
