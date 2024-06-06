@@ -290,18 +290,24 @@ class DVector:
         return self._val_col
 
     @property
-    def zoning_system(self):
+    def zoning_system(self) -> ZoningSystem:
         """Get _zoning_system."""
         return self._zoning_system
 
     @property
-    def segmentation(self):
+    def segmentation(self) -> Segmentation:
         """Get _segmentation."""
         return self._segmentation
 
     @property
-    def data(self):
-        """Get _data."""
+    def data(self) -> pd.DataFrame | pd.Series:
+        """
+        Get _data.
+
+        data is a pandas DataFrame or pandas Series. It will have a multiindex
+        comprising the segmentation, and columns comprising the zones, if there
+        are zones.
+        """
         return self._data
 
     @data.setter
