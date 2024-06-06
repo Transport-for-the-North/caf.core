@@ -305,7 +305,7 @@ class DVector:
         return self._data
 
     @data.setter
-    def data(self, value):
+    def data(self, value: pd.Series | pd.DataFrame):
         """Set _data."""
         if not isinstance(value, (pd.DataFrame, pd.Series)):
             raise TypeError(
