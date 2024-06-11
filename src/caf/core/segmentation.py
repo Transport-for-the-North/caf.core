@@ -59,23 +59,25 @@ class SegmentationInput(BaseConfig):
     """
 
     enum_segments: list[SegmentsSuper]
-    naming_order: list[str]
-    subsets: dict[str, list[int]] = pydantic.Field(default_factory=dict)
     custom_segments: list[Segment] = pydantic.Field(default_factory=list)
+    subsets: dict[str, list[int]] = pydantic.Field(default_factory=dict)
+    naming_order: list[str]
 
-    @pydantic.validator("subsets", always=True)
+    @pydantic.field_validator("subsets", check_fields=True)
+    @classmethod
     def enums(cls, v, values):
         """Validate the subsets match segments."""
         # validator is a class method pylint: disable=no-self-argument
         for seg in v.keys():
-            if SegmentsSuper(seg) not in values["enum_segments"]:
+            if SegmentsSuper(seg) not in values.data["enum_segments"]:
                 raise ValueError(
                     f"{v} is not a valid segment  " ", and so can't be a subset value."
                 )
         return v
 
     # pylint: disable=no-self-argument
-    @pydantic.validator("custom_segments", always=True)
+    @pydantic.field_validator("custom_segments")
+    @classmethod
     def no_copied_names(cls, v):
         """Validate the custom_segments do not clash with existing segments."""
         for seg in v:
@@ -91,12 +93,13 @@ class SegmentationInput(BaseConfig):
                 )
         return v
 
-    @pydantic.validator("naming_order")
+    @pydantic.field_validator("naming_order")
+    @classmethod
     def names_match_segments(cls, v, values):
         """Validate that naming order names match segment names."""
-        seg_names = [i.value for i in values["enum_segments"]]
-        if "custom_segments" in values.keys():
-            seg_names += [i.name for i in values["custom_segments"]]
+        seg_names = [i.value for i in values.data["enum_segments"]]
+        if "custom_segments" in values.data.keys():
+            seg_names += [i.name for i in values.data["custom_segments"]]
 
         if set(seg_names) != set(v):
             raise ValueError("Names provided for naming_order do not match names in segments")

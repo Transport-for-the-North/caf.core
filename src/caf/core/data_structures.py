@@ -290,23 +290,40 @@ class DVector:
         return self._val_col
 
     @property
-    def zoning_system(self):
-        """_zoning_system getter."""
+    def zoning_system(self) -> ZoningSystem:
+        """Get _zoning_system."""
         return self._zoning_system
 
     @property
-    def segmentation(self):
-        """_segmentation getter."""
+    def segmentation(self) -> Segmentation:
+        """Get _segmentation."""
         return self._segmentation
 
     @property
-    def data(self):
-        """_data getter."""
+    def data(self) -> pd.DataFrame | pd.Series:
+        """
+        Get _data.
+
+        data is a pandas DataFrame or pandas Series. It will have a multiindex
+        comprising the segmentation, and columns comprising the zones, if there
+        are zones.
+        """
         return self._data
+
+    @data.setter
+    def data(self, value: pd.Series | pd.DataFrame):
+        """Set _data."""
+        if not isinstance(value, (pd.DataFrame, pd.Series)):
+            raise TypeError(
+                "data must be a pandas DataFrame or Series. Input " f"value is {value.type}."
+            )
+        if isinstance(value, pd.Series):
+            value = value.to_frame()
+        self._data = self._dataframe_to_dvec(value)
 
     @property
     def time_format(self):
-        """_time_format getter."""
+        """Get _time_format."""
         if self._time_format is None:
             return None
         return self._time_format.name
@@ -385,18 +402,24 @@ class DVector:
 
         if set(import_data.columns) != set(self.zoning_system.zone_ids):
             missing = self.zoning_system.zone_ids[
-                np.isin(self.zoning_system.zone_ids, import_data.columns)
+                ~np.isin(self.zoning_system.zone_ids, import_data.columns)
             ]
             extra = import_data.columns.values[
-                np.isin(import_data.columns.values, self.zoning_system.zone_ids)
+                ~np.isin(import_data.columns.values, self.zoning_system.zone_ids)
             ]
-
-            raise ValueError(
-                f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
-                f" aren't found in the DVector data and {len(extra)} column names are"
-                " found which don't correspond to zone IDs.\nDVector DataFrame column"
-                " names should be the zone IDs (integers) for the given zone system."
-            )
+            if len(extra) > 0:
+                raise ValueError(
+                    f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
+                    f" aren't found in the DVector data and {len(extra)} column names are"
+                    " found which don't correspond to zone IDs.\nDVector DataFrame column"
+                    " names should be the zone IDs (integers) for the given zone system."
+                )
+            if len(missing) > 0:
+                warnings.warn(
+                    f"{len(missing)} zone IDs from zoning system {self.zoning_system.name}"
+                    f" aren't found in the DVector data. This may be by design"
+                    f" e.g. you are using a subset of a zoning system."
+                )
 
         return import_data
 
@@ -444,6 +467,8 @@ class DVector:
         new_zoning: ZoningSystem,
         cache_path: Optional[PathLike],
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
+        check_totals: bool = True,
+        one_to_one: bool = False,
     ) -> DVector:
         """
         Translate this DVector into another zoning system and returns a new DVector.
@@ -459,6 +484,16 @@ class DVector:
         weighting : str | TranslationWeighting = TranslationWeighting.SPATIAL
             The weighting to use when building the translation. Must be
             one of TranslationWeighting.
+
+        check_totals: bool = True
+            Whether to raise a warning if the translated total doesn't match the
+            input total. Should be set to False for one-to-one translations.
+
+        one-to-one: bool = False
+            Whether to run as a one-to-one translation, e.g. all data will be
+            multiplied by one, and zone numbers will change. This should only be
+            used for perfectly nesting zone systems when disaggregating, e.g.
+            msoa to lsoa.
 
         Returns
         -------
@@ -492,6 +527,11 @@ class DVector:
         translation = self.zoning_system.translate(
             new_zoning, weighting=weighting, cache_path=cache_path
         )
+        factor_col = self.zoning_system.translation_column_name(new_zoning)
+        # factors equal one to propagate perfectly
+        # This only works for perfect nesting
+        if one_to_one:
+            translation[factor_col] = 1
 
         transposed = self.data.transpose()
         transposed.index.names = [self.zoning_system.column_name]
@@ -500,7 +540,8 @@ class DVector:
             translation,
             translation_from_col=self.zoning_system.column_name,
             translation_to_col=new_zoning.column_name,
-            translation_factors_col=self.zoning_system.translation_column_name(new_zoning),
+            translation_factors_col=factor_col,
+            check_totals=check_totals,
         )
 
         return DVector(
@@ -584,8 +625,8 @@ class DVector:
         # the addition of the two segmentations (see __add__ method in segmentation)
         new_seg = self.segmentation + other.segmentation
         warnings.warn(
-            f"This operation has changed the segmentation of the DVector"
-            f"from {self.segmentation} to {new_seg}. This can happen"
+            f"This operation has changed the segmentation of the DVector "
+            f"from {self.segmentation.names} to {new_seg.names}. This can happen"
             "but it can also be a sign of an error. Check the output DVector.",
             SegmentationWarning,
         )
@@ -635,6 +676,12 @@ class DVector:
         segs: Segments to aggregate to. Must be a subset of self.segmentation.naming_order,
         naming order will be preserved.
         """
+        if not isinstance(segs, list):
+            raise TypeError(
+                "Aggregate expects a list of strings. Even if you "
+                "are aggregating to a single level, this should be a "
+                "list of length 1."
+            )
         segmentation = self.segmentation.aggregate(segs)
         data = self.data.groupby(level=segs).sum()
         return DVector(

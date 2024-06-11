@@ -6,10 +6,10 @@ from typing import Optional
 
 import pandas as pd
 import pydantic
+from pydantic import ConfigDict
 from caf.toolkit import BaseConfig
 
 
-# # # CONSTANTS # # #
 # # # CLASSES # # #
 @dataclass
 class Exclusion:
@@ -56,15 +56,11 @@ class Segment(BaseConfig):
     name: str
     values: dict[int, str]
     exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # pylint: disable=too-few-public-methods
-    class Config:
-        """Allow arbitrary types."""
-
-        arbitrary_types_allowed = True
-
-    # pylint: disable=too-few-public-methods
-
+    # pylint: disable=not-an-iterable
+    # Pylint doesn't seem to understand pydantic.Field
     @property
     def _exclusion_segs(self):
         return [seg.seg_name for seg in self.exclusions]
@@ -79,6 +75,8 @@ class Segment(BaseConfig):
                     ind_tuples.append((excl.own_val, other))
         drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
         return drop_ind
+
+    # pylint: enable=not-an-iterable
 
 
 class SegmentsSuper(enum.Enum):
@@ -98,6 +96,7 @@ class SegmentsSuper(enum.Enum):
     SIC = "sic"
     CA = "ca"
     TFN_AT = "tfn_at"
+    TFN_TT = "tfn_tt"
     USERCLASS = "uc"
     NS = "ns"
 
@@ -172,7 +171,7 @@ class SegmentsSuper(enum.Enum):
                         Exclusion(
                             seg_name=SegmentsSuper.SOC.value,
                             own_val=1,
-                            other_vals=set([1, 2, 3]),
+                            other_vals={1, 2, 3},
                         )
                     ],
                 )
@@ -193,6 +192,8 @@ class SegmentsSuper(enum.Enum):
                     name=self.value,
                     values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
                 )
+            case SegmentsSuper.TFN_TT:
+                seg = Segment(name=self.value, values={i: "no desc" for i in range(1, 761)})
 
         if subset:
             if seg is not None:
