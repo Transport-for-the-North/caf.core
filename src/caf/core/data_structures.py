@@ -6,7 +6,6 @@ Currently this is only the DVector class, but this may be expanded in the future
 """
 from __future__ import annotations
 
-import psutil
 import tempfile
 import enum
 import logging
@@ -31,7 +30,7 @@ from caf.core.zoning import (
     TranslationError,
     BalancingZones,
 )
-from caf.core.segments import Segment, SegmentsSuper
+from caf.core.segments import Segment, SegmentsSuper, SegConverter
 
 # pylint: enable=no-name-in-module,import-error
 
@@ -760,7 +759,7 @@ class DVector:
         naming order will be preserved.
         """
         if isinstance(segs, Segmentation):
-            segs = segs.segments
+            segs = segs.naming_order
         if not isinstance(segs, list):
             raise TypeError(
                 "Aggregate expects a list of strings. Even if you "
@@ -959,6 +958,29 @@ class DVector:
             val_col=self.val_col,
             low_memory=self.low_memory,
         )
+
+    def trans_seg_from_lookup(self, lookup: SegConverter):
+        lookup = SegConverter(lookup).get_conversion()
+        drop_names = lookup.imndex.names
+        new_names = lookup.columns
+        new_seg = self.segmentation
+        for name in drop_names:
+            if name not in self.segmentation.names:
+                raise ValueError(f"{name} not in current segmentation so can't"
+                                 f"be used to convert.")
+            new_seg.remove_segment(name, inplace=True)
+        for name in new_names:
+            new_seg.add_segment(SegmentsSuper(name).get_segment())
+            
+        new_data = self.data.join(lookup).reset_index(level=drop_names).drop(columns=drop_names).groupby(new_seg).sum()
+
+        return DVector(import_data=new_data,
+                       segmentation=new_seg,
+                       zoning_system=self.zoning_system,
+                       time_format=self.time_format,
+                       low_memory=self.low_memory,
+                       val_col=self.val_col)
+
 
     @staticmethod
     def old_to_new_dvec(import_data: dict):

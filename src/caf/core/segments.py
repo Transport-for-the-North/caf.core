@@ -422,4 +422,58 @@ class SegmentsSuper(enum.Enum):
         return seg
 
 
+class SegConverter(enum.Enum):
+
+    LU_TT = "lu_tt"
+
+    def get_conversion(self):
+        con = None
+        match self:
+            case SegConverter.LU_TT:
+                from_ind = pd.MultiIndex.from_tuples(
+                    [
+                        (1, 1),
+                        (2, 1),
+                        (3, 1),
+                        (1, 2),
+                        (2, 2),
+                        (3, 2),
+                        (4, 1),
+                        (5, 1),
+                        (6, 1),
+                        (7, 1),
+                        (8, 1),
+                        (9, 1),
+                        (4, 2),
+                        (5, 2),
+                        (6, 2),
+                        (7, 2),
+                        (8, 2),
+                        (9, 2),
+                    ],
+                    names=["age_9", "g"],
+                )
+                to_vals = [
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    2,
+                    2,
+                    2,
+                    2,
+                    2,
+                    2,
+                    3,
+                    3,
+                    3,
+                    3,
+                    3,
+                    3,
+                ]
+                df = pd.DataFrame(index=from_ind, data={"g": to_vals})
+
+
 # # # FUNCTIONS # # #
