@@ -961,7 +961,7 @@ class DVector:
 
     def trans_seg_from_lookup(self, lookup: SegConverter, drop_old: bool = False):
         lookup = SegConverter(lookup).get_conversion()
-        drop_names = lookup.imndex.names
+        drop_names = lookup.index.names
         new_names = lookup.columns
         new_seg = self.segmentation
         for name in drop_names:
@@ -972,13 +972,13 @@ class DVector:
             if drop_old:
                 new_seg.remove_segment(name, inplace=True)
         for name in new_names:
-            new_seg.add_segment(SegmentsSuper(name).get_segment())
+            new_seg = new_seg.add_segment(SegmentsSuper(name).get_segment())
 
         new_data = self.data.join(lookup, how="left").reset_index()
 
         if drop_old:
             new_data.drop(columns=drop_names, inplace=True)
-        new_data = new_data.groupby(new_seg).sum()
+        new_data = new_data.groupby(new_seg.naming_order).sum()
 
         return DVector(
             import_data=new_data,
