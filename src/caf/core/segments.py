@@ -109,11 +109,13 @@ class SegmentsSuper(enum.Enum):
     AGE = "age_9"
     AGE_11 = "age_11"
     AGE_AGG = "age_5"
-    GENDER_DEMO = "gender_demo"
+    GENDER_3 = "gender_3"
     ECONOMIC_STATUS = "economic_status"
     POP_EMP = "pop_emp"
     POP_ECON = "pop_econ"
     NS_SEC = "ns_sec"
+    AWS = "aws"
+    HH_TYPE = "hh_type"
 
     @classmethod
     def values(cls):
@@ -400,7 +402,7 @@ class SegmentsSuper(enum.Enum):
                     },
                 )
 
-            case SegmentsSuper.GENDER_DEMO:
+            case SegmentsSuper.GENDER_3:
                 seg = Segment(
                     name=self.value,
                     values={1: "Child", 2: "Male", 3: "Female"},
@@ -416,6 +418,27 @@ class SegmentsSuper(enum.Enum):
             case SegmentsSuper.CA:
                 seg = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
 
+            case SegmentsSuper.AWS:
+                seg = Segment(
+                    name=self.value,
+                    values={1: "Child", 2: "FTE", 3: "PTE", 4: "Student", 5: "NEET", 6: "75+"},
+                )
+
+            case SegmentsSuper.HH_TYPE:
+                seg = Segment(
+                    name=self.value,
+                    values={
+                        1: "1 adult with 0 car",
+                        2: "1 adult with 1+ cars",
+                        3: "2 adults with 0 car",
+                        4: "2 adults with 1 car",
+                        5: "2 adults with 2+ cars",
+                        6: "3+ adults with 0 car",
+                        7: "3+ adults with 1 car",
+                        8: "3+ adults with 2+ cars",
+                    },
+                )
+
         if subset:
             if seg is not None:
                 seg.values = {i: j for i, j in seg.values.items() if i in subset}
@@ -424,12 +447,14 @@ class SegmentsSuper(enum.Enum):
 
 class SegConverter(enum.Enum):
 
-    LU_TT = "lu_tt"
+    AG_G = "ag_g"
+    APOPEMP_AWS = "apopemp_aws"
+    CARADULT_HHTYPE = "caradult_hhtype"
 
     def get_conversion(self):
         con = None
         match self:
-            case SegConverter.LU_TT:
+            case SegConverter.AG_G:
                 from_ind = pd.MultiIndex.from_tuples(
                     [
                         (1, 1),
@@ -473,7 +498,109 @@ class SegConverter(enum.Enum):
                     3,
                     3,
                 ]
-                df = pd.DataFrame(index=from_ind, data={"g": to_vals})
+                return pd.DataFrame(index=from_ind, data={"gender_3": to_vals})
+        match self:
+            case SegConverter.APOPEMP_AWS:
+                from_ind = pd.MultiIndex.from_tuples(
+                    [
+                        (9, 1),
+                        (9, 2),
+                        (9, 3),
+                        (9, 4),
+                        (9, 5),
+                        (1, 1),
+                        (1, 2),
+                        (1, 3),
+                        (1, 4),
+                        (1, 5),
+                        (2, 1),
+                        (2, 2),
+                        (2, 3),
+                        (2, 4),
+                        (2, 5),
+                        (3, 1),
+                        (3, 2),
+                        (3, 3),
+                        (3, 4),
+                        (3, 5),
+                        (4, 1),
+                        (5, 1),
+                        (6, 1),
+                        (7, 1),
+                        (8, 1),
+                        (4, 2),
+                        (5, 2),
+                        (6, 2),
+                        (7, 2),
+                        (8, 2),
+                        (4, 3),
+                        (5, 3),
+                        (6, 3),
+                        (7, 3),
+                        (8, 3),
+                        (4, 4),
+                        (5, 4),
+                        (6, 4),
+                        (7, 4),
+                        (8, 4),
+                    ],
+                    names=["age_9", "pop_emp"],
+                )
+
+                to_vals = [
+                    6,
+                    6,
+                    6,
+                    6,
+                    6,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    1,
+                    2,
+                    2,
+                    2,
+                    2,
+                    2,
+                    3,
+                    3,
+                    3,
+                    3,
+                    3,
+                    5,
+                    5,
+                    5,
+                    5,
+                    5,
+                    4,
+                    4,
+                    4,
+                    4,
+                    4,
+                ]
+
+                return pd.DataFrame(index=from_ind, data={"aws": to_vals})
+
+        match self:
+            case SegConverter.CARADULT_HHTYPE:
+                from_ind = pd.MultiIndex.from_tuples(
+                    [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 1), (3, 2), (3, 3)],
+                    names=["adults", "car_availability"],
+                )
+                to_vals = [1, 2, 2, 3, 4, 5, 6, 7, 8]
+
+                return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
 
 
 # # # FUNCTIONS # # #

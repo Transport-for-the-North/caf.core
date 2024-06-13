@@ -959,28 +959,35 @@ class DVector:
             low_memory=self.low_memory,
         )
 
-    def trans_seg_from_lookup(self, lookup: SegConverter):
+    def trans_seg_from_lookup(self, lookup: SegConverter, drop_old: bool = False):
         lookup = SegConverter(lookup).get_conversion()
         drop_names = lookup.imndex.names
         new_names = lookup.columns
         new_seg = self.segmentation
         for name in drop_names:
             if name not in self.segmentation.names:
-                raise ValueError(f"{name} not in current segmentation so can't"
-                                 f"be used to convert.")
-            new_seg.remove_segment(name, inplace=True)
+                raise ValueError(
+                    f"{name} not in current segmentation so can't" f"be used to convert."
+                )
+            if drop_old:
+                new_seg.remove_segment(name, inplace=True)
         for name in new_names:
             new_seg.add_segment(SegmentsSuper(name).get_segment())
-            
-        new_data = self.data.join(lookup).reset_index(level=drop_names).drop(columns=drop_names).groupby(new_seg).sum()
 
-        return DVector(import_data=new_data,
-                       segmentation=new_seg,
-                       zoning_system=self.zoning_system,
-                       time_format=self.time_format,
-                       low_memory=self.low_memory,
-                       val_col=self.val_col)
+        new_data = self.data.join(lookup, how="left").reset_index()
 
+        if drop_old:
+            new_data.drop(columns=drop_names, inplace=True)
+        new_data = new_data.groupby(new_seg).sum()
+
+        return DVector(
+            import_data=new_data,
+            segmentation=new_seg,
+            zoning_system=self.zoning_system,
+            time_format=self.time_format,
+            low_memory=self.low_memory,
+            val_col=self.val_col,
+        )
 
     @staticmethod
     def old_to_new_dvec(import_data: dict):
