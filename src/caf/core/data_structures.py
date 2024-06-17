@@ -612,12 +612,22 @@ class DVector:
                 temp_self = Path(temp_dir) / "temp_self.hdf"
                 temp_other = Path(temp_dir) / "temp_other.hdf"
                 for ind in self.segmentation.seg_dict[storage_seg].values.keys():
-                    self.data.xs(ind, level=storage_seg).to_hdf(
-                        temp_self, mode="a", key=f"node_{ind}"
-                    )
-                    other.data.xs(ind, level=storage_seg).to_hdf(
-                        temp_other, mode="a", key=f"node_{ind}"
-                    )
+                    if isinstance(self.data.index, pd.MultiIndex):
+                        self.data.xs(ind, level=storage_seg).to_hdf(
+                            temp_self, mode="a", key=f"node_{ind}"
+                        )
+                    else:
+                        self.data.loc[ind].to_hdf(
+                            temp_self, mode="a", key=f"node_{ind}"
+                        )
+                    if isinstance(other.data.index, pd.MultiIndex):
+                        other.data.xs(ind, level=storage_seg).to_hdf(
+                            temp_other, mode="a", key=f"node_{ind}"
+                        )
+                    else:
+                        self.data.loc[ind].to_hdf(
+                            temp_self, mode="a", key=f"node_{ind}"
+                        )
                 # TODO potentially delete one or both of the input DVectors
                 out_data = {}
                 for ind in self.segmentation.seg_dict[storage_seg].values.keys():
@@ -687,7 +697,7 @@ class DVector:
                 f"rows have been dropped from the pure product."
             )
             prod = prod.loc[new_seg.ind()]
-        return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
+        return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning, low_memory=self.low_memory)
 
     def __mul__(self, other):
         """Multiply dunder method for DVector."""

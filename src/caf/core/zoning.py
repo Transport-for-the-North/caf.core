@@ -368,7 +368,7 @@ class ZoningSystem:
         return self.n_zones
 
     def _generate_spatial_translation(
-        self, other: ZoningSystem, cache_path: Path = ZONE_CACHE_HOME
+        self, other: ZoningSystem, cache_path: Path = ZONE_TRANSLATION_CACHE
     ) -> pd.DataFrame:
         """Generate spatial translation using `caf.space`, if available."""
         try:
@@ -444,7 +444,7 @@ class ZoningSystem:
                 "input weighting. For a different weighting make your own."
             )
             try:
-                trans = self._generate_spatial_translation(other)
+                trans = self._generate_spatial_translation(other, trans_cache)
             except ImportError as exc:
                 raise TranslationError(
                     f"A translation from {self.name} to {other.name}"
