@@ -143,13 +143,17 @@ class ZoningSystem:
             raise ValueError(
                 f"mandatory ID column ({self._id_column}) missing from zones data"
             )
-
-        try:
-            zones.loc[:, self._id_column] = zones[self._id_column].astype(int)
-        except ValueError as exc:
-            raise ValueError(
-                f"zone IDs should be integers not {zones[self._id_column].dtype}"
-            ) from exc
+        # TODO: consider replacing with alternative checks that allow string IDs
+        ### This chunk of code requires the zone names to be integers
+        ### This has been commented out to allow LSOA (or other) zone codes to be used
+        ### directly instead to avoid the added step of providing zone lookups with
+        ### integer zone numbers for all zone systems
+        # try:
+        #     zones.loc[:, self._id_column] = zones[self._id_column].astype(int)
+        # except ValueError as exc:
+        #     raise ValueError(
+        #         f"zone IDs should be integers not {zones[self._id_column].dtype}"
+        #     ) from exc
 
         try:
             zones = zones.set_index(self._id_column, verify_integrity=True)
@@ -363,7 +367,9 @@ class ZoningSystem:
         """Get the length of the zoning system."""
         return self.n_zones
 
-    def _generate_spatial_translation(self, other: ZoningSystem) -> pd.DataFrame:
+    def _generate_spatial_translation(
+        self, other: ZoningSystem, cache_path: Path = ZONE_TRANSLATION_CACHE
+    ) -> pd.DataFrame:
         """Generate spatial translation using `caf.space`, if available."""
         try:
             # pylint: disable=import-outside-toplevel
@@ -381,12 +387,13 @@ class ZoningSystem:
             shapefile=self.metadata.shapefile_path,
             id_col=self.metadata.shapefile_id_col,
         )
+
         zone_2 = cs.TransZoneSystemInfo(
             name=other.name,
             shapefile=other.metadata.shapefile_path,
             id_col=other.metadata.shapefile_id_col,
         )
-        conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2)
+        conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2, cache_path=cache_path)
 
         return cs.ZoneTranslation(conf).spatial_translation()
 
@@ -437,7 +444,7 @@ class ZoningSystem:
                 "input weighting. For a different weighting make your own."
             )
             try:
-                trans = self._generate_spatial_translation(other)
+                trans = self._generate_spatial_translation(other, trans_cache)
             except ImportError as exc:
                 raise TranslationError(
                     f"A translation from {self.name} to {other.name}"
