@@ -215,6 +215,16 @@ class SegmentsSuper(enum.Enum):
                             seg_name=SegmentsSuper.AGE_11.value,
                             own_val=1,
                             other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE_AGG.value,
+                            own_val=1,
+                            other_vals={1},
                         )
                     ],
                 )
@@ -243,6 +253,59 @@ class SegmentsSuper(enum.Enum):
                         8: "65 to 74 years",
                         9: "75+ years",
                     },
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=1,
+                            other_vals={1, 2, 3, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=2,
+                            other_vals={1, 2, 3, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.ECONOMIC_STATUS.value,
+                            own_val=3,
+                            other_vals={1, 2, 3, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=2,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=3,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=9,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=1,
+                            other_vals={2, 3, 4, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=2,
+                            other_vals={2, 3, 4, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=3,
+                            other_vals={2, 3, 4, 5},
+                        ),
+
+                    ],
                 )
 
             case SegmentsSuper.AGE_11:
@@ -292,6 +355,21 @@ class SegmentsSuper(enum.Enum):
                             own_val=3,
                             other_vals={1, 2, 3},
                         ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=1,
+                            other_vals={2, 3, 4, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=2,
+                            other_vals={2, 3, 4, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=3,
+                            other_vals={2, 3, 4, 5},
+                        ),
                     ],
                 )
 
@@ -305,12 +383,36 @@ class SegmentsSuper(enum.Enum):
                         4: "aged 35 to 49 years",
                         5: "aged 50 years and over",
                     },
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=1,
+                            other_vals={2, 3, 4, 5},
+                        ),
+                    ]
                 )
 
             case SegmentsSuper.GENDER:
                 seg = Segment(
                     name=self.value,
                     values={1: "male", 2: "female"},
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.GENDER_3.value,
+                            own_val=1,
+                            other_vals={3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.GENDER_3.value,
+                            own_val=2,
+                            other_vals={2},
+                        ),
+                    ]
                 )
 
             case SegmentsSuper.NS_SEC:
@@ -350,6 +452,11 @@ class SegmentsSuper(enum.Enum):
                             own_val=4,
                             other_vals={1, 3},
                         ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=4,
+                            other_vals={2, 3},
+                        ),
                     ],
                 )
 
@@ -363,6 +470,63 @@ class SegmentsSuper(enum.Enum):
                         4: "students",
                         5: "non-working_age",
                     },
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=1,
+                            other_vals={1, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals={4},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=2,
+                            other_vals={4},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=3,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=4,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=5,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=2,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=3,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=4,
+                            other_vals={1, 2, 3},
+                        ),Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=5,
+                            other_vals={4, 5, 6, 7, 8, 9},
+                        ),
+
+                    ]
                 )
 
             case SegmentsSuper.POP_ECON:
@@ -374,6 +538,64 @@ class SegmentsSuper(enum.Enum):
                         3: "Economically inactive",
                         4: "Students",
                     },
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.POP_EMP.value,
+                            own_val=1,
+                            other_vals={3, 4, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.POP_EMP.value,
+                            own_val=2,
+                            other_vals={1, 2, 4, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.POP_EMP.value,
+                            own_val=3,
+                            other_vals={1, 2, 3, 4},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.POP_EMP.value,
+                            own_val=4,
+                            other_vals={1, 2, 3, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals={4},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=2,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=3,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=4,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=2,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=4,
+                            other_vals={1, 2, 3},
+                        ),
+
+                    ]
                 )
 
             case SegmentsSuper.ECONOMIC_STATUS:
@@ -411,7 +633,30 @@ class SegmentsSuper(enum.Enum):
                             seg_name=SegmentsSuper.SOC.value,
                             own_val=1,
                             other_vals={1, 2, 3},
-                        )
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AWS.value,
+                            own_val=1,
+                            other_vals={2, 3, 4, 5, 6},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=1,
+                            other_vals={4, 5, 6, 7, 8, 9},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=2,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=3,
+                            other_vals={1, 2, 3},
+                        ),
+
+
+
                     ],
                 )
 
@@ -422,6 +667,48 @@ class SegmentsSuper(enum.Enum):
                 seg = Segment(
                     name=self.value,
                     values={1: "Child", 2: "FTE", 3: "PTE", 4: "Student", 5: "NEET", 6: "75+"},
+                    exclusions=[
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=1,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=4,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=5,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.SOC.value,
+                            own_val=6,
+                            other_vals={1, 2, 3},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE_11.value,
+                            own_val=1,
+                            other_vals={4, 5, 6, 7, 8, 9, 10, 11},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE.value,
+                            own_val=1,
+                            other_vals={4, 5, 6, 7, 8, 9},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.AGE_AGG.value,
+                            own_val=1,
+                            other_vals={2, 3, 4, 5},
+                        ),
+                        Exclusion(
+                            seg_name=SegmentsSuper.GENDER_3.value,
+                            own_val=1,
+                            other_vals={2, 3},
+                        ),
+                    ]
                 )
 
             case SegmentsSuper.HH_TYPE:
