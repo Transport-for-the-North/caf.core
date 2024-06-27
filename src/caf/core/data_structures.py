@@ -244,6 +244,7 @@ class DVector:
         time_format: Optional[Union[str, TimeFormat]] = None,
         val_col: Optional[str] = "val",
         low_memory: bool = False,
+        cut_read: bool = False
     ) -> None:
         """
         Init method.
@@ -290,7 +291,7 @@ class DVector:
 
         # Try to convert the given data into DVector format
         if isinstance(import_data, (pd.DataFrame, pd.Series)):
-            self._data = self._dataframe_to_dvec(import_data)
+            self._data, self._segmentation = self._dataframe_to_dvec(import_data, cut_read=cut_read)
         else:
             raise NotImplementedError(
                 "Don't know how to deal with anything other than: pandas DF, or dict"
@@ -390,13 +391,19 @@ class DVector:
                 f"\tExpected one of: {self._valid_time_formats()}"
             ) from exc
 
-    def _dataframe_to_dvec(self, import_data: pd.DataFrame):
+    def _dataframe_to_dvec(self, import_data: pd.DataFrame, cut_read: bool = False):
         """
         Take a dataframe and ensure it is in DVec data format.
 
         This requires the dataframe to be in wide format.
         """
-        Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation)
+        seg = Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation, cut_read=cut_read)
+
+        if cut_read:
+            full_sum = import_data.values.sum()
+            import_data = import_data.loc[seg.ind()]
+            cut_sum = import_data.values.sum()
+            warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
 
         if self.zoning_system is None:
             import_data.columns = [self.val_col]
@@ -437,7 +444,7 @@ class DVector:
                     f" e.g. you are using a subset of a zoning system."
                 )
 
-        return import_data
+        return import_data, seg
 
     def save(self, out_path: PathLike):
         """
@@ -462,7 +469,7 @@ class DVector:
         self.segmentation.save(out_path, "hdf")
 
     @classmethod
-    def load(cls, in_path: PathLike):
+    def load(cls, in_path: PathLike, cut_read: bool = False):
         """
         Load the DVector.
 
@@ -476,7 +483,7 @@ class DVector:
         segmentation = Segmentation.load(in_path, "hdf")
         data = pd.read_hdf(in_path, key="data", mode="r")
 
-        return cls(segmentation=segmentation, import_data=data, zoning_system=zoning)
+        return cls(segmentation=segmentation, import_data=data, zoning_system=zoning, cut_read=cut_read)
 
     def translate_zoning(
         self,
@@ -987,6 +994,7 @@ class DVector:
             time_format=self.time_format,
             low_memory=self.low_memory,
             val_col=self.val_col,
+            cut_read=True
         )
 
     @staticmethod
