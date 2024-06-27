@@ -192,9 +192,34 @@ class Segmentation:
         exclusions into account if any exist between segments.
         """
         index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
-        df = pd.DataFrame(index=index)
+        df = pd.DataFrame(index=index).reset_index()
         drop_iterator = self.naming_order.copy()
-
+        # TODO hard coded here for now as a quick fix, needs thought
+        hh_dropper = pd.MultiIndex.from_tuples([(2, 1, 1, 4),
+            (2, 1, 2, 4),
+            (2, 1, 3, 1),
+            (2, 1, 3, 4),
+            (2, 2, 1, 4),
+            (2, 2, 2, 4),
+            (2, 2, 3, 1),
+            (2, 2, 3, 4),
+            (3, 1, 1, 4),
+            (3, 1, 2, 4),
+            (3, 1, 3, 1),
+            (3, 1, 3, 4),
+            (3, 2, 1, 4),
+            (3, 2, 2, 4),
+            (3, 2, 3, 1),
+            (3, 2, 3, 4),
+            (4, 1, 4, 1),
+            (4, 1, 4, 2),
+            (4, 1, 4, 3),
+            (4, 1, 4, 4),
+            (4, 2, 4, 1),
+            (4, 2, 4, 2),
+            (4, 2, 4, 3),
+            (4, 2, 4, 4)],
+           names=['aws', 'hh_type', 'soc', 'ns_sec'])
         for own_seg in self.segments:
             for other_seg in drop_iterator:
                 if other_seg == own_seg.name:
@@ -202,11 +227,13 @@ class Segmentation:
                 # pylint: disable=protected-access
                 if other_seg in own_seg._exclusion_segs:
                     dropper = own_seg._drop_indices(other_seg)
-                    df = df.reset_index().set_index([own_seg.name, other_seg])
+                    df = df.set_index([own_seg.name, other_seg])
                     mask = ~df.index.isin(dropper)
-                    df = df[mask]
+                    df = df[mask].reset_index()
                 # pylint: enable=protected-access
-        return df.reset_index().set_index(self.naming_order).index
+        if set(hh_dropper.names).issubset(self.names):
+            df = df.set_index(hh_dropper.names).drop(hh_dropper).reset_index()
+        return df.set_index(self.naming_order).index
 
     def has_time_period_segments(self) -> bool:
         """Check whether this segmentation has time period segmentation.
@@ -226,6 +253,7 @@ class Segmentation:
         source: Union[Path, pd.DataFrame],
         segmentation: Segmentation,
         escalate_warning: bool = False,
+        cut_read: bool = False
     ) -> Segmentation:
         """
         Validate a segmentation from either a path to a csv, or a dataframe.
@@ -275,15 +303,16 @@ class Segmentation:
 
         # Perfect match, return segmentation with no more checks
         if read_index.equals(built_index):
-            return
-        if len(read_index) > len(built_index):
-            raise IndexError(
-                "The segmentation of the read in dvector data "
-                "does not match the expected segmentation. This "
-                "is likely due to unconsidered exclusions."
-                f"{read_index.difference(built_index)} in read in index but not "
-                f"in expected index."
-            )
+            return segmentation
+        if not cut_read:
+            if len(read_index) > len(built_index):
+                raise IndexError(
+                    "The segmentation of the read in dvector data "
+                    "does not match the expected segmentation. This "
+                    "is likely due to unconsidered exclusions."
+                    f"{read_index.difference(built_index)} in read in index but not "
+                    f"in expected index."
+                )
         for name in built_index.names:
             built_level = set(built_index.get_level_values(name))
             read_level = set(read_index.get_level_values(name))
@@ -311,15 +340,14 @@ class Segmentation:
                 )
 
         built_segmentation = cls(conf)
-        # Check for equality again after subset checks
-        if isinstance(read_index, pd.MultiIndex):
-            check_method = read_index.equal_levels
-        else:
-            check_method = read_index.equals
-        if check_method(built_segmentation.ind()):
+
+        if pd.DataFrame(index=read_index).sort_index().index.equals(pd.DataFrame(index=built_index).sort_index().index):
             return built_segmentation
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.
+        if cut_read:
+            if built_index.equals(built_index.intersection(read_index)):
+                return built_segmentation
         raise ValueError(
             "The read in segmentation does not match the given parameters. The segment names"
             " are correct, but segment values don't match. This could be due to an incompatibility"
@@ -553,7 +581,7 @@ class Segmentation:
             out_segmentation.input.subsets.update(subset)
         return out_segmentation.reinit()
 
-    def remove_segment(self, segment_name: str, inplace: bool = False):
+    def remove_segment(self, segment_name: str | Segment, inplace: bool = False):
         """
         Remove a segment from a segmentation.
 
@@ -564,10 +592,12 @@ class Segmentation:
         inplace: bool = False
             Whether to apply in place
         """
+        if isinstance(segment_name, Segment):
+            segment_name = segment_name.name
         if inplace:
             self.input.naming_order.remove(segment_name)
-            if segment_name in self.input.enum_segments:
-                self.input.enum_segments.remove(segment_name)
+            if SegmentsSuper(segment_name) in self.input.enum_segments:
+                self.input.enum_segments.remove(SegmentsSuper(segment_name))
             else:
                 self.input.custom_segments.remove(segment_name)
             if segment_name in self.input.subsets.keys():
