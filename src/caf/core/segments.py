@@ -3,6 +3,8 @@
 import enum
 from dataclasses import dataclass
 from typing import Optional
+from pathlib import Path
+import os
 
 import pandas as pd
 import pydantic
@@ -126,460 +128,71 @@ class SegmentsSuper(enum.Enum):
         subset: Define a subset of the segment being got. The integers in subset
         must appear in the asked for segment.
         """
+        segs_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "segments"
         seg = None
         match self:
             case SegmentsSuper.PURPOSE:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "HB Work",
-                        2: "HB Employers Business (EB)",
-                        3: "HB Education",
-                        4: "HB Shopping",
-                        5: "HB Personal Business (PB)",
-                        6: "HB Recreation / Social",
-                        7: "HB Visiting friends and relatives",
-                        8: "HB Holiday / Day trip",
-                        11: "NHB Work",
-                        12: "NHB Employers Business (EB)",
-                        13: "NHB Education",
-                        14: "NHB Shopping",
-                        15: "NHB Personal Business (PB)",
-                        16: "NHB Recreation / Social",
-                        18: "NHB Holiday / Day trip",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.TIMEPERIOD:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Weekday AM peak period (0700 - 0959)",
-                        2: "Weekday Inter peak period (1000 - 1559)",
-                        3: "Weekday PM peak period (1600 - 1859)",
-                        4: "Weekday Off peak (0000 - 0659 and 1900 - 2359)",
-                        5: "Saturdays (all times of day)",
-                        6: "Sundays (all times of day)",
-                        7: "Average Weekday",
-                        8: "Average Day",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.ACCOMODATION_TYPE_H:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Whole house or bungalow: Detached",
-                        2: "Whole house or bungalow: Semi-detached",
-                        3: "Whole house or bungalow: Terraced",
-                        4: "Flat, maisonette or apartment",
-                        5: "A caravan or other mobile or temporary structure",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.ACCOMODATION_TYPE_HR:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Whole house or bungalow: Detached",
-                        2: "Whole house or bungalow: Semi-detached",
-                        3: "Whole house or bungalow: Terraced",
-                        4: "Flat, maisonette or apartment",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.ADULTS:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "No adults or 1 adult in household",
-                        2: "2 adults in household",
-                        3: "3 or more adults in household",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.CHILDREN:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Household with no children or all children non-dependent",
-                        2: "Household with one or more dependent children",
-                    },
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE_11.value,
-                            exclusions={1: {1, 2, 3}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE.value,
-                            exclusions={1: {1, 2, 3}},
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE_AGG.value,
-                            exclusions={1: {1}},
-                        )
-                    ],
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.CAR_AVAILABILITY:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "No cars or vans in household",
-                        2: "1 car or van in household",
-                        3: "2 or more cars or vans in household",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.AGE:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "0 to 4 years",
-                        2: "5 to 9 years",
-                        3: "10 to 15 years",
-                        4: "16 to 19 years",
-                        5: "20 to 34 years",
-                        6: "35 to 49 years",
-                        7: "50 to 64 years",
-                        8: "65 to 74 years",
-                        9: "75+ years",
-                    },
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.ECONOMIC_STATUS.value,
-                            exclusions={1: {1, 2, 3, 4, 5, 6},
-                                        2: {1, 2, 3, 4, 5, 6},
-                                        3: {1, 2, 3, 4, 5, 6}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.SOC.value,
-                            exclusions={1: {1, 2, 3},
-                                        2: {1, 2, 3},
-                                        3: {1, 2, 3},
-                                        9: {1, 2, 3}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AWS.value,
-                            exclusions={1: {2, 3, 4, 5, 6},
-                                        2: {2, 3, 4, 5, 6},
-                                        3: {2, 3, 4, 5, 6},
-                                        4: {1, 6},
-                                        5: {1, 6},
-                                        6: {1, 6},
-                                        7: {1, 6},
-                                        8: {1, 6},
-                                        9: {1, 2, 3, 4, 5}}
-                        ),
-
-                    ],
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.AGE_11:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "0 to 4 years",
-                        2: "5 to 9 years",
-                        3: "10 to 15 years",
-                        4: "16 to 19 years",
-                        5: "20 to 24 years",
-                        6: "25 to 34 years",
-                        7: "35 to 49 years",
-                        8: "50 to 64 years",
-                        9: "65 to 74 years",
-                        10: "75 to 84 years",
-                        11: "85 + years",
-                    },
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.ECONOMIC_STATUS.value,
-                            exclusions={1: {1, 2, 3, 4, 5, 6},
-                                        2: {1, 2, 3, 4, 5, 6},
-                                        3: {1, 2, 3, 4, 5, 6}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.SOC.value,
-                            exclusions={1: {1, 2, 3},
-                                        2: {1, 2, 3},
-                                        3: {1, 2, 3},
-                                        10: {1, 2, 3},
-                                        11: {1, 2, 3},}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AWS.value,
-                            exclusions={1: {2, 3, 4, 5, 6},
-                                        2: {2, 3, 4, 5, 6},
-                                        3: {2, 3, 4, 5, 6},
-                                        4: {1, 6},
-                                        5: {1, 6},
-                                        6: {1, 6},
-                                        7: {1, 6},
-                                        8: {1, 6},
-                                        9: {1, 6},
-                                        10: {1, 2, 3, 4, 5},
-                                        11: {1, 2, 3, 4, 5}}
-                        ),
-                    ],
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.AGE_AGG:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "aged 15 years and under",
-                        2: "aged 16 to 24 years",
-                        3: "aged 25 to 34 years",
-                        4: "aged 35 to 49 years",
-                        5: "aged 50 years and over",
-                    },
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.SOC.value,
-                            exclusions={1: {1, 2, 3}},
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AWS.value,
-                            exclusions={1: {2, 3, 4, 5},
-                                        2: {1, 6},
-                                        3: {1, 6},
-                                        4: {1, 6},
-                                        5: {1},},
-                        ),
-                    ]
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.GENDER:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "male", 2: "female"},
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.GENDER_3.value,
-                            exclusions={1: {3},
-                                        2: {2}},
-                        ),
-                    ]
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.NS_SEC:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "HRP managerial / professional",
-                        2: "HRP intermediate / technical",
-                        3: "HRP semi-routine / routine",
-                        4: "HRP never worked / long-term unemployed",
-                        5: "HRP full-time student",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.SOC:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "SOC1", 2: "SOC2", 3: "SOC3", 4: "SOC4"},
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.ECONOMIC_STATUS.value,
-                            exclusions={1: {2, 4, 5, 6},
-                                        2: {2, 4, 5, 6},
-                                        3: {2, 4, 5, 6},
-                                        4: {1, 2,  3}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AWS.value,
-                            exclusions={4: {2, 3}}
-                        )
-                    ],
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.POP_EMP:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "full_time",
-                        2: "part_time",
-                        3: "unemployed",
-                        4: "students",
-                        5: "non-working_age",
-                    },
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.AWS.value,
-                            exclusions={1: {1, 3, 4, 5},
-                                        2: {1, 2, 5, 6},
-                                        3: {1, 2, 3, 4, 6},
-                                        4: {1, 2, 3, 5, 6},
-                                        5: {2, 3, 4, 5}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.SOC.value,
-                            exclusions={1: {4},
-                                        2: {4},
-                                        3: {1, 2, 3},
-                                        4: {1, 2, 3},
-                                        5: {1, 2, 3},
-                                        }
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE.value,
-                            exclusions={1: {1, 2, 3, 9},
-                                        2: {1, 2, 3, 9},
-                                        3: {1, 2, 3, 9},
-                                        4: {1, 2, 3, 9},
-                                        5: {4, 5, 6, 7, 8},}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE_11.value,
-                            exclusions={1: {1, 2, 3, 10, 11},
-                                        2: {1, 2, 3, 10, 11},
-                                        3: {1, 2, 3, 10, 11},
-                                        4: {1, 2, 3, 10, 11},
-                                        5: {4, 5, 6, 7, 8, 9}
-                                        }
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE_AGG.value,
-                            exclusions={1: {1},
-                                        2: {1},
-                                        3: {1},
-                                        4: {1},
-                                        5: {2, 3, 4}}
-                        )
-
-                    ]
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.POP_ECON:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Economically active employees",
-                        2: "Economically active unemployed",
-                        3: "Economically inactive",
-                        4: "Students",
-                    },
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.POP_EMP.value,
-                            exclusions={1: {3, 4, 5},
-                                        2: {1, 2, 4, 5},
-                                        3: {1, 2, 3, 4},
-                                        4: {1, 2, 3, 5},}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.SOC.value,
-                            exclusions={1: {4},
-                                        2: {1, 2, 3},
-                                        3: {1, 2, 3},
-                                        4: {1, 2, 3},}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE.value,
-                            exclusions={1: {1, 2, 3, 9},
-                                        2: {1, 2, 3, 9},
-                                        4: {1, 2, 3, 9}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE_11.value,
-                            exclusions={1: {1, 2, 3, 10, 11},
-                                        2: {1, 2, 3, 10, 11},
-                                        4: {1, 2, 3, 10, 11}}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE_AGG.value,
-                            exclusions={1: {1},
-                                        2: {1},
-                                        4: {1}}
-                        ),
-
-
-                    ]
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.ECONOMIC_STATUS:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Economically active employment",
-                        2: "Economically active unemployed",
-                        3: "Economically active student employment",
-                        4: "Economically active student unemployed",
-                        5: "Economically inactive student",
-                        6: "Economically inactive",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.MODE:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Walk",
-                        2: "Cycle",
-                        3: "Car driver",
-                        4: "Car passenger",
-                        5: "Bus / Coach",
-                        6: "Rail / underground",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.GENDER_3:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "Child", 2: "Male", 3: "Female"},
-                    exclusions=[
-                        Exclusion(
-                            other_name=SegmentsSuper.SOC.value,
-                            exclusions={1: {1, 2, 3}, }
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AWS.value,
-                            exclusions={1: {2, 3, 4, 5, 6}, }
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE.value,
-                            exclusions={1: {4, 5, 6, 7, 8, 9},
-                                        2: {1, 2, 3},
-                                        3: {1, 2, 3},}
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE_11.value,
-                            exclusions={1: {4, 5, 6, 7, 8, 9, 10, 11},
-                                        2: {1, 2, 3},
-                                        3: {1, 2, 3}, }
-                        ),
-                        Exclusion(
-                            other_name=SegmentsSuper.AGE.value,
-                            exclusions={1: {2, 3, 4, 5},
-                                        2: {1},
-                                        3: {1}}
-                        ),
-                    ],
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.CA:
-                seg = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.AWS:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "Child", 2: "FTE", 3: "PTE", 4: "Student", 5: "NEET", 6: "75+"},
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
             case SegmentsSuper.HH_TYPE:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "1 adult with 0 car",
-                        2: "1 adult with 1+ cars",
-                        3: "2 adults with 0 car",
-                        4: "2 adults with 1 car",
-                        5: "2 adults with 2+ cars",
-                        6: "3+ adults with 0 car",
-                        7: "3+ adults with 1 car",
-                        8: "3+ adults with 2+ cars",
-                    },
-                )
+                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
 
         if subset:
             if seg is not None:
