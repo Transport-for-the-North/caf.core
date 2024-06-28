@@ -1,0 +1,11 @@
+# Segment config written on 2024-06-28 at 11:07
+name: hh_type
+values:
+  1: 1 adult with 0 car
+  2: 1 adult with 1+ cars
+  3: 2 adults with 0 car
+  4: 2 adults with 1 car
+  5: 2 adults with 2+ cars
+  6: 3+ adults with 0 car
+  7: 3+ adults with 1 car
+  8: 3+ adults with 2+ cars

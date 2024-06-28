@@ -1,0 +1,7 @@
+# Segment config written on 2024-06-28 at 11:07
+name: accom_hr
+values:
+  1: 'Whole house or bungalow: Detached'
+  2: 'Whole house or bungalow: Semi-detached'
+  3: 'Whole house or bungalow: Terraced'
+  4: Flat, maisonette or apartment

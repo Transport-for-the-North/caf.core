@@ -1,0 +1,9 @@
+# Segment config written on 2024-06-28 at 11:07
+name: aws
+values:
+  1: Child
+  2: FTE
+  3: PTE
+  4: Student
+  5: NEET
+  6: 75+

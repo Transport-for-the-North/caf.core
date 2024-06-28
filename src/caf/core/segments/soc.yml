@@ -1,0 +1,34 @@
+# Segment config written on 2024-06-28 at 11:07
+name: soc
+values:
+  1: SOC1
+  2: SOC2
+  3: SOC3
+  4: SOC4
+exclusions:
+- other_name: economic_status
+  exclusions:
+    1:
+    - 2
+    - 4
+    - 5
+    - 6
+    2:
+    - 2
+    - 4
+    - 5
+    - 6
+    3:
+    - 2
+    - 4
+    - 5
+    - 6
+    4:
+    - 1
+    - 2
+    - 3
+- other_name: aws
+  exclusions:
+    4:
+    - 2
+    - 3

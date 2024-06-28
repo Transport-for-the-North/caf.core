@@ -1,0 +1,33 @@
+# Segment config written on 2024-06-28 at 11:07
+name: age_5
+values:
+  1: aged 15 years and under
+  2: aged 16 to 24 years
+  3: aged 25 to 34 years
+  4: aged 35 to 49 years
+  5: aged 50 years and over
+exclusions:
+- other_name: soc
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+- other_name: aws
+  exclusions:
+    1:
+    - 2
+    - 3
+    - 4
+    - 5
+    2:
+    - 1
+    - 6
+    3:
+    - 1
+    - 6
+    4:
+    - 1
+    - 6
+    5:
+    - 1
