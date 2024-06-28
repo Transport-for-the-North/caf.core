@@ -474,6 +474,9 @@ class Segmentation:
             return set(self.names).intersection(other.names)
         return set(self.names).intersection(other)
 
+    def __sub__(self, other):
+        return [i for i in self.naming_order if i not in other.naming_order]
+
     def __ne__(self, other) -> bool:
         """Override the default implementation."""
         return not self.__eq__(other)
@@ -535,7 +538,7 @@ class Segmentation:
 
     def add_segment(
         self,
-        new_seg: Segment,
+        new_seg: Segment | SegmentsSuper,
         subset: Optional[dict[str, list[int]]] = None,
         new_naming_order: Optional[list[str]] = None,
     ):
@@ -563,6 +566,8 @@ class Segmentation:
         """
         out_segmentation = self.copy()
         custom = True
+        if isinstance(new_seg, str):
+            new_seg = SegmentsSuper(new_seg).get_segment()
         new_name = new_seg.name
         if new_name in SegmentsSuper.values():
             custom = False

@@ -407,7 +407,7 @@ class DVector:
 
         if self.zoning_system is None:
             import_data.columns = [self.val_col]
-            return import_data
+            return import_data, seg
 
         # TODO: consider replacing with alternative checks that allow string IDs
         ### This chunk of code requires the zone names to be integers
@@ -594,9 +594,13 @@ class DVector:
 
     def copy(self):
         """Class copy method."""
+        if self._zoning_system is not None:
+            out_zoning = self._zoning_system.copy()
+        else:
+            out_zoning = None
         return DVector(
             segmentation=self._segmentation.copy(),
-            zoning_system=self._zoning_system.copy(),
+            zoning_system=out_zoning,
             import_data=self._data.copy(),
             time_format=self.time_format,
             val_col=self.val_col,
@@ -624,8 +628,11 @@ class DVector:
             warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
+        # Takes exclusions into account before operating
+        if self.segmentation != other.segmentation:
+            out = self.expand_to_other(other)
 
-        # Alternatively could just try the normal method and use the low memory is an exception is raised
+        # Alternatively could just try the normal method and use the low memory if an exception is raised
         if self.low_memory:
             # Assume that low memory means there are zoning systems
             if self.zoning_system != other.zoning_system:
@@ -664,9 +671,9 @@ class DVector:
             # This drops any nan values (intersecting index level but missing val)
             if self.zoning_system == other.zoning_system:
                 if isinstance(self.data, pd.Series):
-                    prod = series_method(self.data, other.data)
+                    prod = series_method(out.data, other.data)
                 else:
-                    prod = df_method(self.data, other.data)
+                    prod = df_method(out.data, other.data)
                 # Either None if both are None, or the right zone system
                 zoning = self.zoning_system
 
@@ -681,10 +688,10 @@ class DVector:
                     "This is being changed internally but if this was "
                     "not expected, check your inputs"
                 )
-                prod = df_method(other.data, self.data.squeeze(), axis="index")
+                prod = df_method(other.data, out.data.squeeze(), axis="index")
                 zoning = other.zoning_system
             elif other.zoning_system is None:
-                prod = df_method(self.data, other.data.squeeze(), axis="index")
+                prod = df_method(out.data, other.data.squeeze(), axis="index")
                 zoning = self.zoning_system
             # Different zonings raise an error rather than trying to translate
             else:
@@ -910,6 +917,13 @@ class DVector:
             zoning_system=self.zoning_system,
             import_data=new_data,
         )
+
+    def expand_to_other(self, other: DVector):
+        expansion_segs = other.segmentation - self.segmentation
+        expanded = self.copy()
+        for seg in expansion_segs:
+            expanded = expanded.add_segment(seg)
+        return expanded
 
     def filter_segment_value(self, segment_name: str, segment_values: int | list[int]):
         """
