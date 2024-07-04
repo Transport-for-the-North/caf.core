@@ -1,0 +1,20 @@
+# Segment config written on 2024-07-04 at 13:28
+name: adult_nssec
+values:
+  1: ns_1_adults_1
+  2: ns_1_adults_2
+  3: ns_1_adults_3
+  4: ns_2_adults_1
+  5: ns_2_adults_2
+  6: ns_2_adults_3
+  7: ns_3_adults_1
+  8: ns_3_adults_2
+  9: ns_3_adults_3
+  10: ns_4_adults_1
+  11: ns_4_adults_2
+  12: ns_4_adults_3
+  13: ns_5_adults_1
+  14: ns_5_adults_2
+  15: ns_5_adults_3
+
+

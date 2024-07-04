@@ -32,3 +32,18 @@ exclusions:
     4:
     - 2
     - 3
+- other_name: adult_nssec
+  exclusions:
+    1:
+      - 10
+      - 13
+    2:
+      - 10
+      - 13
+    3:
+      - 10
+      - 13
+    4:
+      - 1
+      - 4
+      - 7
