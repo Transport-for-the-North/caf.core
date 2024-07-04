@@ -113,6 +113,7 @@ class SegmentsSuper(enum.Enum):
     NS_SEC = "ns_sec"
     AWS = "aws"
     HH_TYPE = "hh_type"
+    ADULT_NSSEC = "adult_nssec"
 
     @classmethod
     def values(cls):
@@ -128,71 +129,13 @@ class SegmentsSuper(enum.Enum):
         subset: Define a subset of the segment being got. The integers in subset
         must appear in the asked for segment.
         """
-        segs_dir = Path(os.path.dirname(os.path.abspath(__file__))) / "segments"
-        seg = None
-        match self:
-            case SegmentsSuper.PURPOSE:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.TIMEPERIOD:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.ACCOMODATION_TYPE_H:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.ACCOMODATION_TYPE_HR:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.ADULTS:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.CHILDREN:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.CAR_AVAILABILITY:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.AGE:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.AGE_11:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.AGE_AGG:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.GENDER:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.NS_SEC:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.SOC:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.POP_EMP:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.POP_ECON:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.ECONOMIC_STATUS:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.MODE:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.GENDER_3:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.CA:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.AWS:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-
-            case SegmentsSuper.HH_TYPE:
-                seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
+        segs_dir = Path(__file__).parent / "segments"
+        try:
+            seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Could not find a segment saved at {segs_dir / self.value}.yml."
+                                    f"This means an enum has been defined, but a segment has not, so this "
+                                    f"is probably a placeholder.")
 
         if subset:
             if seg is not None:
@@ -207,7 +150,6 @@ class SegConverter(enum.Enum):
     CARADULT_HHTYPE = "caradult_hhtype"
 
     def get_conversion(self):
-        con = None
         match self:
             case SegConverter.AG_G:
                 from_ind = pd.MultiIndex.from_tuples(
