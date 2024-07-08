@@ -60,7 +60,7 @@ Source = "https://github.com/Transport-for-the-North/caf.toolkit"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"caf.core" = ["py.typed"]
+"caf.core" = ["py.typed", "*.yml"]
 
 # Linters
 [tool.black]
