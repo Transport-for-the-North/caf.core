@@ -195,31 +195,31 @@ class Segmentation:
         df = pd.DataFrame(index=index).reset_index()
         drop_iterator = self.naming_order.copy()
         # TODO hard coded here for now as a quick fix, needs thought
-        hh_dropper = pd.MultiIndex.from_tuples([(2, 1, 1, 4),
-            (2, 1, 2, 4),
-            (2, 1, 3, 1),
-            (2, 1, 3, 4),
-            (2, 2, 1, 4),
-            (2, 2, 2, 4),
-            (2, 2, 3, 1),
-            (2, 2, 3, 4),
-            (3, 1, 1, 4),
-            (3, 1, 2, 4),
-            (3, 1, 3, 1),
-            (3, 1, 3, 4),
-            (3, 2, 1, 4),
-            (3, 2, 2, 4),
-            (3, 2, 3, 1),
-            (3, 2, 3, 4),
-            (4, 1, 4, 1),
-            (4, 1, 4, 2),
-            (4, 1, 4, 3),
-            (4, 1, 4, 4),
-            (4, 2, 4, 1),
-            (4, 2, 4, 2),
-            (4, 2, 4, 3),
-            (4, 2, 4, 4)],
-           names=['aws', 'hh_type', 'soc', 'ns_sec'])
+        # hh_dropper = pd.MultiIndex.from_tuples([(2, 1, 1, 4),
+        #     (2, 1, 2, 4),
+        #     (2, 1, 3, 1),
+        #     (2, 1, 3, 4),
+        #     (2, 2, 1, 4),
+        #     (2, 2, 2, 4),
+        #     (2, 2, 3, 1),
+        #     (2, 2, 3, 4),
+        #     (3, 1, 1, 4),
+        #     (3, 1, 2, 4),
+        #     (3, 1, 3, 1),
+        #     (3, 1, 3, 4),
+        #     (3, 2, 1, 4),
+        #     (3, 2, 2, 4),
+        #     (3, 2, 3, 1),
+        #     (3, 2, 3, 4),
+        #     (4, 1, 4, 1),
+        #     (4, 1, 4, 2),
+        #     (4, 1, 4, 3),
+        #     (4, 1, 4, 4),
+        #     (4, 2, 4, 1),
+        #     (4, 2, 4, 2),
+        #     (4, 2, 4, 3),
+        #     (4, 2, 4, 4)],
+        #    names=['aws', 'hh_type', 'soc', 'ns_sec'])
         for own_seg in self.segments:
             for other_seg in drop_iterator:
                 if other_seg == own_seg.name:
@@ -231,8 +231,8 @@ class Segmentation:
                     mask = ~df.index.isin(dropper)
                     df = df[mask].reset_index()
                 # pylint: enable=protected-access
-        if set(hh_dropper.names).issubset(self.names):
-            df = df.set_index(hh_dropper.names).drop(hh_dropper).reset_index()
+        # if set(hh_dropper.names).issubset(self.names):
+        #     df = df.set_index(hh_dropper.names).drop(hh_dropper).reset_index()
         return df.set_index(self.naming_order).index
 
     def has_time_period_segments(self) -> bool:

@@ -24,8 +24,6 @@ class Exclusion:
         Name of the other segment this exclusion applies to
     exclusions: int
         The value for self segmentation which has exclusions in other
-    other_vals: set[int]
-        Values in other segmentation incompatible with 'exclusions'.
     """
     other_name: str
     exclusions: dict[int, set[int]]
