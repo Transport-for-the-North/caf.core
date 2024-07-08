@@ -401,7 +401,7 @@ class DVector:
 
         if cut_read:
             full_sum = import_data.values.sum()
-            import_data = import_data.loc[seg.ind()]
+            import_data = import_data.reindex(seg.ind(), axis="index", method=None)
             cut_sum = import_data.values.sum()
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
 
