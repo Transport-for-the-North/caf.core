@@ -923,7 +923,12 @@ class DVector:
         expansion_segs = other.segmentation - self.segmentation
         expanded = self.copy()
         for seg in expansion_segs:
-            expanded = expanded.add_segment(seg)
+            # Enumerated segment
+            if seg in SegmentsSuper.values():
+                expanded = expanded.add_segment(seg)
+            # Custom segment
+            else:
+                expanded = expanded.add_segment(other.segmentation.seg_dict[seg])
         return expanded
 
     def filter_segment_value(self, segment_name: str, segment_values: int | list[int]):
