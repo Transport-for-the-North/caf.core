@@ -29,6 +29,7 @@ from caf.core.zoning import (
     TranslationWeighting,
     TranslationError,
     BalancingZones,
+    normalise_column_name
 )
 from caf.core.segments import Segment, SegmentsSuper, SegConverter
 
@@ -556,7 +557,7 @@ class DVector:
         if one_to_one:
             translation[factor_col] = 1
         # Use a simple replace and group for nested zoning
-        if translation[self.zoning_system.name].nunique() == len(translation):
+        if translation[f"{normalise_column_name(self.zoning_system.name)}_id"].nunique() == len(translation):
             if set(translation[self.zoning_system.column_name]).intersection(
                 self.zoning_system.zone_ids
             ) != set(self.zoning_system.zone_ids):

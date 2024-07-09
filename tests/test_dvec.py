@@ -244,6 +244,6 @@ class TestDvec:
         assert translation == expected_trans
 
     def test_agg(self, basic_dvec_1):
-        aggregated = basic_dvec_1.aggregate(["gender_demo"])
-        grouped = basic_dvec_1.data.groupby(level="gender_demo").sum()
+        aggregated = basic_dvec_1.aggregate(["gender_3"])
+        grouped = basic_dvec_1.data.groupby(level="gender_3").sum()
         assert grouped.equals(aggregated.data)
