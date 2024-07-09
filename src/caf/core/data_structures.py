@@ -628,6 +628,7 @@ class DVector:
             warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
         self.overlap(other)
+        out = self.copy()
         # Takes exclusions into account before operating
         if self.segmentation != other.segmentation:
             out = self.expand_to_other(other)
