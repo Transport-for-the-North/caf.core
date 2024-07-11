@@ -920,6 +920,8 @@ class DVector:
                 zoning_system=self.zoning_system,
                 import_data=new_data)
         if new_data.drop(new_segmentation.ind()).sum().sum() == 0:
+            SegmentationWarning(f"{new_data.drop(new_segmentation.ind()).index} being dropped."
+                                f"These rows contain no data.")
             return DVector(
                 segmentation=new_segmentation,
                 zoning_system=self.zoning_system,
