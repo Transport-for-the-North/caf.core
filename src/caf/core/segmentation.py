@@ -474,6 +474,12 @@ class Segmentation:
             return set(self.names).intersection(other.names)
         return set(self.names).intersection(other)
 
+    def is_subset(self, other: Segmentation):
+        if self.overlap(other) == set(self.names):
+            return True
+        else:
+            return False
+
     def __sub__(self, other):
         return [i for i in self.naming_order if i not in other.naming_order]
 

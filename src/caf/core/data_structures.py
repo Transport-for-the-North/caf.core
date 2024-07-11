@@ -717,7 +717,7 @@ class DVector:
         warnings.warn(
             f"This operation has changed the segmentation of the DVector "
             f"from {self.segmentation.names} to {new_seg.names}. This can happen"
-            "but it can also be a sign of an error. Check the output DVector.",
+            " but it can also be a sign of an error. Check the output DVector.",
             SegmentationWarning,
         )
 
@@ -914,12 +914,19 @@ class DVector:
             factor = splitter.groupby(level=self.segmentation.naming_order).sum()
             splitter /= factor
         new_data = self._data.mul(splitter, axis=0)
-        return DVector(
-            segmentation=new_segmentation,
-            zoning_system=self.zoning_system,
-            import_data=new_data,
-        )
-
+        if new_data.reorder_levels(new_segmentation.naming_order).index.equals(new_segmentation.ind()):
+            return DVector(
+                segmentation=new_segmentation,
+                zoning_system=self.zoning_system,
+                import_data=new_data)
+        if new_data.drop(new_segmentation.ind()).sum().sum() == 0:
+            return DVector(
+                segmentation=new_segmentation,
+                zoning_system=self.zoning_system,
+                import_data=new_data.loc[new_segmentation.ind()]
+            )
+        raise ValueError("Generated index doesn't match the index of the new "
+                         "data.")
     def expand_to_other(self, other: DVector):
         expansion_segs = other.segmentation - self.segmentation
         expanded = self.copy()

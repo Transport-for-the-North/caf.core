@@ -29,8 +29,8 @@ from caf.core import segmentation
 @pytest.fixture(scope="session", name="vanilla_seg")
 def fix_vanilla_segmentation():
     input = segmentation.SegmentationInput(
-        enum_segments=["ca", "m", "gender_demo"],
-        naming_order=["ca", "m", "gender_demo"],
+        enum_segments=["ca", "m", "gender_3"],
+        naming_order=["ca", "m", "gender_3"],
     )
     return segmentation.Segmentation(input)
 
@@ -40,15 +40,15 @@ def fix_exp_vanilla_ind():
     ca = [1, 2]
     g = [1, 2, 3]
     m = [1, 2, 3, 4, 5, 6]
-    ind = pd.MultiIndex.from_product([ca, m, g], names=["ca", "m", "gender_demo"])
+    ind = pd.MultiIndex.from_product([ca, m, g], names=["ca", "m", "gender_3"])
     return ind
 
 
 @pytest.fixture(scope="session", name="nam_ord_seg")
 def fix_nam_ord_seg():
     input = segmentation.SegmentationInput(
-        enum_segments=["ca", "m", "gender_demo"],
-        naming_order=["ca", "gender_demo", "m"],
+        enum_segments=["ca", "m", "gender_3"],
+        naming_order=["ca", "gender_3", "m"],
     )
     return segmentation.Segmentation(input)
 
@@ -58,14 +58,14 @@ def fix_exp_nam_ord():
     ca = [1, 2]
     g = [1, 2, 3]
     m = [1, 2, 3, 4, 5, 6]
-    ind = pd.MultiIndex.from_product([ca, g, m], names=["ca", "gender_demo", "m"])
+    ind = pd.MultiIndex.from_product([ca, g, m], names=["ca", "gender_3", "m"])
     return ind
 
 
 @pytest.fixture(scope="session", name="seg_with_excl")
 def fix_seg_with_excl():
     conf = segmentation.SegmentationInput(
-        enum_segments=["gender_demo", "soc", "ca"], naming_order=["gender_demo", "soc", "ca"]
+        enum_segments=["gender_3", "soc", "ca"], naming_order=["gender_3", "soc", "ca"]
     )
     return segmentation.Segmentation(conf)
 
@@ -99,9 +99,9 @@ def fix_exp_excl():
 @pytest.fixture(scope="session", name="subset_seg")
 def fix_subset_seg():
     conf = segmentation.SegmentationInput(
-        enum_segments=["p", "gender_demo", "ns_sec"],
+        enum_segments=["p", "gender_3", "ns_sec"],
         subsets={"p": list(range(1, 9))},
-        naming_order=["p", "gender_demo", "ns_sec"],
+        naming_order=["p", "gender_3", "ns_sec"],
     )
     return segmentation.Segmentation(conf)
 
@@ -111,15 +111,15 @@ def fix_exp_sub():
     p = [1, 2, 3, 4, 5, 6, 7, 8]
     g = [1, 2, 3]
     ns = [1, 2, 3, 4, 5]
-    return pd.MultiIndex.from_product([p, g, ns], names=["p", "gender_demo", "ns_sec"])
+    return pd.MultiIndex.from_product([p, g, ns], names=["p", "gender_3", "ns_sec"])
 
 
 @pytest.fixture(scope="session", name="exp_add")
 def fix_add_exp():
     conf = segmentation.SegmentationInput(
-        enum_segments=["gender_demo", "soc", "ca", "p", "ns_sec"],
+        enum_segments=["gender_3", "soc", "ca", "p", "ns_sec"],
         subsets={"p": list(range(1, 9))},
-        naming_order=["gender_demo", "soc", "ca", "p", "ns_sec"],
+        naming_order=["gender_3", "soc", "ca", "p", "ns_sec"],
     )
     return segmentation.Segmentation(conf)
 
