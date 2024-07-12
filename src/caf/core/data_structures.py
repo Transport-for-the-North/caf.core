@@ -329,6 +329,7 @@ class DVector:
         if isinstance(value, pd.Series):
             value = value.to_frame()
         self._data = self._dataframe_to_dvec(value)
+        self._data, _ = self._dataframe_to_dvec(value)
 
     @property
     def time_format(self):
