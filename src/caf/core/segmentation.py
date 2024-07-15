@@ -444,6 +444,9 @@ class Segmentation:
                 unique_list.append(item)
         return unique_list
 
+    def __len__(self):
+        return len(self.ind())
+
     def __add__(self, other):
         """
         Combine two segmentations without duplicates.
@@ -615,10 +618,10 @@ class Segmentation:
                 del self.input.subsets[segment_name]
             self.reinit()
             return
-        out_seg = self.input.copy()
+        out_seg = deepcopy(self.input)
         out_seg.naming_order.remove(segment_name)
-        if segment_name in out_seg.enum_segments:
-            out_seg.enum_segments.remove(segment_name)
+        if segment_name in SegmentsSuper.values():
+            out_seg.enum_segments.remove(SegmentsSuper(segment_name))
         else:
             out_seg.custom_segments.remove(segment_name)
         if segment_name in out_seg.subsets.keys():

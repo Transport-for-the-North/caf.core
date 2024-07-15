@@ -15,6 +15,7 @@ import warnings
 from os import PathLike
 from pathlib import Path
 from typing import Optional, Union, Callable, Literal
+from dataclasses import dataclass
 
 
 import numpy as np
@@ -328,7 +329,6 @@ class DVector:
             )
         if isinstance(value, pd.Series):
             value = value.to_frame()
-        self._data = self._dataframe_to_dvec(value)
         self._data, _ = self._dataframe_to_dvec(value)
 
     @property
@@ -403,6 +403,11 @@ class DVector:
 
         if cut_read:
             full_sum = import_data.values.sum()
+            intersection = import_data.index.intersection(seg.ind())
+            if not intersection.equals(seg.ind()):
+                warnings.warn("Rows missing from read in data.")
+            if not intersection.equals(import_data.index):
+                warnings.warn("Rows in input data where they shouldn't be.")
             import_data = import_data.reindex(seg.ind(), axis="index", method=None)
             cut_sum = import_data.values.sum()
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
@@ -732,6 +737,17 @@ class DVector:
             prod = prod.loc[new_seg.ind()]
         return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
 
+    def __len__(self):
+        return len(self.segmentation) * len(self.zoning_system)
+
+    def __pow__(self, exponent: int | float):
+        out_data = self.data ** exponent
+        return DVector(import_data=out_data,
+                       segmentation=self.segmentation,
+                       zoning_system=self.zoning_system,
+                       time_format=self.time_format,
+                       low_memory=self.low_memory)
+
     def __mul__(self, other):
         """Multiply dunder method for DVector."""
         return self._generic_dunder(other, pd.DataFrame.mul, pd.Series.mul)
@@ -1028,6 +1044,71 @@ class DVector:
             cut_read=True
         )
 
+    def calc_rmse(self, targets: list[DVector]):
+        mse = 0
+        for target in targets:
+            diff = (self.aggregate(target.segmentation) - target) ** 2
+            mse += diff.sum() / len(target)
+        return mse ** 0.5
+    def ipf(self, targets: list[DVector], tol: float = 1e-5, max_iters: int = 100):
+        # check DVectors compatible
+        target_sum = 0
+        for target in targets:
+            # Check targets sum to the same, or they can't converge. Potentially could allow
+            # IPF for non-agreeing targets to get as close as possible.
+            if target_sum == 0:
+                target_sum = target.sum()
+            else:
+                if not math.isclose(target_sum, target.sum(), abs_tol=target_sum / 1e5):
+                    raise ValueError("Input target DVectors do not have consistent "
+                                     "sums, so ipf will fail.")
+            # Check segmentations are compatible.
+            if not target.segmentation.is_subset(self.segmentation):
+                raise ValueError("Target segmentation is not a subset of input DVec "
+                                 "segmentation. input DVec segmentation: "
+                                 f"{self.segmentation.naming_order} \n"
+                                 f"target segmentation: {target.segmentation.naming_order}")
+            # Check zoning systems are compatible.
+            if self.zoning_system != target.zoning_system:
+                try:
+                    trans = self.zoning_system.translate(target.zoning_system)
+                except TranslationError:
+                    raise TranslationError("No translation was found for "
+                                           f"{self.zoning_system} to {target.zoning_system}.")
+                nested = (trans[self.zoning_system.translation_column_name(target.zoning_system)] == 1).all()
+                if not nested:
+                    raise TranslationError("For IPF any targets must either be at the same zoning "
+                                           "system as the seed DVector, or be at a zoning system "
+                                           "which the seed nests perfectly within. The translation "
+                                           "found contains non-one factors, which implies the "
+                                           "zoning system doesn't nest, so IPF can't be performed.")
+
+        new_dvec = self.copy()
+        prev_rmse = np.inf
+        for i in range(max_iters):
+            for target in targets:
+                zoning_diff = False
+                agg = new_dvec.aggregate(target.segmentation)
+                if self.zoning_system != target.zoning_system:
+                    zoning_diff = True
+                    agg = agg.translate_zoning(target.zoning_system)
+                factor = target / agg
+                if zoning_diff:
+                    factor = factor.translate_zoning(self.zoning_system, one_to_one=True)
+                new_dvec *= factor
+
+            rmse = new_dvec.calc_rmse(targets)
+            print(f"RMSE = {rmse} after {i} iterations.")
+            if rmse < tol:
+                print("Convergence met, returning DVector.")
+                return new_dvec
+            if abs(rmse - prev_rmse) < tol:
+                print(f"RMSE has stopped improving at {rmse}.")
+                return new_dvec
+            prev_rmse = rmse
+        warnings.warn("Convergence has not been met. Returning DVector anyway.")
+        return new_dvec
+
     @staticmethod
     def old_to_new_dvec(import_data: dict):
         """
@@ -1307,6 +1388,13 @@ class DVector:
             zoning_system=self.zoning_system,
             time_format=self.time_format,
         )
+
+# @dataclass
+# class IpfTarget:
+#
+#     target: DVector
+#     translation: pd.DataFrame = None
+
 
 
 # # # FUNCTIONS # # #
