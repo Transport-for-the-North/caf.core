@@ -400,15 +400,19 @@ class DVector:
         This requires the dataframe to be in wide format.
         """
         seg = Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation, cut_read=cut_read)
+        if len(seg.naming_order) > 1:
+            sorted_data = import_data.reorder_levels(seg.naming_order)
+        else:
+            sorted_data = import_data
 
         if cut_read:
-            full_sum = import_data.values.sum()
-            intersection = import_data.index.intersection(seg.ind())
-            if not intersection.equals(seg.ind()):
+            full_sum = sorted_data.values.sum()
+            intersection = sorted_data.index.intersection(seg.ind()).sortlevel()[0]
+            if not seg.ind().sortlevel()[0].equals(intersection):
                 warnings.warn("Rows missing from read in data.")
-            if not intersection.equals(import_data.index):
+            if not intersection.equals(sorted_data.index.sortlevel()[0]):
                 warnings.warn("Rows in input data where they shouldn't be.")
-            import_data = import_data.reindex(seg.ind(), axis="index", method=None)
+            import_data = sorted_data.reindex(seg.ind(), axis="index", method=None)
             cut_sum = import_data.values.sum()
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
 
@@ -495,7 +499,8 @@ class DVector:
     def translate_zoning(
         self,
         new_zoning: ZoningSystem,
-        cache_path: Optional[PathLike],
+        cache_path: Optional[PathLike] = None,
+        trans_vector: pd.DataFrame = None,
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
         check_totals: bool = True,
         one_to_one: bool = False,
@@ -554,24 +559,30 @@ class DVector:
             return self.copy()
 
         # Translation validation is handled by ZoningSystem with TranslationWarning
-        translation = self.zoning_system.translate(
-            new_zoning, weighting=weighting, cache_path=cache_path
-        )
+        if trans_vector is None:
+            if cache_path is None:
+                trans_vector = self.zoning_system.translate(
+                    new_zoning, weighting=weighting
+                )
+            else:
+                trans_vector = self.zoning_system.translate(
+                    new_zoning, weighting=weighting, cache_path=cache_path
+                )
         factor_col = self.zoning_system.translation_column_name(new_zoning)
         # factors equal one to propagate perfectly
         # This only works for perfect nesting
         if one_to_one:
-            translation[factor_col] = 1
+            trans_vector[factor_col] = 1
         # Use a simple replace and group for nested zoning
-        if translation[f"{normalise_column_name(self.zoning_system.name)}_id"].nunique() == len(translation):
-            if set(translation[self.zoning_system.column_name]).intersection(
+        if trans_vector[f"{normalise_column_name(self.zoning_system.name)}_id"].nunique() == len(trans_vector):
+            if set(trans_vector[self.zoning_system.column_name]).intersection(
                 self.zoning_system.zone_ids
             ) != set(self.zoning_system.zone_ids):
                 warnings.warn("Not all zones in the DVector or defined in the translation.")
-            translation = translation.set_index(self.zoning_system.column_name)[
+            trans_vector = trans_vector.set_index(self.zoning_system.column_name)[
                 new_zoning.column_name
             ].to_dict()
-            translated = self.data.rename(columns=translation).groupby(level=0, axis=1).sum()
+            translated = self.data.rename(columns=trans_vector).groupby(level=0, axis=1).sum()
             return DVector(
                 zoning_system=new_zoning,
                 segmentation=self.segmentation,
@@ -584,7 +595,7 @@ class DVector:
         transposed.index.names = [self.zoning_system.column_name]
         translated = ctk.translation.pandas_vector_zone_translation(
             transposed,
-            translation,
+            trans_vector,
             translation_from_col=self.zoning_system.column_name,
             translation_to_col=new_zoning.column_name,
             translation_factors_col=factor_col,
@@ -1044,18 +1055,24 @@ class DVector:
             cut_read=True
         )
 
-    def calc_rmse(self, targets: list[DVector]):
+    def calc_rmse(self, targets: list[IpfTarget]):
         mse = 0
         for target in targets:
-            diff = (self.aggregate(target.segmentation) - target) ** 2
-            mse += diff.sum() / len(target)
+            check = self.copy()
+            if target.translation is not None:
+                check = self.translate_zoning(target.target.zoning_system, trans_vector=target.translation)
+            diff = (check.aggregate(target.target.segmentation) - target.target) ** 2
+            mse += diff.sum() / len(target.target)
         return mse ** 0.5
+
     def ipf(self, targets: list[DVector], tol: float = 1e-5, max_iters: int = 100):
         # check DVectors compatible
         target_sum = 0
-        for target in targets:
+        for position, target in enumerate(targets):
             # Check targets sum to the same, or they can't converge. Potentially could allow
             # IPF for non-agreeing targets to get as close as possible.
+            trans = None
+            zoning_diff = False
             if target_sum == 0:
                 target_sum = target.sum()
             else:
@@ -1070,6 +1087,7 @@ class DVector:
                                  f"target segmentation: {target.segmentation.naming_order}")
             # Check zoning systems are compatible.
             if self.zoning_system != target.zoning_system:
+                zoning_diff = True
                 try:
                     trans = self.zoning_system.translate(target.zoning_system)
                 except TranslationError:
@@ -1082,19 +1100,18 @@ class DVector:
                                            "which the seed nests perfectly within. The translation "
                                            "found contains non-one factors, which implies the "
                                            "zoning system doesn't nest, so IPF can't be performed.")
+            targets[position] = IpfTarget(target=target, translation=trans, zoning_diff=zoning_diff)
 
         new_dvec = self.copy()
         prev_rmse = np.inf
         for i in range(max_iters):
             for target in targets:
-                zoning_diff = False
-                agg = new_dvec.aggregate(target.segmentation)
-                if self.zoning_system != target.zoning_system:
-                    zoning_diff = True
-                    agg = agg.translate_zoning(target.zoning_system)
-                factor = target / agg
-                if zoning_diff:
-                    factor = factor.translate_zoning(self.zoning_system, one_to_one=True)
+                agg = new_dvec.aggregate(target.target.segmentation)
+                if target.translation is not None:
+                    agg = agg.translate_zoning(target.target.zoning_system, trans_vector=target.translation)
+                factor = target.target / agg
+                if target.zoning_diff:
+                    factor = factor.translate_zoning(self.zoning_system, trans_vector=target.translation, one_to_one=True, check_totals=False)
                 new_dvec *= factor
 
             rmse = new_dvec.calc_rmse(targets)
@@ -1389,11 +1406,12 @@ class DVector:
             time_format=self.time_format,
         )
 
-# @dataclass
-# class IpfTarget:
-#
-#     target: DVector
-#     translation: pd.DataFrame = None
+@dataclass
+class IpfTarget:
+
+    target: DVector
+    zoning_diff: bool
+    translation: pd.DataFrame = None
 
 
 
