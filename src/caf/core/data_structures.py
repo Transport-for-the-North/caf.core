@@ -1123,7 +1123,9 @@ class DVector:
                 print(f"RMSE has stopped improving at {rmse}.")
                 return new_dvec
             prev_rmse = rmse
-        warnings.warn("Convergence has not been met. Returning DVector anyway.")
+        warnings.warn("Convergence has not been met, and RMSE has not stopped improving. "
+                      f"Last cycle saw a {rmse - prev_rmse} improvement in RMSE. "
+                      "May converge with more iterations.")
         return new_dvec
 
     @staticmethod

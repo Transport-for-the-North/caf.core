@@ -192,7 +192,7 @@ class Segmentation:
         exclusions into account if any exist between segments.
         """
         index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
-        df = pd.DataFrame(index=index).reset_index()
+        df = pd.DataFrame(index=index).reorder_levels(self.naming_order).reset_index()
         drop_iterator = self.naming_order.copy()
         # TODO hard coded here for now as a quick fix, needs thought
         # hh_dropper = pd.MultiIndex.from_tuples([(2, 1, 1, 4),
