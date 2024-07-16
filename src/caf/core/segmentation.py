@@ -233,7 +233,7 @@ class Segmentation:
                 # pylint: enable=protected-access
         # if set(hh_dropper.names).issubset(self.names):
         #     df = df.set_index(hh_dropper.names).drop(hh_dropper).reset_index()
-        return df.set_index(self.naming_order).index
+        return df.set_index(self.naming_order).sort_index().index
 
     def has_time_period_segments(self) -> bool:
         """Check whether this segmentation has time period segmentation.

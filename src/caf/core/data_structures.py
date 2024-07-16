@@ -738,7 +738,7 @@ class DVector:
             SegmentationWarning,
         )
 
-        prod = prod.reorder_levels(new_seg.naming_order)
+        prod = prod.reorder_levels(new_seg.naming_order).sort_index()
         if not prod.index.equals(new_seg.ind()):
             warnings.warn(
                 "This operation has dropped some rows due to exclusions "
