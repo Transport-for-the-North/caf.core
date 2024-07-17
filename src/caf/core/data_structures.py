@@ -400,18 +400,19 @@ class DVector:
         This requires the dataframe to be in wide format.
         """
         seg = Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation, cut_read=cut_read)
+        seg, expand_to_read = Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation, cut_read=cut_read)
+
         if len(seg.naming_order) > 1:
-            sorted_data = import_data.reorder_levels(seg.naming_order)
+            sorted_data = import_data.reorder_levels(seg.naming_order).sort_index()
         else:
-            sorted_data = import_data
+            sorted_data = import_data.sort_index()
+
+        if expand_to_read:
+            expander = pd.DataFrame(index=seg.ind(), data={'dummy': 1})
+            sorted_data = sorted_data.join(expander, how='outer').fillna(0).drop('dummy', axis=1)
 
         if cut_read:
             full_sum = sorted_data.values.sum()
-            intersection = sorted_data.index.intersection(seg.ind()).sortlevel()[0]
-            if not seg.ind().sortlevel()[0].equals(intersection):
-                warnings.warn("Rows missing from read in data.")
-            if not intersection.equals(sorted_data.index.sortlevel()[0]):
-                warnings.warn("Rows in input data where they shouldn't be.")
             import_data = sorted_data.reindex(seg.ind(), axis="index", method=None)
             cut_sum = import_data.values.sum()
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
@@ -720,11 +721,8 @@ class DVector:
                     "to match the other."
                 )
         # Index unchanged, aside from possible order. Segmentation remained the same
-        if isinstance(prod.index, pd.MultiIndex):
-            comparison_method = prod.index.equal_levels
-        else:
-            comparison_method = prod.index.equals
-        if comparison_method(self._data.index):
+        prod.sort_index(inplace=True)
+        if prod.index.equals(self._data.index):
             return DVector(
                 segmentation=self.segmentation, import_data=prod, zoning_system=zoning
             )
@@ -738,7 +736,7 @@ class DVector:
             SegmentationWarning,
         )
 
-        prod = prod.reorder_levels(new_seg.naming_order).sort_index()
+        prod = prod.reorder_levels(new_seg.naming_order)
         if not prod.index.equals(new_seg.ind()):
             warnings.warn(
                 "This operation has dropped some rows due to exclusions "
@@ -1023,6 +1021,16 @@ class DVector:
             val_col=self.val_col,
             low_memory=self.low_memory,
         )
+
+    def translate_segment(self, from_seg: Segment, to_seg, lookup):
+        new_segmentation = self.segmentation.translate_segment(from_seg, to_seg)
+        new_data = self.data.join(lookup).groupby(level=new_segmentation.naming_order)
+        return DVector(import_data=new_data,
+                       segmentation=new_segmentation,
+                       zoning_system=self.zoning_system,
+                       time_format=self.time_format,
+                       val_col=self.val_col,
+                       low_memory=self.low_memory)
 
     def trans_seg_from_lookup(self, lookup: SegConverter, drop_old: bool = False):
         lookup = SegConverter(lookup).get_conversion()

@@ -277,9 +277,9 @@ class Segmentation:
         if escalate_warning:
             warnings.filterwarnings("error", category=SegmentationWarning)
         if isinstance(source, Path):
-            df = pd.read_csv(source)
+            df = pd.read_csv(source).sort_index()
         else:
-            df = source
+            df = source.sort_index()
 
         naming_order = segmentation.naming_order
         conf = segmentation.input.copy()
@@ -288,10 +288,11 @@ class Segmentation:
         else:
             # Try to build index from df columns
             try:
-                read_index = pd.MultiIndex.from_frame(df[naming_order])
+                df.set_index(naming_order, inplace=True)
             # Assume the index is already correct but reorder to naming_order
             except KeyError:
-                read_index = df.index.reorder_levels(naming_order)
+                df = df.reorder_levels(naming_order)
+            read_index = df.index
         # Index to validate against
         built_index = segmentation.ind()
         # I think an error would already be raised at this point
@@ -303,7 +304,7 @@ class Segmentation:
 
         # Perfect match, return segmentation with no more checks
         if read_index.equals(built_index):
-            return segmentation
+            return segmentation, False
         if not cut_read:
             if len(read_index) > len(built_index):
                 raise IndexError(
@@ -340,14 +341,22 @@ class Segmentation:
                 )
 
         built_segmentation = cls(conf)
+        built_index = built_segmentation.ind()
 
-        if pd.DataFrame(index=read_index).sort_index().index.equals(pd.DataFrame(index=built_index).sort_index().index):
-            return built_segmentation
+        if read_index.equals(built_index):
+            return built_segmentation, False
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.
-        if cut_read:
-            if built_index.equals(built_index.intersection(read_index)):
-                return built_segmentation
+        if built_index.equals(built_index.intersection(read_index)):
+            if cut_read:
+                return built_segmentation, False
+            raise SegmentationError("Read data contains rows not in the generated segmentation. "
+                                    "If you want this data to simply be cut to match, set 'cut_read=True'")
+        if read_index.equals(built_index.intersection(read_index)):
+            warnings.warn("Combinations missing from the read in data. This may mean an exclusion should "
+                          "be defined but isn't. The data will be expanded to the expected segmenation, and "
+                          "infilled with zeroes.")
+            return built_segmentation, True
         raise ValueError(
             "The read in segmentation does not match the given parameters. The segment names"
             " are correct, but segment values don't match. This could be due to an incompatibility"
@@ -355,8 +364,24 @@ class Segmentation:
             " an out of date in built segmentation in the caf.core package. The first place to "
             "look is the SegmentsSuper class."
         )
-
     # pylint: enable=too-many-branches
+
+    def translate_segment(self, from_seg: Segment, to_seg):
+        to_seg = from_seg.translate_segment(to_seg)
+        new_conf = self.input.copy()
+        if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
+            new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))
+        else:
+            new_conf.custom_segments.remove(from_seg)
+        new_conf.naming_order[new_conf.naming_order.index(from_seg.name)] = to_seg.name
+        try:
+            new_conf.enum_segments.append(SegmentsSuper(to_seg.name))
+        except ValueError:
+            new_conf.custom_segments.append(to_seg)
+        return Segmentation(new_conf)
+
+
+
 
     def reinit(self):
         """Regenerate Segmentation from its input."""
