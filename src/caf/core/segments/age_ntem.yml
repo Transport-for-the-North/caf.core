@@ -1,0 +1,6 @@
+# Segment config written on 2024-07-17 at 13:38
+name: age_ntem
+values:
+  1: aged 15 years and under
+  2: aged 16 to 74 years
+  3: aged 75 and over
