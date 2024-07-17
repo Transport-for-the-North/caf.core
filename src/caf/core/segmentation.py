@@ -277,9 +277,9 @@ class Segmentation:
         if escalate_warning:
             warnings.filterwarnings("error", category=SegmentationWarning)
         if isinstance(source, Path):
-            df = pd.read_csv(source)
+            df = pd.read_csv(source).sort_index()
         else:
-            df = source
+            df = source.sort_index()
 
         naming_order = segmentation.naming_order
         conf = segmentation.input.copy()
@@ -288,10 +288,11 @@ class Segmentation:
         else:
             # Try to build index from df columns
             try:
-                read_index = pd.MultiIndex.from_frame(df[naming_order])
+                df.set_index(naming_order, inplace=True)
             # Assume the index is already correct but reorder to naming_order
             except KeyError:
-                read_index = df.index.reorder_levels(naming_order)
+                df = df.reorder_levels(naming_order)
+            read_index = df.index
         # Index to validate against
         built_index = segmentation.ind()
         # I think an error would already be raised at this point
@@ -340,12 +341,14 @@ class Segmentation:
                 )
 
         built_segmentation = cls(conf)
+        built_index = built_segmentation.ind()
 
-        if pd.DataFrame(index=read_index).sort_index().index.equals(pd.DataFrame(index=built_index).sort_index().index):
+        if read_index.equals(built_index):
             return built_segmentation
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.
         if cut_read:
+            # built_index is a subset of read_index - can cut read data down to built
             if built_index.equals(built_index.intersection(read_index)):
                 return built_segmentation
         raise ValueError(

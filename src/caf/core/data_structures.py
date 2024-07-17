@@ -400,18 +400,14 @@ class DVector:
         This requires the dataframe to be in wide format.
         """
         seg = Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation, cut_read=cut_read)
+
         if len(seg.naming_order) > 1:
-            sorted_data = import_data.reorder_levels(seg.naming_order)
+            sorted_data = import_data.reorder_levels(seg.naming_order).sort_index()
         else:
-            sorted_data = import_data
+            sorted_data = import_data.sort_index()
 
         if cut_read:
             full_sum = sorted_data.values.sum()
-            intersection = sorted_data.index.intersection(seg.ind()).sortlevel()[0]
-            if not seg.ind().sortlevel()[0].equals(intersection):
-                warnings.warn("Rows missing from read in data.")
-            if not intersection.equals(sorted_data.index.sortlevel()[0]):
-                warnings.warn("Rows in input data where they shouldn't be.")
             import_data = sorted_data.reindex(seg.ind(), axis="index", method=None)
             cut_sum = import_data.values.sum()
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
@@ -720,11 +716,8 @@ class DVector:
                     "to match the other."
                 )
         # Index unchanged, aside from possible order. Segmentation remained the same
-        if isinstance(prod.index, pd.MultiIndex):
-            comparison_method = prod.index.equal_levels
-        else:
-            comparison_method = prod.index.equals
-        if comparison_method(self._data.index):
+        prod.sort_index(inplace=True)
+        if prod.index.equals(self._data.index):
             return DVector(
                 segmentation=self.segmentation, import_data=prod, zoning_system=zoning
             )
@@ -738,7 +731,7 @@ class DVector:
             SegmentationWarning,
         )
 
-        prod = prod.reorder_levels(new_seg.naming_order).sort_index()
+        prod = prod.reorder_levels(new_seg.naming_order)
         if not prod.index.equals(new_seg.ind()):
             warnings.warn(
                 "This operation has dropped some rows due to exclusions "
