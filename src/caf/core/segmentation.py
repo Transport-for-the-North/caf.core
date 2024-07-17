@@ -304,7 +304,7 @@ class Segmentation:
 
         # Perfect match, return segmentation with no more checks
         if read_index.equals(built_index):
-            return segmentation
+            return segmentation, False
         if not cut_read:
             if len(read_index) > len(built_index):
                 raise IndexError(
@@ -344,13 +344,19 @@ class Segmentation:
         built_index = built_segmentation.ind()
 
         if read_index.equals(built_index):
-            return built_segmentation
+            return built_segmentation, False
         # Still doesn't match, this is probably an exclusion error. User should check that
         # proper exclusions are defined in SegmentsSuper.
-        if cut_read:
-            # built_index is a subset of read_index - can cut read data down to built
-            if built_index.equals(built_index.intersection(read_index)):
-                return built_segmentation
+        if built_index.equals(built_index.intersection(read_index)):
+            if cut_read:
+                return built_segmentation, False
+            raise SegmentationError("Read data contains rows not in the generated segmentation. "
+                                    "If you want this data to simply be cut to match, set 'cut_read=True'")
+        if read_index.equals(built_index.intersection(read_index)):
+            warnings.warn("Combinations missing from the read in data. This may mean an exclusion should "
+                          "be defined but isn't. The data will be expanded to the expected segmenation, and "
+                          "infilled with zeroes.")
+            return built_segmentation, True
         raise ValueError(
             "The read in segmentation does not match the given parameters. The segment names"
             " are correct, but segment values don't match. This could be due to an incompatibility"

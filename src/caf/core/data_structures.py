@@ -400,11 +400,16 @@ class DVector:
         This requires the dataframe to be in wide format.
         """
         seg = Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation, cut_read=cut_read)
+        seg, expand_to_read = Segmentation.validate_segmentation(source=import_data, segmentation=self.segmentation, cut_read=cut_read)
 
         if len(seg.naming_order) > 1:
             sorted_data = import_data.reorder_levels(seg.naming_order).sort_index()
         else:
             sorted_data = import_data.sort_index()
+
+        if expand_to_read:
+            expander = pd.DataFrame(index=seg.ind(), data={'dummy': 1})
+            sorted_data = sorted_data.join(expander, how='outer').fillna(0).drop('dummy', axis=1)
 
         if cut_read:
             full_sum = sorted_data.values.sum()
