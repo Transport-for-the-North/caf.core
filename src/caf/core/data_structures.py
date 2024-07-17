@@ -1017,6 +1017,16 @@ class DVector:
             low_memory=self.low_memory,
         )
 
+    def translate_segment(self, from_seg: Segment, to_seg, lookup):
+        new_segmentation = self.segmentation.translate_segment(from_seg, to_seg)
+        new_data = self.data.join(lookup).groupby(level=new_segmentation.naming_order)
+        return DVector(import_data=new_data,
+                       segmentation=new_segmentation,
+                       zoning_system=self.zoning_system,
+                       time_format=self.time_format,
+                       val_col=self.val_col,
+                       low_memory=self.low_memory)
+
     def trans_seg_from_lookup(self, lookup: SegConverter, drop_old: bool = False):
         lookup = SegConverter(lookup).get_conversion()
         drop_names = lookup.index.names

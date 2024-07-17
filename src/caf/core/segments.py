@@ -74,6 +74,15 @@ class Segment(BaseConfig):
     def __len__(self):
         return len(self.values)
 
+    def translate_segment(self, new_seg):
+        if isinstance(new_seg, Segment):
+            return new_seg
+        if isinstance(new_seg, str):
+            return SegmentsSuper(new_seg).get_segment()
+        raise TypeError("translate_method expects either an instance of the Segment "
+                        "class, or a str contained within the SegmentsSuper enum class. "
+                        f"{type(new_seg)} cannot be handled.")
+
     # pylint: enable=not-an-iterable
 
 

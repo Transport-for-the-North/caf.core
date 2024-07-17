@@ -358,8 +358,24 @@ class Segmentation:
             " an out of date in built segmentation in the caf.core package. The first place to "
             "look is the SegmentsSuper class."
         )
-
     # pylint: enable=too-many-branches
+
+    def translate_segment(self, from_seg: Segment, to_seg):
+        to_seg = from_seg.translate_segment(to_seg)
+        new_conf = self.input.copy()
+        if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
+            new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))
+        else:
+            new_conf.custom_segments.remove(from_seg)
+        new_conf.naming_order[new_conf.naming_order.index(from_seg.name)] = to_seg.name
+        try:
+            new_conf.enum_segments.append(SegmentsSuper(to_seg.name))
+        except ValueError:
+            new_conf.custom_segments.append(to_seg)
+        return Segmentation(new_conf)
+
+
+
 
     def reinit(self):
         """Regenerate Segmentation from its input."""
