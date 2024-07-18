@@ -288,10 +288,10 @@ class Segmentation:
         else:
             # Try to build index from df columns
             try:
-                df.set_index(naming_order, inplace=True)
+                df = df.set_index(naming_order).sort_index()
             # Assume the index is already correct but reorder to naming_order
             except KeyError:
-                df = df.reorder_levels(naming_order)
+                df = df.reorder_levels(naming_order).sort_index()
             read_index = df.index
         # Index to validate against
         built_index = segmentation.ind()
@@ -367,7 +367,7 @@ class Segmentation:
     # pylint: enable=too-many-branches
 
     def translate_segment(self, from_seg: Segment, to_seg):
-        to_seg = from_seg.translate_segment(to_seg)
+        to_seg, lookup = from_seg.translate_segment(to_seg)
         new_conf = self.input.copy()
         if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
             new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))
@@ -378,7 +378,7 @@ class Segmentation:
             new_conf.enum_segments.append(SegmentsSuper(to_seg.name))
         except ValueError:
             new_conf.custom_segments.append(to_seg)
-        return Segmentation(new_conf)
+        return Segmentation(new_conf), lookup
 
 
 

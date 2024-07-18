@@ -75,13 +75,19 @@ class Segment(BaseConfig):
         return len(self.values)
 
     def translate_segment(self, new_seg):
-        if isinstance(new_seg, Segment):
-            return new_seg
+        lookup_dir = Path(__file__).parent / "seg_translations"
+        if not isinstance(new_seg, [str, Segment, SegmentsSuper]):
+            raise TypeError("translate_method expects either an instance of the Segment "
+                            "class, or a str contained within the SegmentsSuper enum class. "
+                            f"{type(new_seg)} cannot be handled.")
         if isinstance(new_seg, str):
-            return SegmentsSuper(new_seg).get_segment()
-        raise TypeError("translate_method expects either an instance of the Segment "
-                        "class, or a str contained within the SegmentsSuper enum class. "
-                        f"{type(new_seg)} cannot be handled.")
+            new_seg = SegmentsSuper(new_seg).get_segment()
+        if isinstance(new_seg, SegmentsSuper):
+            new_seg = new_seg.get_segment()
+        new_name = new_seg.name
+        lookup = pd.read_csv(lookup_dir / f"{self.name}_to_{new_name}.csv", index_col=0).squeeze()
+        return new_seg, lookup
+
 
     # pylint: enable=not-an-iterable
 
@@ -155,6 +161,7 @@ class SegConverter(enum.Enum):
     AG_G = "ag_g"
     APOPEMP_AWS = "apopemp_aws"
     CARADULT_HHTYPE = "caradult_hhtype"
+    NSSEC_ADULT = "nssec_adult"
 
     def get_conversion(self):
         match self:
@@ -305,6 +312,13 @@ class SegConverter(enum.Enum):
                 to_vals = [1, 2, 2, 3, 4, 5, 6, 7, 8]
 
                 return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
+
+        match self:
+            case SegConverter.NSSEC_ADULT:
+                from_ind = pd.MultiIndex.from_product([range(1,6), range(1,4)], names=['ns_sec', 'adults'])
+                to_vals = range(1, 16)
+                return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
+
 
 
 if __name__ == '__main__':

@@ -4,3 +4,13 @@ values:
   1: No cars or vans in household
   2: 1 car or van in household
   3: 2 or more cars or vans in household
+
+exclusions:
+- other_name: adult_nssec
+  exclusions:
+    3:
+    - 1
+    - 4
+    - 7
+    - 10
+    - 13
