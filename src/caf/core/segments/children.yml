@@ -16,6 +16,10 @@ exclusions:
     - 1
     - 2
     - 3
+- other_name: age_ntem
+  exclusions:
+    1:
+    - 1
 - other_name: age_5
   exclusions:
     1:

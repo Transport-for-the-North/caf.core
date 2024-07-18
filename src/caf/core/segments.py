@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Module defining Segments class and enumeration."""
 import enum
-from dataclasses import dataclass
+from pydantic import dataclasses
 from typing import Optional
 from pathlib import Path
 import os
@@ -13,7 +13,7 @@ from caf.toolkit import BaseConfig
 
 
 # # # CLASSES # # #
-@dataclass
+@dataclasses.dataclass
 class Exclusion:
     """
     Class to define exclusions between segments.
@@ -76,7 +76,7 @@ class Segment(BaseConfig):
 
     def translate_segment(self, new_seg):
         lookup_dir = Path(__file__).parent / "seg_translations"
-        if not isinstance(new_seg, [str, Segment, SegmentsSuper]):
+        if not isinstance(new_seg, (str, Segment, SegmentsSuper)):
             raise TypeError("translate_method expects either an instance of the Segment "
                             "class, or a str contained within the SegmentsSuper enum class. "
                             f"{type(new_seg)} cannot be handled.")
@@ -87,6 +87,23 @@ class Segment(BaseConfig):
         new_name = new_seg.name
         lookup = pd.read_csv(lookup_dir / f"{self.name}_to_{new_name}.csv", index_col=0).squeeze()
         return new_seg, lookup
+
+    def translate_exclusion(self, new_seg):
+        segs_dir = Path(__file__).parent / "segments"
+        new_seg, lookup = self.translate_segment(new_seg)
+        update_seg = new_seg.copy()
+        exclusions = []
+        for exc in self.exclusions:
+            from_exc = pd.DataFrame(index=exc.build_index()).reset_index().rename(columns={'dummy':self.name}).set_index(self.name)
+            joined = from_exc.join(lookup).groupby([new_seg.name, exc.other_name]).sum().reset_index(level=exc.other_name)
+            new_exc = {}
+            for ind in joined.index.unique():
+                new_exc[ind] = joined.loc[ind].squeeze().to_list()
+            exclusions.append(Exclusion(other_name=exc.other_name, exclusions=new_exc))
+        update_seg.exclusions = exclusions
+        update_seg.save_yaml(segs_dir / f"{new_seg.name}.yml")
+
+
 
 
     # pylint: enable=not-an-iterable
@@ -119,6 +136,8 @@ class SegmentsSuper(enum.Enum):
     AGE = "age_9"
     AGE_11 = "age_11"
     AGE_AGG = "age_5"
+    AGE_NTEM = "age_ntem"
+    AGE_EDGE = "age_edge"
     GENDER_3 = "gender_3"
     ECONOMIC_STATUS = "economic_status"
     POP_EMP = "pop_emp"

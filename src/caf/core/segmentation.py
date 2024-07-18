@@ -366,7 +366,13 @@ class Segmentation:
         )
     # pylint: enable=too-many-branches
 
-    def translate_segment(self, from_seg: Segment, to_seg):
+    def translate_segment(self, from_seg, to_seg):
+        if isinstance(to_seg, str):
+            if to_seg in SegmentsSuper.values():
+                to_seg = SegmentsSuper(to_seg).get_segment()
+        if isinstance(from_seg, str):
+            if from_seg in SegmentsSuper.values():
+                from_seg = SegmentsSuper(from_seg).get_segment()
         to_seg, lookup = from_seg.translate_segment(to_seg)
         new_conf = self.input.copy()
         if SegmentsSuper(from_seg.name) in new_conf.enum_segments:

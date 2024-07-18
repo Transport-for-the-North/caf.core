@@ -1023,7 +1023,7 @@ class DVector:
 
     def translate_segment(self, from_seg: Segment, to_seg):
         new_segmentation, lookup = self.segmentation.translate_segment(from_seg, to_seg)
-        new_data = self.data.join(lookup).groupby(level=new_segmentation.naming_order)
+        new_data = self.data.join(lookup).reset_index().drop(from_seg, axis=1).groupby(new_segmentation.naming_order).sum()
         return DVector(import_data=new_data,
                        segmentation=new_segmentation,
                        zoning_system=self.zoning_system,
