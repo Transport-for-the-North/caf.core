@@ -166,6 +166,9 @@ class Segmentation:
         """Access segments in dict form."""
         return {seg.name: seg for seg in self.segments}
 
+    def get_segment(self, seg_name: str) -> Segment:
+        return self.seg_dict[seg_name]
+
     def __iter__(self):
         return self.seg_dict.__iter__()
 
@@ -366,14 +369,14 @@ class Segmentation:
         )
     # pylint: enable=too-many-branches
 
-    def translate_segment(self, from_seg, to_seg):
+    def translate_segment(self, from_seg, to_seg, reverse=False):
         if isinstance(to_seg, str):
             if to_seg in SegmentsSuper.values():
                 to_seg = SegmentsSuper(to_seg).get_segment()
         if isinstance(from_seg, str):
             if from_seg in SegmentsSuper.values():
                 from_seg = SegmentsSuper(from_seg).get_segment()
-        to_seg, lookup = from_seg.translate_segment(to_seg)
+        to_seg, lookup = from_seg.translate_segment(to_seg, reverse=reverse)
         new_conf = self.input.copy()
         if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
             new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))

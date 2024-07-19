@@ -74,7 +74,7 @@ class Segment(BaseConfig):
     def __len__(self):
         return len(self.values)
 
-    def translate_segment(self, new_seg):
+    def translate_segment(self, new_seg, reverse=False):
         lookup_dir = Path(__file__).parent / "seg_translations"
         if not isinstance(new_seg, (str, Segment, SegmentsSuper)):
             raise TypeError("translate_method expects either an instance of the Segment "
@@ -85,7 +85,11 @@ class Segment(BaseConfig):
         if isinstance(new_seg, SegmentsSuper):
             new_seg = new_seg.get_segment()
         new_name = new_seg.name
-        lookup = pd.read_csv(lookup_dir / f"{self.name}_to_{new_name}.csv", index_col=0).squeeze()
+        name_1 = self.name
+        name_2 = new_name
+        if reverse:
+            name_1, name_2 = name_2, name_1
+        lookup = pd.read_csv(lookup_dir / f"{name_1}_to_{name_2}.csv", index_col=0).squeeze()
         return new_seg, lookup
 
     def translate_exclusion(self, new_seg):
@@ -100,7 +104,10 @@ class Segment(BaseConfig):
             for ind in joined.index.unique():
                 new_exc[ind] = joined.loc[ind].squeeze().to_list()
             exclusions.append(Exclusion(other_name=exc.other_name, exclusions=new_exc))
-        update_seg.exclusions = exclusions
+        if len(update_seg.exclusions) == 0:
+            update_seg.exclusions = exclusions
+        else:
+            update_seg.exclusions += exclusions
         update_seg.save_yaml(segs_dir / f"{new_seg.name}.yml")
 
 

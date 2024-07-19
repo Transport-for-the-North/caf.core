@@ -1021,9 +1021,14 @@ class DVector:
             low_memory=self.low_memory,
         )
 
-    def translate_segment(self, from_seg: Segment, to_seg):
-        new_segmentation, lookup = self.segmentation.translate_segment(from_seg, to_seg)
-        new_data = self.data.join(lookup).reset_index().drop(from_seg, axis=1).groupby(new_segmentation.naming_order).sum()
+    def translate_segment(self, from_seg, to_seg, reverse=False):
+        new_segmentation, lookup = self.segmentation.translate_segment(from_seg, to_seg, reverse=reverse)
+        if reverse:
+            lookup = lookup.to_frame()
+            lookup.set_index(from_seg, append=True, inplace=True)
+            new_data = self.data.join(lookup).droplevel(from_seg)
+        else:
+            new_data = self.data.join(lookup).reset_index().drop(from_seg, axis=1).groupby(new_segmentation.naming_order).sum()
         return DVector(import_data=new_data,
                        segmentation=new_segmentation,
                        zoning_system=self.zoning_system,
@@ -1078,47 +1083,66 @@ class DVector:
         for position, target in enumerate(targets):
             # Check targets sum to the same, or they can't converge. Potentially could allow
             # IPF for non-agreeing targets to get as close as possible.
-            trans = None
             zoning_diff = False
             if target_sum == 0:
-                target_sum = target.sum()
+                target_sum = target.data.sum()
             else:
-                if not math.isclose(target_sum, target.sum(), abs_tol=target_sum / 1e5):
+                if not math.isclose(target_sum, target.data.sum(), abs_tol=target_sum / 1e5):
                     raise ValueError("Input target DVectors do not have consistent "
                                      "sums, so ipf will fail.")
             # Check segmentations are compatible.
-            if not target.segmentation.is_subset(self.segmentation):
-                raise ValueError("Target segmentation is not a subset of input DVec "
-                                 "segmentation. input DVec segmentation: "
-                                 f"{self.segmentation.naming_order} \n"
-                                 f"target segmentation: {target.segmentation.naming_order}")
+            if not target.data.segmentation.is_subset(self.segmentation):
+                if target.segment_translations is None:
+                    raise ValueError("The target segmentation is not a subset of the seed "
+                                     "segmentation, but no correspondences are defined.")
+                non_matching = target.data.segmentation - self.segmentation
+                for seg in non_matching:
+                    if seg in target.segment_translations.keys():
+                        if target.segment_translations[seg] in self.segmentation.names:
+                            lower_seg = self.segmentation.get_segment(target.segment_translations[seg])
+                            try:
+                                # Don't need this for now, checking it exists.
+                                lower_seg.translate_segment(seg)
+                            except FileNotFoundError:
+                                raise FileNotFoundError(f"No segment translation found for {lower_seg} to {seg}.from.")
+
             # Check zoning systems are compatible.
-            if self.zoning_system != target.zoning_system:
+            if self.zoning_system != target.data.zoning_system:
                 zoning_diff = True
-                try:
-                    trans = self.zoning_system.translate(target.zoning_system)
-                except TranslationError:
-                    raise TranslationError("No zone_translation was found for "
-                                           f"{self.zoning_system} to {target.zoning_system}.")
-                nested = (trans[self.zoning_system.translation_column_name(target.zoning_system)] == 1).all()
+                if target.zone_translation is not None:
+                    pass
+                else:
+                    try:
+                        target.zone_translation = self.zoning_system.translate(target.data.zoning_system)
+                    except TranslationError:
+                        raise TranslationError("No zone_translation was found for "
+                                               f"{self.zoning_system} to {target.data.zoning_system}.")
+                nested = (target.zone_translation[self.zoning_system.translation_column_name(target.data.zoning_system)] == 1).all()
                 if not nested:
                     raise TranslationError("For IPF any targets must either be at the same zoning "
                                            "system as the seed DVector, or be at a zoning system "
                                            "which the seed nests perfectly within. The zone_translation "
                                            "found contains non-one factors, which implies the "
                                            "zoning system doesn't nest, so IPF can't be performed.")
-            targets[position] = IpfTarget(target=target, zone_translation=trans, zoning_diff=zoning_diff)
+
 
         new_dvec = self.copy()
         prev_rmse = np.inf
         for i in range(max_iters):
             for target in targets:
-                agg = new_dvec.aggregate(target.target.segmentation)
-                if target.translation is not None:
-                    agg = agg.translate_zoning(target.target.zoning_system, trans_vector=target.translation)
-                factor = target.target / agg
+                inner = new_dvec.copy()
+                if target.segment_translations is not None:
+                    for targ_seg, seed_seg in target.segment_translations.items():
+                        inner = inner.translate_segment(from_seg=seed_seg, to_seg=targ_seg)
+                agg = inner.aggregate(target.data.segmentation)
+                if target.zone_translation is not None:
+                    agg = agg.translate_zoning(target.data.zoning_system, trans_vector=target.zone_translation)
+                factor = target.data / agg
                 if target.zoning_diff:
-                    factor = factor.translate_zoning(self.zoning_system, trans_vector=target.translation, one_to_one=True, check_totals=False)
+                    factor = factor.translate_zoning(self.zoning_system, trans_vector=target.zone_translation, one_to_one=True, check_totals=False)
+                if target.segment_translations is not None:
+                    for targ_seg, seed_seg in target.segment_translations.items():
+                        factor = factor.translate_segment(from_seg=targ_seg, to_seg=seed_seg, reverse=True)
                 new_dvec *= factor
 
             rmse = new_dvec.calc_rmse(targets)
@@ -1418,10 +1442,10 @@ class DVector:
 @dataclass
 class IpfTarget:
 
-    target: DVector
+    data: DVector
     zoning_diff: bool
     zone_translation: pd.DataFrame = None
-    segment_translations: dict[str, str] = None
+    segment_translations: dict[str, str] = None #keys are segment in target, values, segment in seed
 
 
 
