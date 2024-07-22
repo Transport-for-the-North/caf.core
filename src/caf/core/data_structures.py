@@ -1072,9 +1072,16 @@ class DVector:
         for target in targets:
             check = self.copy()
             if target.zone_translation is not None:
-                check = self.translate_zoning(target.target.zoning_system, trans_vector=target.zone_translation)
-            diff = (check.aggregate(target.target.segmentation) - target.target) ** 2
-            mse += diff.sum() / len(target.target)
+                check = self.translate_zoning(target.data.zoning_system, trans_vector=target.zone_translation)
+            if target.segment_translations is not None:
+                for seg in target.data.segmentation - self.segmentation:
+                    if target.segment_translations[seg] in self.segmentation.names:
+                        lower_seg = self.segmentation.get_segment(target.segment_translations[seg])
+                        check = check.translate_segment(from_seg=lower_seg.name, to_seg=seg)
+                    else:
+                        raise ValueError("No translation defined for this segment.")
+            diff = (check.aggregate(target.data.segmentation) - target.data) ** 2
+            mse += diff.sum() / len(target.data)
         return mse ** 0.5
 
     def ipf(self, targets: list[DVector], tol: float = 1e-5, max_iters: int = 100):

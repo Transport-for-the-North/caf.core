@@ -377,7 +377,7 @@ class Segmentation:
             if from_seg in SegmentsSuper.values():
                 from_seg = SegmentsSuper(from_seg).get_segment()
         to_seg, lookup = from_seg.translate_segment(to_seg, reverse=reverse)
-        new_conf = self.input.copy()
+        new_conf = deepcopy(self.input)
         if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
             new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))
         else:
