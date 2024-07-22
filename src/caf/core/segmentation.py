@@ -12,7 +12,6 @@ import warnings
 from typing import Union, Literal, Optional
 from os import PathLike
 from pathlib import Path
-from copy import deepcopy
 
 # Third Party
 import pandas as pd
@@ -377,7 +376,7 @@ class Segmentation:
             if from_seg in SegmentsSuper.values():
                 from_seg = SegmentsSuper(from_seg).get_segment()
         to_seg, lookup = from_seg.translate_segment(to_seg, reverse=reverse)
-        new_conf = deepcopy(self.input)
+        new_conf = self.input.model_copy(deep=True)
         if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
             new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))
         else:
@@ -388,7 +387,6 @@ class Segmentation:
         except ValueError:
             new_conf.custom_segments.append(to_seg)
         return Segmentation(new_conf), lookup
-
 
 
 
@@ -526,7 +524,7 @@ class Segmentation:
 
     def copy(self):
         """Copy an instance of this class."""
-        return Segmentation(config=deepcopy(self.input))
+        return Segmentation(config=self.input.model_copy(deep=True))
 
     def aggregate(self, new_segs: list[str]):
         """
@@ -652,7 +650,7 @@ class Segmentation:
                 del self.input.subsets[segment_name]
             self.reinit()
             return
-        out_seg = deepcopy(self.input)
+        out_seg = self.input.model_copy(deep=True)
         out_seg.naming_order.remove(segment_name)
         if segment_name in SegmentsSuper.values():
             out_seg.enum_segments.remove(SegmentsSuper(segment_name))
