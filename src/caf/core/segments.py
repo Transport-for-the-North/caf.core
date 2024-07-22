@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Module defining Segments class and enumeration."""
 import enum
-from dataclasses import dataclass
+from pydantic import dataclasses
 from typing import Optional
 from pathlib import Path
 import os
@@ -13,7 +13,7 @@ from caf.toolkit import BaseConfig
 
 
 # # # CLASSES # # #
-@dataclass
+@dataclasses.dataclass
 class Exclusion:
     """
     Class to define exclusions between segments.
@@ -74,14 +74,44 @@ class Segment(BaseConfig):
     def __len__(self):
         return len(self.values)
 
-    def translate_segment(self, new_seg):
-        if isinstance(new_seg, Segment):
-            return new_seg
+    def translate_segment(self, new_seg, reverse=False):
+        lookup_dir = Path(__file__).parent / "seg_translations"
+        if not isinstance(new_seg, (str, Segment, SegmentsSuper)):
+            raise TypeError("translate_method expects either an instance of the Segment "
+                            "class, or a str contained within the SegmentsSuper enum class. "
+                            f"{type(new_seg)} cannot be handled.")
         if isinstance(new_seg, str):
-            return SegmentsSuper(new_seg).get_segment()
-        raise TypeError("translate_method expects either an instance of the Segment "
-                        "class, or a str contained within the SegmentsSuper enum class. "
-                        f"{type(new_seg)} cannot be handled.")
+            new_seg = SegmentsSuper(new_seg).get_segment()
+        if isinstance(new_seg, SegmentsSuper):
+            new_seg = new_seg.get_segment()
+        new_name = new_seg.name
+        name_1 = self.name
+        name_2 = new_name
+        if reverse:
+            name_1, name_2 = name_2, name_1
+        lookup = pd.read_csv(lookup_dir / f"{name_1}_to_{name_2}.csv", index_col=0).squeeze()
+        return new_seg, lookup
+
+    def translate_exclusion(self, new_seg):
+        segs_dir = Path(__file__).parent / "segments"
+        new_seg, lookup = self.translate_segment(new_seg)
+        update_seg = new_seg.copy()
+        exclusions = []
+        for exc in self.exclusions:
+            from_exc = pd.DataFrame(index=exc.build_index()).reset_index().rename(columns={'dummy':self.name}).set_index(self.name)
+            joined = from_exc.join(lookup).groupby([new_seg.name, exc.other_name]).sum().reset_index(level=exc.other_name)
+            new_exc = {}
+            for ind in joined.index.unique():
+                new_exc[ind] = joined.loc[ind].squeeze().to_list()
+            exclusions.append(Exclusion(other_name=exc.other_name, exclusions=new_exc))
+        if len(update_seg.exclusions) == 0:
+            update_seg.exclusions = exclusions
+        else:
+            update_seg.exclusions += exclusions
+        update_seg.save_yaml(segs_dir / f"{new_seg.name}.yml")
+
+
+
 
     # pylint: enable=not-an-iterable
 
@@ -113,6 +143,8 @@ class SegmentsSuper(enum.Enum):
     AGE = "age_9"
     AGE_11 = "age_11"
     AGE_AGG = "age_5"
+    AGE_NTEM = "age_ntem"
+    AGE_EDGE = "age_edge"
     GENDER_3 = "gender_3"
     ECONOMIC_STATUS = "economic_status"
     POP_EMP = "pop_emp"
@@ -155,6 +187,7 @@ class SegConverter(enum.Enum):
     AG_G = "ag_g"
     APOPEMP_AWS = "apopemp_aws"
     CARADULT_HHTYPE = "caradult_hhtype"
+    NSSEC_ADULT = "nssec_adult"
 
     def get_conversion(self):
         match self:
@@ -305,6 +338,13 @@ class SegConverter(enum.Enum):
                 to_vals = [1, 2, 2, 3, 4, 5, 6, 7, 8]
 
                 return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
+
+        match self:
+            case SegConverter.NSSEC_ADULT:
+                from_ind = pd.MultiIndex.from_product([range(1,6), range(1,4)], names=['ns_sec', 'adults'])
+                to_vals = range(1, 16)
+                return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
+
 
 
 if __name__ == '__main__':

@@ -60,6 +60,17 @@ exclusions:
     - 2
     - 3
     - 9
+- other_name: age_ntem
+  exclusions:
+    1:
+    - 1
+    - 3
+    2:
+    - 1
+    - 3
+    4:
+    - 1
+    - 3
 - other_name: age_11
   exclusions:
     1:

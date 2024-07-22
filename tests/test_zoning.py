@@ -289,7 +289,7 @@ class TestZoning:
         min_zoning: ZoningSystem,
         main_dir: Path,
     ):
-        """Test sucessfully obtaining translation data."""
+        """Test sucessfully obtaining zone_translation data."""
         trans = min_zoning_2.translate(min_zoning, cache_path=main_dir)
         assert trans.equals(test_trans)
         assert min_zoning_2.translation_column_name(min_zoning) == "zone_2_to_zone_1"
