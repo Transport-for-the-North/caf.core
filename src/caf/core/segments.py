@@ -14,7 +14,7 @@ from caf.toolkit import BaseConfig
 
 # # # CLASSES # # #
 @dataclasses.dataclass
-class Exclusion:
+class Correspondence:
     """
     Class to define exclusions between segments.
 
@@ -30,7 +30,9 @@ class Exclusion:
 
     def build_index(self):
         """Return an index formed of the exclusions."""
-        frame = pd.DataFrame.from_dict(self.exclusions, orient='index').stack().reset_index().drop(columns='level_1')
+        frame = pd.DataFrame.from_dict(self.exclusions, orient='index').stack().reset_index()
+        frame[0] = frame[0].astype(int)
+        frame.drop('level_1', axis=1, inplace=True)
         return pd.MultiIndex.from_frame(frame, names=['dummy', self.other_name])
 
 
@@ -47,13 +49,17 @@ class Segment(BaseConfig):
         The values forming the segment. Keys are the values, and values are
         descriptions, e.g. for 'p', 1: 'HB work'. Descriptions don't tend to
         get used in DVectors so can be as verbose as desired for clarity.
-    exclusions: list[Exclusion]
-        Define incompatibilities between segments. See Exclusion class
+    exclusions: list[Correspondence]
+        Define incompatibilities between segments. See Correspondence class
+    lookups: list[Correspondence]
+        Define lookups between segments, essentially the reverse of exclusions.
+        More efficient for segments with mappings, e.g. different defintions of age.
     """
 
     name: str
     values: dict[int, str]
-    exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
+    exclusions: list[Correspondence] = pydantic.Field(default_factory=list)
+    lookups: list[Correspondence] = pydantic.Field(default_factory=list)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # pylint: disable=too-few-public-methods
@@ -63,18 +69,32 @@ class Segment(BaseConfig):
     def _exclusion_segs(self):
         return [seg.other_name for seg in self.exclusions]
 
+    @property
+    def _lookup_segs(self):
+        return [seg.other_name for seg in self.lookups]
+
     def _drop_indices(self, other_seg: str):
         if other_seg not in self._exclusion_segs:
             return None
-        ind_tuples = []
         for excl in self.exclusions:
             if excl.other_name == other_seg:
                 return excl.build_index()
 
+    def _lookup_indices(self, other_seg: str):
+        if other_seg not in self._lookup_segs:
+            return None
+        for lookup in self.lookups:
+            if lookup.other_name == other_seg:
+                return lookup.build_index()
+
+    @property
+    def int_values(self):
+        return list(self.values.keys())
+
     def __len__(self):
         return len(self.values)
 
-    def translate_segment(self, new_seg, reverse=False):
+    def translate_segment(self, new_seg, reverse=False, exclude=False):
         lookup_dir = Path(__file__).parent / "seg_translations"
         if not isinstance(new_seg, (str, Segment, SegmentsSuper)):
             raise TypeError("translate_method expects either an instance of the Segment "
@@ -90,6 +110,15 @@ class Segment(BaseConfig):
         if reverse:
             name_1, name_2 = name_2, name_1
         lookup = pd.read_csv(lookup_dir / f"{name_1}_to_{name_2}.csv", index_col=0).squeeze()
+        if exclude:
+            full_product = pd.MultiIndex.from_product([self.values, new_seg.values], names=[self.name, new_seg.name])
+            corr = lookup.to_frame().set_index(lookup.name, append=True)
+            excl = pd.DataFrame(index=full_product.difference(corr.index)).reset_index(level=self.name).to_dict()
+            excl = Correspondence(other_name=self.name, exclusions=excl)
+            if new_seg.exclusions is None:
+                new_seg.exclusions = [excl]
+            else:
+                new_seg.exclusions.append(excl)
         return new_seg, lookup
 
     def translate_exclusion(self, new_seg):
@@ -103,7 +132,7 @@ class Segment(BaseConfig):
             new_exc = {}
             for ind in joined.index.unique():
                 new_exc[ind] = joined.loc[ind].squeeze().to_list()
-            exclusions.append(Exclusion(other_name=exc.other_name, exclusions=new_exc))
+            exclusions.append(Correspondence(other_name=exc.other_name, exclusions=new_exc))
         if len(update_seg.exclusions) == 0:
             update_seg.exclusions = exclusions
         else:
@@ -153,6 +182,9 @@ class SegmentsSuper(enum.Enum):
     AWS = "aws"
     HH_TYPE = "hh_type"
     ADULT_NSSEC = "adult_nssec"
+    SIC_1 = "sic_1_digit"
+    SIC_2 = "sic_2_digit"
+    SIC_4 = "sic_4_digit"
 
     @classmethod
     def values(cls):

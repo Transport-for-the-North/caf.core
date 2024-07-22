@@ -1,3 +1,4 @@
+# Segment config written on 2024-07-22 at 15:27
 name: sic_1_digit
 values:
   1: 'A : Agriculture, forestry and fishing'
@@ -19,7 +20,118 @@ values:
   17: 'Q : Human health and social work activities'
   18: 'R : Arts, entertainment and recreation'
   19: 'S : Other service activities'
-  20: 'T : Activities of households as employers;undifferentiated goods-and services-producing activities of households for own use'
+  20: 'T : Activities of households as employers;undifferentiated goods-and services-producing
+    activities of households for own use'
   21: 'U : Activities of extraterritorial organisations and bodies'
-# No exclusions written as this segementation is only expected to be combined with
-# other sic combinations and a translate segment method should be used instead.
+lookups:
+- other_name: sic_2_digit
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+    2:
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    3:
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+    - 20
+    - 21
+    - 22
+    - 23
+    - 24
+    - 25
+    - 26
+    - 27
+    - 28
+    - 29
+    - 30
+    - 31
+    - 32
+    - 33
+    4:
+    - 35
+    5:
+    - 36
+    - 37
+    - 38
+    - 39
+    6:
+    - 41
+    - 42
+    - 43
+    7:
+    - 45
+    - 46
+    - 47
+    8:
+    - 49
+    - 50
+    - 51
+    - 52
+    - 53
+    9:
+    - 56
+    - 55
+    10:
+    - 58
+    - 59
+    - 60
+    - 61
+    - 62
+    - 63
+    11:
+    - 64
+    - 65
+    - 66
+    12:
+    - 68
+    13:
+    - 69
+    - 70
+    - 71
+    - 72
+    - 73
+    - 74
+    - 75
+    14:
+    - 77
+    - 78
+    - 79
+    - 80
+    - 81
+    - 82
+    15:
+    - 84
+    16:
+    - 85
+    17:
+    - 88
+    - 86
+    - 87
+    18:
+    - 90
+    - 91
+    - 92
+    - 93
+    19:
+    - 96
+    - 94
+    - 95
+    20:
+    - 97
+    - 98
+    21:
+    - 99

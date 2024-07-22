@@ -12,6 +12,7 @@ import warnings
 from typing import Union, Literal, Optional
 from os import PathLike
 from pathlib import Path
+import itertools
 
 # Third Party
 import pandas as pd
@@ -193,48 +194,41 @@ class Segmentation:
         This is by default just a product of all segments given, taking
         exclusions into account if any exist between segments.
         """
-        index = pd.MultiIndex.from_product(self.seg_vals, names=self.names)
-        df = pd.DataFrame(index=index).reorder_levels(self.naming_order).reset_index()
-        drop_iterator = self.naming_order.copy()
-        # TODO hard coded here for now as a quick fix, needs thought
-        # hh_dropper = pd.MultiIndex.from_tuples([(2, 1, 1, 4),
-        #     (2, 1, 2, 4),
-        #     (2, 1, 3, 1),
-        #     (2, 1, 3, 4),
-        #     (2, 2, 1, 4),
-        #     (2, 2, 2, 4),
-        #     (2, 2, 3, 1),
-        #     (2, 2, 3, 4),
-        #     (3, 1, 1, 4),
-        #     (3, 1, 2, 4),
-        #     (3, 1, 3, 1),
-        #     (3, 1, 3, 4),
-        #     (3, 2, 1, 4),
-        #     (3, 2, 2, 4),
-        #     (3, 2, 3, 1),
-        #     (3, 2, 3, 4),
-        #     (4, 1, 4, 1),
-        #     (4, 1, 4, 2),
-        #     (4, 1, 4, 3),
-        #     (4, 1, 4, 4),
-        #     (4, 2, 4, 1),
-        #     (4, 2, 4, 2),
-        #     (4, 2, 4, 3),
-        #     (4, 2, 4, 4)],
-        #    names=['aws', 'hh_type', 'soc', 'ns_sec'])
+        lookups = []
+        no_prod = []
+        copy_iterator = self.naming_order.copy()
         for own_seg in self.segments:
-            for other_seg in drop_iterator:
+            for other_seg in copy_iterator:
                 if other_seg == own_seg.name:
                     continue
                 # pylint: disable=protected-access
+                if other_seg in own_seg._lookup_segs:
+                    lookup = pd.DataFrame(index=own_seg._lookup_indices(other_seg))
+                    lookup.index.names=[own_seg.name, other_seg]
+                    lookups.append(lookup)
+                    no_prod.append(own_seg.name)
+                    no_prod.append(other_seg)
+        joined = lookups[0]
+        for lookup in lookups[1:]:
+            if len(lookup.index.intersection(joined.index)) > 0:
+                joined = joined.join(lookup, how='outer')
+            else:
+                new_ind = self.product_multiindex(joined.index, lookup)
+                joined = pd.DataFrame(index=new_ind)
+        no_prod = list(set(no_prod))
+        prod = [self.seg_dict[i].int_values for i in self.naming_order if i not in no_prod]
+        names = [i for i in self.naming_order if i not in no_prod]
+        index = pd.MultiIndex.from_product(prod, names=names)
+        index = self.product_multiindex(index, joined.index)
+        df = pd.DataFrame(index=index).reorder_levels(self.naming_order).reset_index()
+        for own_seg in self.segments:
+            for other_seg in copy_iterator:
                 if other_seg in own_seg._exclusion_segs:
                     dropper = own_seg._drop_indices(other_seg)
                     df = df.set_index([own_seg.name, other_seg])
                     mask = ~df.index.isin(dropper)
                     df = df[mask].reset_index()
                 # pylint: enable=protected-access
-        # if set(hh_dropper.names).issubset(self.names):
-        #     df = df.set_index(hh_dropper.names).drop(hh_dropper).reset_index()
         return df.set_index(self.naming_order).sort_index().index
 
     def has_time_period_segments(self) -> bool:
@@ -368,7 +362,33 @@ class Segmentation:
         )
     # pylint: enable=too-many-branches
 
-    def translate_segment(self, from_seg, to_seg, reverse=False):
+    @classmethod
+    def product_multiindex(cls, multi_index1, multi_index2):
+        """
+        Takes two MultiIndex objects and returns their Cartesian product as a new MultiIndex.
+
+        Parameters:
+        multi_index1 (pd.MultiIndex): The first MultiIndex.
+        multi_index2 (pd.MultiIndex): The second MultiIndex.
+
+        Returns:
+        pd.MultiIndex: A new MultiIndex which is the Cartesian product of the two input MultiIndices.
+        """
+        # Generate Cartesian product
+        product = list(itertools.product(multi_index1, multi_index2))
+
+        # Combine tuples from both MultiIndices
+        combined_tuples = [tuple(list(x[0]) + list(x[1])) for x in product]
+
+        # Combine names from both MultiIndices
+        combined_names = list(multi_index1.names) + list(multi_index2.names)
+
+        # Create a new MultiIndex from combined tuples and names
+        combined_index = pd.MultiIndex.from_tuples(combined_tuples, names=combined_names)
+
+        return combined_index
+
+    def translate_segment(self, from_seg, to_seg, reverse=False, drop_from=True):
         if isinstance(to_seg, str):
             if to_seg in SegmentsSuper.values():
                 to_seg = SegmentsSuper(to_seg).get_segment()
