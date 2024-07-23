@@ -139,6 +139,24 @@ class Segment(BaseConfig):
             update_seg.exclusions += exclusions
         update_seg.save_yaml(segs_dir / f"{new_seg.name}.yml")
 
+    def add_corr_from_df(self, to_seg, exclusion: bool = False):
+        to_seg, lookup = self.translate_segment(to_seg)
+        lookup = lookup.squeeze()
+        grouped = lookup.groupby(lookup.index)
+        corr_dic = {i: group.to_list() for i, group in grouped}
+        corr = Exclusion(other_name=to_seg.name, exclusion=corr_dic)
+        if exclusion:
+            if len(self.exclusions) == 0:
+                self.exclusions = [corr]
+            else:
+                self.exclusions.append(corr)
+        else:
+            if len(self.lookups) == 0:
+                self.lookups = [corr]
+            else:
+                self.exclusions.append(corr)
+
+
 
 
 

@@ -208,21 +208,26 @@ class Segmentation:
                     lookups.append(lookup)
                     no_prod.append(own_seg.name)
                     no_prod.append(other_seg)
-        joined = lookups[0]
-        for lookup in lookups[1:]:
-            if len(lookup.index.intersection(joined.index)) > 0:
-                joined = joined.join(lookup, how='outer')
-            else:
-                new_ind = self.product_multiindex(joined.index, lookup)
-                joined = pd.DataFrame(index=new_ind)
+        joined = None
+        if len(lookups) > 0:
+            joined = lookups[0]
+            for lookup in lookups[1:]:
+                if len(lookup.index.intersection(joined.index)) > 0:
+                    joined = joined.join(lookup, how='outer')
+                else:
+                    new_ind = self.product_multiindex(joined.index, lookup)
+                    joined = pd.DataFrame(index=new_ind)
         no_prod = list(set(no_prod))
         prod = [self.seg_dict[i].int_values for i in self.naming_order if i not in no_prod]
         names = [i for i in self.naming_order if i not in no_prod]
         index = pd.MultiIndex.from_product(prod, names=names)
-        index = self.product_multiindex(index, joined.index)
+        if joined is not None:
+            index = self.product_multiindex(index, joined.index)
         df = pd.DataFrame(index=index).reorder_levels(self.naming_order).reset_index()
         for own_seg in self.segments:
             for other_seg in copy_iterator:
+                if other_seg == own_seg.name:
+                    continue
                 if other_seg in own_seg._exclusion_segs:
                     dropper = own_seg._drop_indices(other_seg)
                     df = df.set_index([own_seg.name, other_seg])
@@ -397,11 +402,14 @@ class Segmentation:
                 from_seg = SegmentsSuper(from_seg).get_segment()
         to_seg, lookup = from_seg.translate_segment(to_seg, reverse=reverse)
         new_conf = self.input.model_copy(deep=True)
-        if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
-            new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))
+        if drop_from:
+            if SegmentsSuper(from_seg.name) in new_conf.enum_segments:
+                new_conf.enum_segments.remove(SegmentsSuper(from_seg.name))
+            else:
+                new_conf.custom_segments.remove(from_seg)
+            new_conf.naming_order[new_conf.naming_order.index(from_seg.name)] = to_seg.name
         else:
-            new_conf.custom_segments.remove(from_seg)
-        new_conf.naming_order[new_conf.naming_order.index(from_seg.name)] = to_seg.name
+            new_conf.naming_order.append(to_seg.name)
         try:
             new_conf.enum_segments.append(SegmentsSuper(to_seg.name))
         except ValueError:
