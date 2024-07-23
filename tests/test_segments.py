@@ -66,7 +66,7 @@ def fix_exp_gen():
         name="gender_3",
         values={1: "Child", 2: "Male", 3: "Female"},
         exclusions=[
-            segments.Correspondence(
+            segments.Exclusion(
                 other_name=segments.SegmentsSuper.SOC.value, exclusions={1: [1, 2, 3]}
             )
         ],

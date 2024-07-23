@@ -14,7 +14,7 @@ from caf.toolkit import BaseConfig
 
 # # # CLASSES # # #
 @dataclasses.dataclass
-class Correspondence:
+class Exclusion:
     """
     Class to define exclusions between segments.
 
@@ -49,17 +49,17 @@ class Segment(BaseConfig):
         The values forming the segment. Keys are the values, and values are
         descriptions, e.g. for 'p', 1: 'HB work'. Descriptions don't tend to
         get used in DVectors so can be as verbose as desired for clarity.
-    exclusions: list[Correspondence]
+    exclusions: list[Exclusion]
         Define incompatibilities between segments. See Correspondence class
-    lookups: list[Correspondence]
+    lookups: list[Exclusion]
         Define lookups between segments, essentially the reverse of exclusions.
         More efficient for segments with mappings, e.g. different defintions of age.
     """
 
     name: str
     values: dict[int, str]
-    exclusions: list[Correspondence] = pydantic.Field(default_factory=list)
-    lookups: list[Correspondence] = pydantic.Field(default_factory=list)
+    exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
+    lookups: list[Exclusion] = pydantic.Field(default_factory=list)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # pylint: disable=too-few-public-methods
@@ -114,7 +114,7 @@ class Segment(BaseConfig):
             full_product = pd.MultiIndex.from_product([self.values, new_seg.values], names=[self.name, new_seg.name])
             corr = lookup.to_frame().set_index(lookup.name, append=True)
             excl = pd.DataFrame(index=full_product.difference(corr.index)).reset_index(level=self.name).to_dict()
-            excl = Correspondence(other_name=self.name, exclusions=excl)
+            excl = Exclusion(other_name=self.name, exclusions=excl)
             if new_seg.exclusions is None:
                 new_seg.exclusions = [excl]
             else:
@@ -132,7 +132,7 @@ class Segment(BaseConfig):
             new_exc = {}
             for ind in joined.index.unique():
                 new_exc[ind] = joined.loc[ind].squeeze().to_list()
-            exclusions.append(Correspondence(other_name=exc.other_name, exclusions=new_exc))
+            exclusions.append(Exclusion(other_name=exc.other_name, exclusions=new_exc))
         if len(update_seg.exclusions) == 0:
             update_seg.exclusions = exclusions
         else:
