@@ -212,7 +212,7 @@ class Segmentation:
         if len(lookups) > 0:
             joined = lookups[0]
             for lookup in lookups[1:]:
-                if len(lookup.index.intersection(joined.index)) > 0:
+                if len(set(lookup.index.names).intersection(joined.index.names)) > 0:
                     joined = joined.join(lookup, how='outer')
                 else:
                     new_ind = self.product_multiindex(joined.index, lookup)
