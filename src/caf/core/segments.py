@@ -144,7 +144,7 @@ class Segment(BaseConfig):
         lookup = lookup.squeeze()
         grouped = lookup.groupby(lookup.index)
         corr_dic = {i: group.to_list() for i, group in grouped}
-        corr = Exclusion(other_name=to_seg.name, exclusion=corr_dic)
+        corr = Exclusion(other_name=to_seg.name, exclusions=corr_dic)
         if exclusion:
             if len(self.exclusions) == 0:
                 self.exclusions = [corr]
@@ -154,7 +154,7 @@ class Segment(BaseConfig):
             if len(self.lookups) == 0:
                 self.lookups = [corr]
             else:
-                self.exclusions.append(corr)
+                self.lookups.append(corr)
 
 
 
