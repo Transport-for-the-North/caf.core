@@ -417,7 +417,9 @@ class DVector:
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
 
         if self.zoning_system is None:
-            import_data.columns = [self.val_col]
+            if isinstance(import_data, pd.DataFrame):
+                import_data = import_data.squeeze()
+            import_data.name = self.val_col
             return import_data, seg
 
         # TODO: consider replacing with alternative checks that allow string IDs
@@ -454,6 +456,7 @@ class DVector:
                     f" aren't found in the DVector data. This may be by design"
                     f" e.g. you are using a subset of a zoning system."
                 )
+
 
         return import_data, seg
 
@@ -1022,7 +1025,7 @@ class DVector:
         )
 
     def translate_segment(self, from_seg, to_seg, reverse=False, drop_from=True):
-        new_segmentation, lookup = self.segmentation.translate_segment(from_seg, to_seg, reverse=reverse)
+        new_segmentation, lookup = self.segmentation.translate_segment(from_seg, to_seg, reverse=reverse, drop_from=drop_from)
         if reverse:
             lookup = lookup.to_frame()
             lookup.set_index(from_seg, append=True, inplace=True)
@@ -1030,7 +1033,10 @@ class DVector:
             if drop_from:
                 new_data.droplevel(from_seg, inplace=True)
         else:
-            new_data = self.data.join(lookup).reset_index()
+            try:
+                new_data = self.data.join(lookup).reset_index()
+            except AttributeError:
+                new_data = self.data.to_frame().join(lookup).reset_index()
             if drop_from:
                 new_data.drop(from_seg, axis=1, inplace=True)
             new_data = new_data.groupby(new_segmentation.naming_order).sum()
