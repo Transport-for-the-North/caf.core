@@ -1095,8 +1095,11 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse ** 0.5
 
-    def ipf(self, targets: list[DVector], tol: float = 1e-5, max_iters: int = 100):
-        # check DVectors compatible
+    def validate_ipf_targets(self, targets):
+        """
+        Checks targets for ipf will work, raises errors if not.
+        Returns targets, with zone translations added in if relevant.
+        """
         target_sum = 0
         for position, target in enumerate(targets):
             # Check targets sum to the same, or they can't converge. Potentially could allow
@@ -1105,6 +1108,7 @@ class DVector:
             if target_sum == 0:
                 target_sum = target.data.sum()
             else:
+                #TODO don't hard code this
                 if not math.isclose(target_sum, target.data.sum(), abs_tol=target_sum / 1e5):
                     raise ValueError("Input target DVectors do not have consistent "
                                      "sums, so ipf will fail.")
@@ -1117,12 +1121,14 @@ class DVector:
                 for seg in non_matching:
                     if seg in target.segment_translations.keys():
                         if target.segment_translations[seg] in self.segmentation.names:
-                            lower_seg = self.segmentation.get_segment(target.segment_translations[seg])
+                            lower_seg = self.segmentation.get_segment(
+                                target.segment_translations[seg])
                             try:
                                 # Don't need this for now, checking it exists.
                                 lower_seg.translate_segment(seg)
                             except FileNotFoundError:
-                                raise FileNotFoundError(f"No segment translation found for {lower_seg} to {seg}.from.")
+                                raise FileNotFoundError(
+                                    f"No segment translation found for {lower_seg} to {seg}.from.")
 
             # Check zoning systems are compatible.
             if self.zoning_system != target.data.zoning_system:
@@ -1131,19 +1137,24 @@ class DVector:
                     pass
                 else:
                     try:
-                        target.zone_translation = self.zoning_system.translate(target.data.zoning_system)
+                        target.zone_translation = self.zoning_system.translate(
+                            target.data.zoning_system)
                     except TranslationError:
                         raise TranslationError("No zone_translation was found for "
                                                f"{self.zoning_system} to {target.data.zoning_system}.")
-                nested = (target.zone_translation[self.zoning_system.translation_column_name(target.data.zoning_system)] == 1).all()
+                nested = (target.zone_translation[self.zoning_system.translation_column_name(
+                    target.data.zoning_system)] == 1).all()
                 if not nested:
                     raise TranslationError("For IPF any targets must either be at the same zoning "
                                            "system as the seed DVector, or be at a zoning system "
                                            "which the seed nests perfectly within. The zone_translation "
                                            "found contains non-one factors, which implies the "
                                            "zoning system doesn't nest, so IPF can't be performed.")
+        return targets
 
-
+    def ipf(self, targets: list[IpfTarget], tol: float = 1e-5, max_iters: int = 100):
+        # check DVectors compatible
+        targets = self.validate_ipf_targets(targets)
         new_dvec = self.copy()
         prev_rmse = np.inf
         for i in range(max_iters):
