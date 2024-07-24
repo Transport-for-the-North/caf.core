@@ -221,7 +221,7 @@ class Segmentation:
         prod = [self.seg_dict[i].int_values for i in self.naming_order if i not in no_prod]
         names = [i for i in self.naming_order if i not in no_prod]
         if len(prod) == 0:
-            return joined.index
+            return joined.reorder_levels(self.naming_order).index
         index = pd.MultiIndex.from_product(prod, names=names)
         if joined is not None:
             index = self.product_multiindex(index, joined.index)
