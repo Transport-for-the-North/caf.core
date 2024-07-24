@@ -242,7 +242,7 @@ class ZoningSystem:
 
     @property
     def name_to_id(self) -> dict:
-        return self.zone_names().reset_index().set_index('zone_name').to_dict()['zone_id']
+        return self.zone_names().reset_index().set_index("zone_name").to_dict()["zone_id"]
 
     @property
     def id_to_name(self) -> dict:
@@ -250,7 +250,12 @@ class ZoningSystem:
 
     @property
     def desc_to_id(self) -> dict:
-        return self.zone_descriptions().reset_index().set_index('descriptions').to_dict()['zone_id']
+        return (
+            self.zone_descriptions()
+            .reset_index()
+            .set_index("descriptions")
+            .to_dict()["zone_id"]
+        )
 
     @property
     def id_to_desc(self) -> dict:
@@ -545,7 +550,8 @@ class ZoningSystem:
                     zone_system.zone_names(), translation[zone_system.column_name].values
                 )
                 missing_internal_desc: np.ndarray = ~np.isin(
-                    zone_system.zone_descriptions(), translation[zone_system.column_name].values
+                    zone_system.zone_descriptions(),
+                    translation[zone_system.column_name].values,
                 )
                 if np.sum(missing_internal_name) <= np.sum(missing_internal_desc):
                     if np.sum(missing_internal_name) > 0:
@@ -562,11 +568,12 @@ class ZoningSystem:
                                 f"{np.sum(missing_internal_id)} missing for id."
                             )
                             translation[zone_system.column_name].replace(
-                                to_replace=zone_system.name_to_id,
-                                inplace=True)
+                                to_replace=zone_system.name_to_id, inplace=True
+                            )
                     else:
-                        translation[zone_system.column_name].replace(to_replace=zone_system.name_to_id,
-                                                                     inplace=True)
+                        translation[zone_system.column_name].replace(
+                            to_replace=zone_system.name_to_id, inplace=True
+                        )
                 else:
                     if np.sum(missing_internal_desc) > 0:
                         if np.sum(missing_internal_desc) >= np.sum(missing_internal_id):
@@ -582,12 +589,15 @@ class ZoningSystem:
                                 f"{np.sum(missing_internal_id)} missing for id."
                             )
                             translation[zone_system.column_name].replace(
-                                to_replace=zone_system.desc_to_id,
-                                inplace=True)
+                                to_replace=zone_system.desc_to_id, inplace=True
+                            )
                     else:
-                        translation[zone_system.column_name].replace(to_replace=zone_system.desc_to_id,
-                                                                     inplace=True)
-                translation = translation[translation[zone_system.column_name].isin(zone_system.zone_ids)]
+                        translation[zone_system.column_name].replace(
+                            to_replace=zone_system.desc_to_id, inplace=True
+                        )
+                translation = translation[
+                    translation[zone_system.column_name].isin(zone_system.zone_ids)
+                ]
 
         # Warn if zone_translation factors don't sum to 1 from each from zone
         from_sum = translation.groupby(self.column_name)[translation_column].sum()

@@ -25,15 +25,16 @@ class Exclusion:
     exclusions: int
         The value for self segmentation which has exclusions in other
     """
+
     other_name: str
     exclusions: dict[int, set[int]]
 
     def build_index(self):
         """Return an index formed of the exclusions."""
-        frame = pd.DataFrame.from_dict(self.exclusions, orient='index').stack().reset_index()
+        frame = pd.DataFrame.from_dict(self.exclusions, orient="index").stack().reset_index()
         frame[0] = frame[0].astype(int)
-        frame.drop('level_1', axis=1, inplace=True)
-        return pd.MultiIndex.from_frame(frame, names=['dummy', self.other_name])
+        frame.drop("level_1", axis=1, inplace=True)
+        return pd.MultiIndex.from_frame(frame, names=["dummy", self.other_name])
 
 
 class Segment(BaseConfig):
@@ -97,9 +98,11 @@ class Segment(BaseConfig):
     def translate_segment(self, new_seg, reverse=False, exclude=False):
         lookup_dir = Path(__file__).parent / "seg_translations"
         if not isinstance(new_seg, (str, Segment, SegmentsSuper)):
-            raise TypeError("translate_method expects either an instance of the Segment "
-                            "class, or a str contained within the SegmentsSuper enum class. "
-                            f"{type(new_seg)} cannot be handled.")
+            raise TypeError(
+                "translate_method expects either an instance of the Segment "
+                "class, or a str contained within the SegmentsSuper enum class. "
+                f"{type(new_seg)} cannot be handled."
+            )
         if isinstance(new_seg, str):
             new_seg = SegmentsSuper(new_seg).get_segment()
         if isinstance(new_seg, SegmentsSuper):
@@ -111,9 +114,15 @@ class Segment(BaseConfig):
             name_1, name_2 = name_2, name_1
         lookup = pd.read_csv(lookup_dir / f"{name_1}_to_{name_2}.csv", index_col=0).squeeze()
         if exclude:
-            full_product = pd.MultiIndex.from_product([self.values, new_seg.values], names=[self.name, new_seg.name])
+            full_product = pd.MultiIndex.from_product(
+                [self.values, new_seg.values], names=[self.name, new_seg.name]
+            )
             corr = lookup.to_frame().set_index(lookup.name, append=True)
-            excl = pd.DataFrame(index=full_product.difference(corr.index)).reset_index(level=self.name).to_dict()
+            excl = (
+                pd.DataFrame(index=full_product.difference(corr.index))
+                .reset_index(level=self.name)
+                .to_dict()
+            )
             excl = Exclusion(other_name=self.name, exclusions=excl)
             if new_seg.exclusions is None:
                 new_seg.exclusions = [excl]
@@ -127,8 +136,18 @@ class Segment(BaseConfig):
         update_seg = new_seg.copy()
         exclusions = []
         for exc in self.exclusions:
-            from_exc = pd.DataFrame(index=exc.build_index()).reset_index().rename(columns={'dummy':self.name}).set_index(self.name)
-            joined = from_exc.join(lookup).groupby([new_seg.name, exc.other_name]).sum().reset_index(level=exc.other_name)
+            from_exc = (
+                pd.DataFrame(index=exc.build_index())
+                .reset_index()
+                .rename(columns={"dummy": self.name})
+                .set_index(self.name)
+            )
+            joined = (
+                from_exc.join(lookup)
+                .groupby([new_seg.name, exc.other_name])
+                .sum()
+                .reset_index(level=exc.other_name)
+            )
             new_exc = {}
             for ind in joined.index.unique():
                 new_exc[ind] = joined.loc[ind].squeeze().to_list()
@@ -155,10 +174,6 @@ class Segment(BaseConfig):
                 self.lookups = [corr]
             else:
                 self.lookups.append(corr)
-
-
-
-
 
     # pylint: enable=not-an-iterable
 
@@ -222,9 +237,11 @@ class SegmentsSuper(enum.Enum):
         try:
             seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
         except FileNotFoundError:
-            raise FileNotFoundError(f"Could not find a segment saved at {segs_dir / self.value}.yml."
-                                    f"This means an enum has been defined, but a segment has not, so this "
-                                    f"is probably a placeholder.")
+            raise FileNotFoundError(
+                f"Could not find a segment saved at {segs_dir / self.value}.yml."
+                f"This means an enum has been defined, but a segment has not, so this "
+                f"is probably a placeholder."
+            )
 
         if subset:
             if seg is not None:
@@ -391,15 +408,17 @@ class SegConverter(enum.Enum):
 
         match self:
             case SegConverter.NSSEC_ADULT:
-                from_ind = pd.MultiIndex.from_product([range(1,6), range(1,4)], names=['ns_sec', 'adults'])
+                from_ind = pd.MultiIndex.from_product(
+                    [range(1, 6), range(1, 4)], names=["ns_sec", "adults"]
+                )
                 to_vals = range(1, 16)
                 return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
     from pathlib import Path
+
     cwd = Path(os.getcwd())
     for seg in SegmentsSuper:
         try:

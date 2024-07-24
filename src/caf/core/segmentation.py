@@ -204,7 +204,7 @@ class Segmentation:
                 # pylint: disable=protected-access
                 if other_seg in own_seg._lookup_segs:
                     lookup = pd.DataFrame(index=own_seg._lookup_indices(other_seg))
-                    lookup.index.names=[own_seg.name, other_seg]
+                    lookup.index.names = [own_seg.name, other_seg]
                     lookups.append(lookup)
                     no_prod.append(own_seg.name)
                     no_prod.append(other_seg)
@@ -213,7 +213,7 @@ class Segmentation:
             joined = lookups[0]
             for lookup in lookups[1:]:
                 if len(set(lookup.index.names).intersection(joined.index.names)) > 0:
-                    joined = joined.join(lookup, how='outer')
+                    joined = joined.join(lookup, how="outer")
                 else:
                     new_ind = self.product_multiindex(joined.index, lookup)
                     joined = pd.DataFrame(index=new_ind)
@@ -256,7 +256,7 @@ class Segmentation:
         source: Union[Path, pd.DataFrame],
         segmentation: Segmentation,
         escalate_warning: bool = False,
-        cut_read: bool = False
+        cut_read: bool = False,
     ) -> Segmentation:
         """
         Validate a segmentation from either a path to a csv, or a dataframe.
@@ -353,12 +353,16 @@ class Segmentation:
         if built_index.equals(built_index.intersection(read_index)):
             if cut_read:
                 return built_segmentation, False
-            raise SegmentationError("Read data contains rows not in the generated segmentation. "
-                                    "If you want this data to simply be cut to match, set 'cut_read=True'")
+            raise SegmentationError(
+                "Read data contains rows not in the generated segmentation. "
+                "If you want this data to simply be cut to match, set 'cut_read=True'"
+            )
         if read_index.equals(built_index.intersection(read_index)):
-            warnings.warn("Combinations missing from the read in data. This may mean an exclusion should "
-                          "be defined but isn't. The data will be expanded to the expected segmenation, and "
-                          "infilled with zeroes.")
+            warnings.warn(
+                "Combinations missing from the read in data. This may mean an exclusion should "
+                "be defined but isn't. The data will be expanded to the expected segmenation, and "
+                "infilled with zeroes."
+            )
             return built_segmentation, True
         raise ValueError(
             "The read in segmentation does not match the given parameters. The segment names"
@@ -367,6 +371,7 @@ class Segmentation:
             " an out of date in built segmentation in the caf.core package. The first place to "
             "look is the SegmentsSuper class."
         )
+
     # pylint: enable=too-many-branches
 
     @classmethod
@@ -417,8 +422,6 @@ class Segmentation:
         except ValueError:
             new_conf.custom_segments.append(to_seg)
         return Segmentation(new_conf), lookup
-
-
 
     def reinit(self):
         """Regenerate Segmentation from its input."""
