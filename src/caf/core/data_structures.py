@@ -616,12 +616,20 @@ class DVector:
             translation_factors_col=factor_col,
             check_totals=check_totals,
         )
+        translated = translated.transpose().sort_index()
+        if not translated.index.reorder_levels(self.segmentation.naming_order).equals(
+            self.data.index
+        ):
+            raise ValueError(
+                "Unexpected rows in translated data:"
+                f"{translated.index.difference(self.data.index)}"
+            )
 
         return DVector(
             zoning_system=new_zoning,
             segmentation=self.segmentation,
             time_format=self.time_format,
-            import_data=translated.transpose(),
+            import_data=translated,
             low_memory=self.low_memory,
         )
 
