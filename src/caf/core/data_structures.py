@@ -620,7 +620,7 @@ class DVector:
         translated.index = translated.index.reorder_levels(self.segmentation.naming_order)
         translated.sort_index(inplace=True)
         if not translated.index.equals(self.data.index):
-            raise SegmentationWarning(
+            SegmentationWarning(
                 "Unexpected rows in translated data:"
                 f"{translated.index.difference(self.data.index)}"
             )
