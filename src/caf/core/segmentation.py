@@ -295,7 +295,7 @@ class Segmentation:
             # Assume the index is already correct but reorder to naming_order
             except KeyError:
                 df = df.reorder_levels(naming_order).sort_index()
-            read_index = df.index
+            read_index = df.sort_index().index
         # Index to validate against
         built_index = segmentation.ind()
         # I think an error would already be raised at this point

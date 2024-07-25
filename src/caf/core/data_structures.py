@@ -616,11 +616,13 @@ class DVector:
             translation_factors_col=factor_col,
             check_totals=check_totals,
         )
-        translated = translated.transpose().sort_index()
-        if not translated.index.reorder_levels(self.segmentation.naming_order).equals(
+        translated = translated.transpose()
+        translated.index = translated.index.reorder_levels(self.segmentation.naming_order)
+        translated.sort_index(inplace=True)
+        if not translated.index.equals(
             self.data.index
         ):
-            raise ValueError(
+            raise SegmentationWarning(
                 "Unexpected rows in translated data:"
                 f"{translated.index.difference(self.data.index)}"
             )
