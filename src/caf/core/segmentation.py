@@ -280,13 +280,14 @@ class Segmentation:
         if escalate_warning:
             warnings.filterwarnings("error", category=SegmentationWarning)
         if isinstance(source, Path):
-            df = pd.read_csv(source).sort_index()
+            df = pd.read_csv(source)
         else:
-            df = source.sort_index()
+            df = source
 
         naming_order = segmentation.naming_order
         conf = segmentation.input.copy()
         if df.index.names == naming_order:
+            df.sort_index(inplace=True)
             read_index = df.index
         else:
             # Try to build index from df columns
@@ -295,7 +296,7 @@ class Segmentation:
             # Assume the index is already correct but reorder to naming_order
             except KeyError:
                 df = df.reorder_levels(naming_order).sort_index()
-            read_index = df.sort_index().index
+            read_index = df.index
         # Index to validate against
         built_index = segmentation.ind()
         # I think an error would already be raised at this point
