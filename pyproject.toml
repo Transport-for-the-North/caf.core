@@ -62,6 +62,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 "caf.core" = ["py.typed", "segments/*.yml"]
 "caf.core" = ["py.typed", "segments/*.yml", "seg_translations/*.csv"]
+"caf.core" = ["py.typed", "seg_translations/*.csv", "segments/*.yml"]
 
 # Linters
 [tool.black]
