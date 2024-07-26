@@ -418,7 +418,9 @@ class DVector:
 
         if cut_read:
             full_sum = sorted_data.values.sum()
-            import_data = sorted_data.reindex(seg.ind(), axis="index", method=None).sort_index()
+            import_data = sorted_data.reindex(
+                seg.ind(), axis="index", method=None
+            ).sort_index()
             cut_sum = import_data.values.sum()
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
 
@@ -617,7 +619,6 @@ class DVector:
             check_totals=check_totals,
         )
         translated = translated.transpose()
-
 
         return DVector(
             zoning_system=new_zoning,

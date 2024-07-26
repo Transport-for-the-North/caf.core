@@ -67,35 +67,61 @@ class Segment(BaseConfig):
     # pylint: disable=not-an-iterable
     # Pylint doesn't seem to understand pydantic.Field
     @property
-    def _exclusion_segs(self):
+    def exclusion_segs(self):
+        """List the names of segs excluded by this one."""
         return [seg.other_name for seg in self.exclusions]
 
     @property
-    def _lookup_segs(self):
+    def lookup_segs(self):
+        """List names of segs with lookups from self."""
         return [seg.other_name for seg in self.lookups]
 
-    def _drop_indices(self, other_seg: str):
-        if other_seg not in self._exclusion_segs:
+    # Worth reviewing but I think this is fine
+    # pylint: disable=inconsistent-return-statements
+    def drop_indices(self, other_seg: str):
+        """Return indices to drop based on exclusions."""
+        if other_seg not in self.exclusion_segs:
             return None
         for excl in self.exclusions:
             if excl.other_name == other_seg:
                 return excl.build_index()
 
-    def _lookup_indices(self, other_seg: str):
-        if other_seg not in self._lookup_segs:
+    def lookup_indices(self, other_seg: str):
+        """Return indices to include based on lookups."""
+        if other_seg not in self.lookup_segs:
             return None
         for lookup in self.lookups:
             if lookup.other_name == other_seg:
                 return lookup.build_index()
 
+    # pylint: enable=inconsistent-return-statements
+
     @property
     def int_values(self):
+        """Return integer values of segment."""
         return list(self.values.keys())
 
     def __len__(self):
         return len(self.values)
 
-    def translate_segment(self, new_seg, reverse=False, exclude=False):
+    def translate_segment(self, new_seg, reverse: bool = False):
+        """
+        Translate self to new_seg.
+
+        Parameters
+        ----------
+        new_seg: Segment | SegmentsSuper
+            The segment to translate to
+        reverse: bool = False
+            Whether to return reverse names when finding the lookup
+
+        Returns
+        -------
+        new_seg: Segment
+            The segment being converted to
+        lookup: pd.Series
+            A lookup describing how to convert from self to new_seg
+        """
         lookup_dir = Path(__file__).parent / "seg_translations"
         if not isinstance(new_seg, (str, Segment, SegmentsSuper)):
             raise TypeError(
@@ -113,24 +139,17 @@ class Segment(BaseConfig):
         if reverse:
             name_1, name_2 = name_2, name_1
         lookup = pd.read_csv(lookup_dir / f"{name_1}_to_{name_2}.csv", index_col=0).squeeze()
-        if exclude:
-            full_product = pd.MultiIndex.from_product(
-                [self.values, new_seg.values], names=[self.name, new_seg.name]
-            )
-            corr = lookup.to_frame().set_index(lookup.name, append=True)
-            excl = (
-                pd.DataFrame(index=full_product.difference(corr.index))
-                .reset_index(level=self.name)
-                .to_dict()
-            )
-            excl = Exclusion(other_name=self.name, exclusions=excl)
-            if new_seg.exclusions is None:
-                new_seg.exclusions = [excl]
-            else:
-                new_seg.exclusions.append(excl)
         return new_seg, lookup
 
-    def translate_exclusion(self, new_seg):
+    def translate_exclusion(self, new_seg: str):
+        """
+        Translate an exclusion from one segment to another.
+
+        Parameters
+        ----------
+        new_seg: str
+            The segment to translate exclusions to. A lookup must exist.
+        """
         segs_dir = Path(__file__).parent / "segments"
         new_seg, lookup = self.translate_segment(new_seg)
         update_seg = new_seg.copy()
@@ -159,6 +178,16 @@ class Segment(BaseConfig):
         update_seg.save_yaml(segs_dir / f"{new_seg.name}.yml")
 
     def add_corr_from_df(self, to_seg, exclusion: bool = False):
+        """
+        Add either a lookup or exclusion to a segment from a lookup file.
+
+        Parameters
+        ----------
+        to_seg: Segment
+            The segment the correlation relates to
+        exclusions: bool = False
+            Whether to translate as an exclusion or a lookup
+        """
         to_seg, lookup = self.translate_segment(to_seg)
         lookup = lookup.squeeze()
         grouped = lookup.groupby(lookup.index)
@@ -236,12 +265,12 @@ class SegmentsSuper(enum.Enum):
         segs_dir = Path(__file__).parent / "segments"
         try:
             seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
-        except FileNotFoundError:
+        except FileNotFoundError as exc:
             raise FileNotFoundError(
                 f"Could not find a segment saved at {segs_dir / self.value}.yml."
                 f"This means an enum has been defined, but a segment has not, so this "
                 f"is probably a placeholder."
-            )
+            ) from exc
 
         if subset:
             if seg is not None:
@@ -415,17 +444,17 @@ class SegConverter(enum.Enum):
                 return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
 
 
-if __name__ == "__main__":
-    import os
-    from pathlib import Path
-
-    cwd = Path(os.getcwd())
-    for seg in SegmentsSuper:
-        try:
-            segment = seg.get_segment()
-        except AttributeError:
-            continue
-
-        if segment is not None:
-            segment.save_yaml(cwd / "segments" / f"{seg.value}.yml")
+# if __name__ == "__main__":
+    # import os
+    # from pathlib import Path
+    #
+    # cwd = Path(os.getcwd())
+    # for seg in SegmentsSuper:
+    #     try:
+    #         segment = seg.get_segment()
+    #     except AttributeError:
+    #         continue
+    #
+    #     if segment is not None:
+    #         segment.save_yaml(cwd / "segments" / f"{seg.value}.yml")
 # # # FUNCTIONS # # #

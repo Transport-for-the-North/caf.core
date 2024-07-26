@@ -39,8 +39,6 @@ class SegmentationWarning(Warning):
 class SegmentationError(Exception):
     """Error for segmentation objects."""
 
-    pass
-
 
 class SegmentationInput(BaseConfig):
     """
@@ -167,6 +165,7 @@ class Segmentation:
         return {seg.name: seg for seg in self.segments}
 
     def get_segment(self, seg_name: str) -> Segment:
+        """Get a segment based on its name"""
         return self.seg_dict[seg_name]
 
     def __iter__(self):
@@ -187,13 +186,8 @@ class Segmentation:
         """Return all segmentation values."""
         return [seg.values.keys() for seg in self.segments]
 
-    def ind(self):
-        """
-        Return a pandas MultiIndex of the segmentation.
-
-        This is by default just a product of all segments given, taking
-        exclusions into account if any exist between segments.
-        """
+    def lookup_ind(self):
+        """Produce and index from the lookups of the segments."""
         lookups = []
         no_prod = []
         copy_iterator = self.naming_order.copy()
@@ -201,10 +195,10 @@ class Segmentation:
             for other_seg in copy_iterator:
                 if other_seg == own_seg.name:
                     continue
-                # pylint: disable=protected-access
-                if other_seg in own_seg._lookup_segs:
-                    lookup = pd.DataFrame(index=own_seg._lookup_indices(other_seg))
+                if other_seg in own_seg.lookup_segs:
+                    lookup = pd.DataFrame(index=own_seg.lookup_indices(other_seg))
                     lookup.index.names = [own_seg.name, other_seg]
+                    # lookup['val'] = 1
                     lookups.append(lookup)
                     no_prod.append(own_seg.name)
                     no_prod.append(other_seg)
@@ -213,25 +207,36 @@ class Segmentation:
             joined = lookups[0]
             for lookup in lookups[1:]:
                 if len(set(lookup.index.names).intersection(joined.index.names)) > 0:
-                    joined = joined.join(lookup, how="outer")
+                    joined = joined.join(lookup, how="inner")
                 else:
-                    new_ind = self.product_multiindex(joined.index, lookup)
+                    new_ind = product_multiindex(joined.index, lookup)
                     joined = pd.DataFrame(index=new_ind)
         no_prod = list(set(no_prod))
+        return joined, no_prod
+
+    def ind(self):
+        """
+        Return a pandas MultiIndex of the segmentation.
+
+        This is by default just a product of all segments given, taking
+        exclusions into account if any exist between segments.
+        """
+        joined, no_prod = self.lookup_ind()
         prod = [self.seg_dict[i].int_values for i in self.naming_order if i not in no_prod]
         names = [i for i in self.naming_order if i not in no_prod]
         if len(prod) == 0:
             return joined.reorder_levels(self.naming_order).sort_index().index
         index = pd.MultiIndex.from_product(prod, names=names)
         if joined is not None:
-            index = self.product_multiindex(index, joined.index)
+            index = product_multiindex(index, joined.index)
         df = pd.DataFrame(index=index).reorder_levels(self.naming_order).reset_index()
+        copy_iterator = self.naming_order.copy()
         for own_seg in self.segments:
             for other_seg in copy_iterator:
                 if other_seg == own_seg.name:
                     continue
-                if other_seg in own_seg._exclusion_segs:
-                    dropper = own_seg._drop_indices(other_seg)
+                if other_seg in own_seg.exclusion_segs:
+                    dropper = own_seg.drop_indices(other_seg)
                     df = df.set_index([own_seg.name, other_seg])
                     mask = ~df.index.isin(dropper)
                     df = df[mask].reset_index()
@@ -372,42 +377,38 @@ class Segmentation:
             " an out of date in built segmentation in the caf.core package. The first place to "
             "look is the SegmentsSuper class."
         )
-
     # pylint: enable=too-many-branches
 
-    @classmethod
-    def product_multiindex(cls, multi_index1, multi_index2):
+
+
+    def translate_segment(
+        self,
+        from_seg: str | Segment,
+        to_seg: str | Segment,
+        reverse: bool = False,
+        drop_from: bool = True,
+    ):
         """
-        Takes two MultiIndex objects and returns their Cartesian product as a new MultiIndex.
+        Translate one of the segments making up the segmentation.
 
-        Parameters:
-        multi_index1 (pd.MultiIndex): The first MultiIndex.
-        multi_index2 (pd.MultiIndex): The second MultiIndex.
-
-        Returns:
-        pd.MultiIndex: A new MultiIndex which is the Cartesian product of the two input MultiIndices.
+        Parameters
+        ----------
+        from_seg: str | Segment
+            The segment to translate. Must be contained within this segmentation.
+        to_seg: str | Segment
+            The segment to translate to. A translation must be defined for these two segments.
+        reverse: bool = False
+            Whether to perform this translation in reverse (i.e. from more aggregate to less).
+            This will still be performed without factoring so is only appropriate for intensive
+            properties like growth factors, not extensive properties like travel demand.
+        drop_from: bool = True
+            Whether to drop the old segment from the resulting segmentation.
         """
-        # Generate Cartesian product
-        product = list(itertools.product(multi_index1, multi_index2))
-
-        # Combine tuples from both MultiIndices
-        combined_tuples = [tuple(list(x[0]) + list(x[1])) for x in product]
-
-        # Combine names from both MultiIndices
-        combined_names = list(multi_index1.names) + list(multi_index2.names)
-
-        # Create a new MultiIndex from combined tuples and names
-        combined_index = pd.MultiIndex.from_tuples(combined_tuples, names=combined_names)
-
-        return combined_index
-
-    def translate_segment(self, from_seg, to_seg, reverse=False, drop_from=True):
         if isinstance(to_seg, str):
             if to_seg in SegmentsSuper.values():
                 to_seg = SegmentsSuper(to_seg).get_segment()
         if isinstance(from_seg, str):
-            if from_seg in SegmentsSuper.values():
-                from_seg = SegmentsSuper(from_seg).get_segment()
+            from_seg = self.get_segment(from_seg)
         to_seg, lookup = from_seg.translate_segment(to_seg, reverse=reverse)
         new_conf = self.input.model_copy(deep=True)
         if drop_from:
@@ -500,15 +501,6 @@ class Segmentation:
 
         return True
 
-    @staticmethod
-    def ordered_set(list_1: list, list_2: list) -> list:
-        """Take in two lists and combine them, removing duplicates but preserving order."""
-        combined_list = list_1 + list_2
-        unique_list = []
-        for item in combined_list:
-            if item not in unique_list:
-                unique_list.append(item)
-        return unique_list
 
     def __len__(self):
         return len(self.ind())
@@ -528,7 +520,7 @@ class Segmentation:
                 cust_in.append(seg)
         subsets = self.input.subsets.copy()
         subsets.update(other.input.subsets)
-        naming_order = self.ordered_set(self.naming_order, other.naming_order)
+        naming_order = ordered_set(self.naming_order, other.naming_order)
         config = SegmentationInput(
             enum_segments=enum_in,
             subsets=subsets,
@@ -544,10 +536,8 @@ class Segmentation:
         return set(self.names).intersection(other)
 
     def is_subset(self, other: Segmentation):
-        if self.overlap(other) == set(self.names):
-            return True
-        else:
-            return False
+        """Check whether self is a subset of other."""
+        return bool(self.overlap(other) == set(self.names))
 
     def __sub__(self, other):
         return [i for i in self.naming_order if i not in other.naming_order]
@@ -683,7 +673,7 @@ class Segmentation:
             if segment_name in self.input.subsets.keys():
                 del self.input.subsets[segment_name]
             self.reinit()
-            return
+            return self
         out_seg = self.input.model_copy(deep=True)
         out_seg.naming_order.remove(segment_name)
         if segment_name in SegmentsSuper.values():
@@ -727,3 +717,36 @@ class Segmentation:
 
 
 # # # FUNCTIONS # # #
+def ordered_set(list_1: list, list_2: list) -> list:
+    """Take in two lists and combine them, removing duplicates but preserving order."""
+    combined_list = list_1 + list_2
+    unique_list = []
+    for item in combined_list:
+        if item not in unique_list:
+            unique_list.append(item)
+    return unique_list
+
+def product_multiindex(multi_index1, multi_index2):
+    """
+    Takes two MultiIndex objects and returns their Cartesian product as a new MultiIndex.
+
+    Parameters:
+    multi_index1 (pd.MultiIndex): The first MultiIndex.
+    multi_index2 (pd.MultiIndex): The second MultiIndex.
+
+    Returns:
+    pd.MultiIndex: A new MultiIndex which is the Cartesian product of the two input MultiIndices.
+    """
+    # Generate Cartesian product
+    product = list(itertools.product(multi_index1, multi_index2))
+
+    # Combine tuples from both MultiIndices
+    combined_tuples = [tuple(list(x[0]) + list(x[1])) for x in product]
+
+    # Combine names from both MultiIndices
+    combined_names = list(multi_index1.names) + list(multi_index2.names)
+
+    # Create a new MultiIndex from combined tuples and names
+    combined_index = pd.MultiIndex.from_tuples(combined_tuples, names=combined_names)
+
+    return combined_index
