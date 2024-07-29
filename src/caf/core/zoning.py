@@ -468,7 +468,7 @@ class ZoningSystem:
                 "input weighting. For a different weighting make your own."
             )
             try:
-                trans = self._generate_spatial_translation(other)
+                trans = self._generate_spatial_translation(other, cache_path=trans_cache)
             except ImportError as exc:
                 raise TranslationError(
                     f"A zone_translation from {self.name} to {other.name}"
@@ -545,7 +545,7 @@ class ZoningSystem:
                 zone_system.zone_ids, translation[zone_system.column_name].values
             )
 
-            if (np.sum(missing_internal_id) > 0):
+            if np.sum(missing_internal_id) > 0:
                 try:
                     missing_internal_name: np.ndarray = ~np.isin(
                         zone_system.zone_names(), translation[zone_system.column_name].values
