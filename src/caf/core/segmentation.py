@@ -377,9 +377,8 @@ class Segmentation:
             " an out of date in built segmentation in the caf.core package. The first place to "
             "look is the SegmentsSuper class."
         )
+
     # pylint: enable=too-many-branches
-
-
 
     def translate_segment(
         self,
@@ -500,7 +499,6 @@ class Segmentation:
             return False
 
         return True
-
 
     def __len__(self):
         return len(self.ind())
@@ -725,6 +723,7 @@ def ordered_set(list_1: list, list_2: list) -> list:
         if item not in unique_list:
             unique_list.append(item)
     return unique_list
+
 
 def product_multiindex(multi_index1, multi_index2):
     """

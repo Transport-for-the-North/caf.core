@@ -545,14 +545,20 @@ class ZoningSystem:
                 zone_system.zone_ids, translation[zone_system.column_name].values
             )
 
-            if np.sum(missing_internal_id) > 0:
-                missing_internal_name: np.ndarray = ~np.isin(
-                    zone_system.zone_names(), translation[zone_system.column_name].values
-                )
-                missing_internal_desc: np.ndarray = ~np.isin(
-                    zone_system.zone_descriptions(),
-                    translation[zone_system.column_name].values,
-                )
+            if (np.sum(missing_internal_id) > 0):
+                try:
+                    missing_internal_name: np.ndarray = ~np.isin(
+                        zone_system.zone_names(), translation[zone_system.column_name].values
+                    )
+                except KeyError:
+                    missing_internal_name = np.inf
+                try:
+                    missing_internal_desc: np.ndarray = ~np.isin(
+                        zone_system.zone_descriptions(),
+                        translation[zone_system.column_name].values,
+                    )
+                except KeyError:
+                    missing_internal_desc = np.inf
                 if np.sum(missing_internal_name) <= np.sum(missing_internal_desc):
                     if np.sum(missing_internal_name) > 0:
                         if np.sum(missing_internal_name) >= np.sum(missing_internal_id):

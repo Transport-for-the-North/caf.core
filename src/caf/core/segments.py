@@ -445,16 +445,16 @@ class SegConverter(enum.Enum):
 
 
 # if __name__ == "__main__":
-    # import os
-    # from pathlib import Path
-    #
-    # cwd = Path(os.getcwd())
-    # for seg in SegmentsSuper:
-    #     try:
-    #         segment = seg.get_segment()
-    #     except AttributeError:
-    #         continue
-    #
-    #     if segment is not None:
-    #         segment.save_yaml(cwd / "segments" / f"{seg.value}.yml")
+# import os
+# from pathlib import Path
+#
+# cwd = Path(os.getcwd())
+# for seg in SegmentsSuper:
+#     try:
+#         segment = seg.get_segment()
+#     except AttributeError:
+#         continue
+#
+#     if segment is not None:
+#         segment.save_yaml(cwd / "segments" / f"{seg.value}.yml")
 # # # FUNCTIONS # # #
