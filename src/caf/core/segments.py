@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """Module defining Segments class and enumeration."""
 import enum
-from pydantic import dataclasses
 from typing import Optional
 from pathlib import Path
-import os
 
+from pydantic import dataclasses
 import pandas as pd
 import pydantic
 from pydantic import ConfigDict
@@ -279,6 +278,7 @@ class SegmentsSuper(enum.Enum):
 
 
 class SegConverter(enum.Enum):
+    """Enum class for converting segment combos."""
 
     AG_G = "ag_g"
     APOPEMP_AWS = "apopemp_aws"
@@ -286,6 +286,7 @@ class SegConverter(enum.Enum):
     NSSEC_ADULT = "nssec_adult"
 
     def get_conversion(self):
+        """Get a conversion for the enum."""
         match self:
             case SegConverter.AG_G:
                 from_ind = pd.MultiIndex.from_tuples(

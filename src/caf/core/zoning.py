@@ -10,7 +10,7 @@ import os
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Literal, Optional, Union, Any
+from typing import Literal, Optional, Union
 import warnings
 
 import h5py
@@ -18,7 +18,6 @@ import numpy as np
 import pandas as pd
 import caf.toolkit as ctk
 from caf.core.segmentation import Segmentation, SegmentationInput
-import strictyaml
 
 LOG = logging.getLogger(__name__)
 
@@ -242,14 +241,17 @@ class ZoningSystem:
 
     @property
     def name_to_id(self) -> dict:
+        """Return a lookup dict of zone name to zone id"""
         return self.zone_names().reset_index().set_index("zone_name").to_dict()["zone_id"]
 
     @property
     def id_to_name(self) -> dict:
+        """Return a lookup dict of zone id to zone name."""
         return self.zone_names().to_dict()
 
     @property
     def desc_to_id(self) -> dict:
+        """Return a lookup dict of zone description to zone id."""
         return (
             self.zone_descriptions()
             .reset_index()
@@ -259,6 +261,7 @@ class ZoningSystem:
 
     @property
     def id_to_desc(self) -> dict:
+        """Return a lookup dict of zone id to zone description."""
         return self.zone_descriptions().to_dict()
 
     def get_column(self, column: str) -> pd.Series:
@@ -418,8 +421,11 @@ class ZoningSystem:
             id_col=other.metadata.shapefile_id_col,
         )
         conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2, cache_path=cache_path)
+        trans = cs.ZoneTranslation(conf).spatial_translation()
+        #TODO fix return type in caf.space
+        trans[trans.columns[:2]] = trans[trans.columns[:2]].astype(str)
 
-        return cs.ZoneTranslation(conf).spatial_translation()
+        return trans
 
     def _get_translation_definition(
         self,
@@ -494,6 +500,32 @@ class ZoningSystem:
         """
         return f"{self.name}_to_{other.name}".lower()
 
+    def _replace_id(self, missing_rep, missing_id, translation, zone_system, translation_name):
+        if np.sum(missing_rep) > 0:
+            if np.sum(missing_rep) >= np.sum(missing_id):
+                warnings.warn(
+                    f"{np.sum(missing_id)} {zone_system.name} zones "
+                    f"missing from zone_translation {translation_name}",
+                    TranslationWarning,
+                )
+            else:
+                warnings.warn(
+                    f"For {zone_system.name} zone name matches the zone_translation better than id, "
+                    f"so that will be used. {np.sum(missing_rep)} missing for name, and "
+                    f"{np.sum(missing_id)} missing for id."
+                )
+                translation[zone_system.column_name].replace(
+                    to_replace=zone_system.name_to_id, inplace=True
+                )
+        else:
+            translation[zone_system.column_name].replace(
+                to_replace=zone_system.name_to_id, inplace=True
+            )
+
+        return translation
+
+
+
     def validate_translation_data(
         self,
         other: ZoningSystem,
@@ -560,47 +592,9 @@ class ZoningSystem:
                 except KeyError:
                     missing_internal_desc = np.inf
                 if np.sum(missing_internal_name) <= np.sum(missing_internal_desc):
-                    if np.sum(missing_internal_name) > 0:
-                        if np.sum(missing_internal_name) >= np.sum(missing_internal_id):
-                            warnings.warn(
-                                f"{np.sum(missing_internal_id)} {zone_system.name} zones "
-                                f"missing from zone_translation {translation_name}",
-                                TranslationWarning,
-                            )
-                        else:
-                            warnings.warn(
-                                f"For {zone_system.name} zone name matches the zone_translation better than id, "
-                                f"so that will be used. {np.sum(missing_internal_name)} missing for name, and "
-                                f"{np.sum(missing_internal_id)} missing for id."
-                            )
-                            translation[zone_system.column_name].replace(
-                                to_replace=zone_system.name_to_id, inplace=True
-                            )
-                    else:
-                        translation[zone_system.column_name].replace(
-                            to_replace=zone_system.name_to_id, inplace=True
-                        )
+                    translation = self._replace_id(missing_internal_name, missing_internal_id, translation, zone_system, translation_name)
                 else:
-                    if np.sum(missing_internal_desc) > 0:
-                        if np.sum(missing_internal_desc) >= np.sum(missing_internal_id):
-                            warnings.warn(
-                                f"{np.sum(missing_internal_id)} {zone_system.name} zones "
-                                f"missing from zone_translation {translation_name}",
-                                TranslationWarning,
-                            )
-                        else:
-                            warnings.warn(
-                                f"For {zone_system.name} zone name matches the zone_translation better than id, "
-                                f"so that will be used. {np.sum(missing_internal_desc)} missing for name, and "
-                                f"{np.sum(missing_internal_id)} missing for id."
-                            )
-                            translation[zone_system.column_name].replace(
-                                to_replace=zone_system.desc_to_id, inplace=True
-                            )
-                    else:
-                        translation[zone_system.column_name].replace(
-                            to_replace=zone_system.desc_to_id, inplace=True
-                        )
+                    translation = self._replace_id(missing_internal_desc, missing_internal_id, translation, zone_system, translation_name)
                 translation = translation[
                     translation[zone_system.column_name].isin(zone_system.zone_ids)
                 ]
@@ -679,6 +673,7 @@ class ZoningSystem:
 
     @staticmethod
     def trans_df_to_dict(trans_df, from_col, to_col, factor_col):
+        """Convert a translation dataframe to a dict"""
         if not (trans_df[factor_col] == 1).all():
             raise TranslationError("This method only works for nested zoning systems.")
         return trans_df.set_index(from_col)[to_col].to_dict()
@@ -911,7 +906,8 @@ class BalancingZones:
         List[str]
             List of segment names which use this zone system.
         """
-        zone_name = lambda s: self.get_zoning(s).name
+        def zone_name(s):
+            return self.get_zoning(s).name
         zone_ls = sorted(self._segmentation.names, key=zone_name)
         for zone_name, segments in itertools.groupby(zone_ls, key=zone_name):
             zoning = self.unique_zoning[zone_name]
@@ -922,6 +918,7 @@ class BalancingZones:
         return self.zoning_groups()
 
     class BalancingConfClass(ctk.BaseConfig):
+        """Cong class for balancing."""
         seg_conf: SegmentationInput
         zon_conf: ZoningSystemMetaData
         seg_zon: dict[str, ZoningSystemMetaData]
