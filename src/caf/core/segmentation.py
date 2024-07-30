@@ -299,7 +299,7 @@ class Segmentation:
             try:
                 df = df.set_index(naming_order).sort_index()
             # Assume the index is already correct but reorder to naming_order
-            except KeyError:
+            except (KeyError, AttributeError):
                 df = df.reorder_levels(naming_order).sort_index()
             read_index = df.index
         # Index to validate against
