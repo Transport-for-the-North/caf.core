@@ -538,7 +538,7 @@ class Segmentation:
         return bool(self.overlap(other) == set(self.names))
 
     def __sub__(self, other):
-        return [i for i in self.naming_order if i not in other.naming_order]
+        return [self.get_segment(i) for i in self.naming_order if i not in other.naming_order]
 
     def __ne__(self, other) -> bool:
         """Override the default implementation."""

@@ -422,7 +422,7 @@ class ZoningSystem:
         )
         conf = cs.ZoningTranslationInputs(zone_1=zone_1, zone_2=zone_2, cache_path=cache_path)
         trans = cs.ZoneTranslation(conf).spatial_translation()
-        #TODO fix return type in caf.space
+        # TODO fix return type in caf.space
         trans[trans.columns[:2]] = trans[trans.columns[:2]].astype(str)
 
         return trans
@@ -500,7 +500,7 @@ class ZoningSystem:
         """
         return f"{self.name}_to_{other.name}".lower()
 
-    def _replace_id(self, missing_rep, missing_id, translation, zone_system, translation_name):
+    def _replace_id(self, missing_rep, missing_id, translation, zone_system, translation_name, replacer):
         if np.sum(missing_rep) > 0:
             if np.sum(missing_rep) >= np.sum(missing_id):
                 warnings.warn(
@@ -515,11 +515,11 @@ class ZoningSystem:
                     f"{np.sum(missing_id)} missing for id."
                 )
                 translation[zone_system.column_name].replace(
-                    to_replace=zone_system.name_to_id, inplace=True
+                    to_replace=replacer, inplace=True
                 )
         else:
             translation[zone_system.column_name].replace(
-                to_replace=zone_system.name_to_id, inplace=True
+                to_replace=replacer, inplace=True
             )
 
         return translation
@@ -592,9 +592,9 @@ class ZoningSystem:
                 except KeyError:
                     missing_internal_desc = np.inf
                 if np.sum(missing_internal_name) <= np.sum(missing_internal_desc):
-                    translation = self._replace_id(missing_internal_name, missing_internal_id, translation, zone_system, translation_name)
+                    translation = self._replace_id(missing_internal_name, missing_internal_id, translation, zone_system, translation_name, zone_system.name_to_id)
                 else:
-                    translation = self._replace_id(missing_internal_desc, missing_internal_id, translation, zone_system, translation_name)
+                    translation = self._replace_id(missing_internal_desc, missing_internal_id, translation, zone_system, translation_name, zone_system.desc_to_id)
                 translation = translation[
                     translation[zone_system.column_name].isin(zone_system.zone_ids)
                 ]

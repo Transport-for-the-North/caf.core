@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import tempfile
 import enum
+import itertools
 import logging
 import math
 import operator
@@ -850,12 +851,15 @@ class DVector:
             The DVector to use for splitting. Returned DVector will have the
             segmentation of this DVector, with splitting weighted by this DVector.
 
-        agg_zone: DVector
+        agg_zone: ZoningSystem
             The zoning level the splits will be calculated at. This should be more aggregate
             the more confident you are in your attractions distribution spatially, on a scale from
             None if you are very confident in attractions, to model zoning for no confidence
             (choosing model zoning means attractions will essentially mirror productions exactly).
         """
+        if agg_zone is None:
+            raise ValueError("agg_zone must be provided. To run this process with no agg_zone "
+                             "please use the expand_to_other method.")
         if other.zoning_system != self.zoning_system:
             raise ValueError(
                 "The 'other' DVector used for splitting must be "
@@ -865,41 +869,37 @@ class DVector:
 
         common = self.segmentation.overlap(other.segmentation)
         other_grouped_data = other.data.groupby(level=common).sum()
-        if agg_zone is not None:
-            translation = self.zoning_system.translate(agg_zone)
-            if not (
-                translation[self.zoning_system.translation_column_name(agg_zone)] == 1
-            ).all():
-                raise TranslationError(
-                    "Current zoning must nest perfectly within agg_zone, "
-                    "i.e. all factors should be 1. The retrieved zone_translation "
-                    "has non-one factors. If this should not be the case "
-                    "double check the zone_translation."
-                )
-            translation_dict = translation.set_index(self.zoning_system.column_name)[
-                agg_zone.column_name
-            ].to_dict()
-            translated_grouped = (
-                other_grouped_data.rename(columns=translation_dict)
-                .groupby(level=0, axis=1)
-                .sum()
+        translation = self.zoning_system.translate(agg_zone)
+        if not (
+            translation[self.zoning_system.translation_column_name(agg_zone)] == 1
+        ).all():
+            raise TranslationError(
+                "Current zoning must nest perfectly within agg_zone, "
+                "i.e. all factors should be 1. The retrieved zone_translation "
+                "has non-one factors. If this should not be the case "
+                "double check the zone_translation."
             )
-            translated_ungrouped = (
-                other.data.rename(columns=translation_dict).groupby(level=0, axis=1).sum()
-            )
-            # factors at common segmentation and agg zoning
-            translated = translated_ungrouped / translated_grouped
-            # Translate zoning back to DVec zoning to apply to DVector
-            splitting_data = ctk.translation.pandas_vector_zone_translation(
-                vector=translated.T,
-                translation=translation,
-                translation_from_col=agg_zone.column_name,
-                translation_to_col=self.zoning_system.column_name,
-                translation_factors_col=self.zoning_system.translation_column_name(agg_zone),
-            ).T
-        else:
-            # No spatial detail at all
-            splitting_data = other.data / other_grouped_data
+        translation_dict = translation.set_index(self.zoning_system.column_name)[
+            agg_zone.column_name
+        ].to_dict()
+        translated_grouped = (
+            other_grouped_data.rename(columns=translation_dict)
+            .groupby(level=0, axis=1)
+            .sum()
+        )
+        translated_ungrouped = (
+            other.data.rename(columns=translation_dict).groupby(level=0, axis=1).sum()
+        )
+        # factors at common segmentation and agg zoning
+        translated = translated_ungrouped / translated_grouped
+        # Translate zoning back to DVec zoning to apply to DVector
+        splitting_data = ctk.translation.pandas_vector_zone_translation(
+            vector=translated.T,
+            translation=translation,
+            translation_from_col=agg_zone.column_name,
+            translation_to_col=self.zoning_system.column_name,
+            translation_factors_col=self.zoning_system.translation_column_name(agg_zone),
+        ).T
         # Put splitting factors into DVector to apply
         splitting_dvec = DVector(
             import_data=splitting_data,
@@ -911,12 +911,12 @@ class DVector:
         )
         return self * splitting_dvec
 
-    def add_segment(
+    def add_segments(
         self,
-        new_seg: Segment,
-        subset: Optional[dict[str, list[int]]] = None,
+        new_segs: list[Segment],
         new_naming_order: Optional[list[str]] = None,
         split_method: Literal["split", "duplicate"] = "duplicate",
+        splitter: pd.Series = None
     ):
         """
         Add a segment to a DVector.
@@ -927,15 +927,11 @@ class DVector:
 
         Parameters
         ----------
-        new_seg: Segment
+        new_segs: Segment
             The new segment to be added. This will be checked and added as an
             enum_segment if it exists as such, and as a custom segment if not.
             This must be provided as a Segment type, and can't be a string to pass
             to the SegmentSuper enum class
-
-        subset: Optional[dict[str, list[int]]] = None
-            A subset definition if the new segmentation is a subset of an existing
-            segmentation. This need only be provided for an enum_segment.
 
         new_naming_order: Optional[list[str]] = None
             The naming order of the resultant segmentation. If not provided,
@@ -951,17 +947,26 @@ class DVector:
         -------
         DVector
         """
-        new_segmentation = self.segmentation.add_segment(new_seg, subset, new_naming_order)
+        new_segmentation = self.segmentation.copy()
+        iterator = iter(new_segs)
+        iterator, lookahead = itertools.tee(iterator, 2)
 
-        splitter = pd.Series(index=new_segmentation.ind(), data=1)
+        next(lookahead, None)
+
+        for seg in iterator:
+            if next(lookahead, None) is None:
+                new_segmentation = new_segmentation.add_segment(seg, new_naming_order=new_naming_order)
+            else:
+                new_segmentation = new_segmentation.add_segment(seg)
+        if splitter is None:
+            splitter = pd.Series(index=new_segmentation.ind(), data=1)
         if split_method == "split":
             # This method should split evenly, even in the case of exclusions
             factor = splitter.groupby(level=self.segmentation.naming_order).sum()
             splitter /= factor
         new_data = self._data.mul(splitter, axis=0)
-        if new_data.reorder_levels(new_segmentation.naming_order).index.equals(
-            new_segmentation.ind()
-        ):
+        new_data = new_data.reorder_levels(new_segmentation.naming_order)
+        if new_data.index.equals(new_segmentation.ind()):
             return DVector(
                 segmentation=new_segmentation,
                 zoning_system=self.zoning_system,
@@ -979,17 +984,25 @@ class DVector:
             )
         raise ValueError("Generated index doesn't match the index of the new " "data.")
 
-    def expand_to_other(self, other: DVector):
+    def expand_to_other(self, other: DVector, match_props: bool = False):
         expansion_segs = other.segmentation - self.segmentation
-        expanded = self.copy()
-        for seg in expansion_segs:
-            # Enumerated segment
-            if seg in SegmentsSuper.values():
-                expanded = expanded.add_segment(seg)
-            # Custom segment
-            else:
-                expanded = expanded.add_segment(other.segmentation.seg_dict[seg])
-        return expanded
+        if match_props:
+            splitter = other.data.sum(axis=1)
+            return self.add_segments(expansion_segs, split_method="split", splitter=splitter)
+
+        return self.add_segments(expansion_segs)
+
+    @classmethod
+    def combine_from_dic(cls, in_dic: dict[str, DVector], new_seg: Segment, in_segmentation: Segmentation, zoning_system: ZoningSystem):
+        comb = {val: dvec.data for val, dvec in in_dic.items()}
+        new_data = pd.concat(comb)
+        new_segmentation = in_segmentation.add_segment(new_seg)
+        new_data = new_data.reorder_levels(new_segmentation.naming_order).sort_index()
+        return cls(
+            segmentation=new_segmentation,
+            import_data=new_data,
+            zoning_system=zoning_system
+        )
 
     def filter_segment_value(self, segment_name: str, segment_values: int | list[int]):
         """
@@ -1055,7 +1068,7 @@ class DVector:
             lookup.set_index(from_seg, append=True, inplace=True)
             new_data = self.data.join(lookup)
             if drop_from:
-                new_data.droplevel(from_seg, inplace=True)
+                new_data = new_data.droplevel(from_seg)
         else:
             try:
                 new_data = self.data.join(lookup).reset_index()
@@ -1114,6 +1127,7 @@ class DVector:
                 )
             if target.segment_translations is not None:
                 for seg in target.data.segmentation - self.segmentation:
+                    seg = seg.name
                     if target.segment_translations[seg] in self.segmentation.names:
                         lower_seg = self.segmentation.get_segment(
                             target.segment_translations[seg]
@@ -1153,6 +1167,7 @@ class DVector:
                     )
                 non_matching = target.data.segmentation - self.segmentation
                 for seg in non_matching:
+                    seg = seg.name
                     if seg in target.segment_translations.keys():
                         if target.segment_translations[seg] in self.segmentation.names:
                             lower_seg = self.segmentation.get_segment(
