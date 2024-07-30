@@ -18,6 +18,7 @@ translate
 from pathlib import Path
 import pytest
 from math import isclose
+
 # Third Party
 from caf.core import data_structures, segmentation
 from caf.core.segments import SegmentsSuper
@@ -124,25 +125,24 @@ def fix_exp_trans(basic_dvec_1, min_zoning_2):
 # # # FUNCTIONS # # #
 class TestDvec:
     @pytest.mark.parametrize("dvec", ["basic_dvec_1", "basic_dvec_2"])
-    @pytest.mark.parametrize("subset", [None, {'tp': [1, 2, 3]}])
+    @pytest.mark.parametrize("subset", [None, [1, 2, 3]])
     @pytest.mark.parametrize("method", ["split", "duplicate"])
-    def test_add_segment(self, dvec, subset, method, request):
+    def test_add_segments(self, dvec, subset, method, request):
         dvec_arg = request.getfixturevalue(dvec).copy()
-        segment = SegmentsSuper('tp').get_segment()
-        out_dvec = dvec_arg.add_segment(segment, subset=subset, split_method=method)
+        segment = SegmentsSuper("tp").get_segment(subset=subset)
+        out_dvec = dvec_arg.add_segments([segment], split_method=method)
         new_seg_len = len(segment)
-        if subset is not None:
-            new_seg_len = len(subset['tp'])
-        if method == 'split':
+        if method == "split":
             assert isclose(out_dvec.data.values.sum(), dvec_arg.data.values.sum())
         else:
-            assert isclose(out_dvec.data.values.sum(), dvec_arg.data.values.sum() * new_seg_len)
+            assert isclose(
+                out_dvec.data.values.sum(), dvec_arg.data.values.sum() * new_seg_len
+            )
 
     def test_add_segment_exclusion(self, basic_dvec_1):
-        segment = SegmentsSuper('soc').get_segment()
-        out_dvec = basic_dvec_1.add_segment(segment, split_method='split')
+        segment = SegmentsSuper("soc").get_segment()
+        out_dvec = basic_dvec_1.add_segment(segment, split_method="split")
         assert isclose(out_dvec.data.values.sum(), basic_dvec_1.data.values.sum())
-
 
     @pytest.mark.parametrize("dvec", ["basic_dvec_1", "basic_dvec_2", "single_seg_dvec"])
     def test_io(self, dvec, main_dir, request):
@@ -241,7 +241,9 @@ class TestDvec:
 
     def test_trans(self, basic_dvec_1, test_trans, min_zoning_2, expected_trans, main_dir):
         translation = basic_dvec_1.translate_zoning(min_zoning_2, cache_path=main_dir)
-        back_trans = translation.translate_zoning(basic_dvec_1.zoning_system, cache_path=main_dir)
+        back_trans = translation.translate_zoning(
+            basic_dvec_1.zoning_system, cache_path=main_dir
+        )
         assert translation == expected_trans
 
     def test_agg(self, basic_dvec_1):

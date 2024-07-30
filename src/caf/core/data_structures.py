@@ -343,6 +343,7 @@ class DVector:
 
     @property
     def total(self):
+        """Return the total of a DVector."""
         return self.data.values.sum()
 
     @staticmethod
@@ -765,9 +766,11 @@ class DVector:
         return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
 
     def __len__(self):
+        """Return the length of a DVector, defined as number of cells."""
         return len(self.segmentation) * len(self.zoning_system)
 
     def __pow__(self, exponent: int | float):
+        """Return the exponent of a DVector, essentially a wrapper around DataFrame's __pow__ method."""
         out_data = self.data**exponent
         return DVector(
             import_data=out_data,
@@ -838,7 +841,7 @@ class DVector:
             val_col=self.val_col,
         )
 
-    def split_by_other(self, other: DVector, agg_zone: ZoningSystem = None):
+    def split_by_other(self, other: DVector, agg_zone: ZoningSystem | None = None):
         """
         Split a DVector adding new segments.
 
@@ -858,8 +861,10 @@ class DVector:
             (choosing model zoning means attractions will essentially mirror productions exactly).
         """
         if agg_zone is None:
-            raise ValueError("agg_zone must be provided. To run this process with no agg_zone "
-                             "please use the expand_to_other method.")
+            raise ValueError(
+                "agg_zone must be provided. To run this process with no agg_zone "
+                "please use the expand_to_other method."
+            )
         if other.zoning_system != self.zoning_system:
             raise ValueError(
                 "The 'other' DVector used for splitting must be "
@@ -870,9 +875,7 @@ class DVector:
         common = self.segmentation.overlap(other.segmentation)
         other_grouped_data = other.data.groupby(level=common).sum()
         translation = self.zoning_system.translate(agg_zone)
-        if not (
-            translation[self.zoning_system.translation_column_name(agg_zone)] == 1
-        ).all():
+        if not (translation[self.zoning_system.translation_column_name(agg_zone)] == 1).all():
             raise TranslationError(
                 "Current zoning must nest perfectly within agg_zone, "
                 "i.e. all factors should be 1. The retrieved zone_translation "
@@ -883,9 +886,7 @@ class DVector:
             agg_zone.column_name
         ].to_dict()
         translated_grouped = (
-            other_grouped_data.rename(columns=translation_dict)
-            .groupby(level=0, axis=1)
-            .sum()
+            other_grouped_data.rename(columns=translation_dict).groupby(level=0, axis=1).sum()
         )
         translated_ungrouped = (
             other.data.rename(columns=translation_dict).groupby(level=0, axis=1).sum()
@@ -916,7 +917,7 @@ class DVector:
         new_segs: list[Segment],
         new_naming_order: Optional[list[str]] = None,
         split_method: Literal["split", "duplicate"] = "duplicate",
-        splitter: pd.Series = None
+        splitter: pd.Series = None,
     ):
         """
         Add a segment to a DVector.
@@ -955,7 +956,9 @@ class DVector:
 
         for seg in iterator:
             if next(lookahead, None) is None:
-                new_segmentation = new_segmentation.add_segment(seg, new_naming_order=new_naming_order)
+                new_segmentation = new_segmentation.add_segment(
+                    seg, new_naming_order=new_naming_order
+                )
             else:
                 new_segmentation = new_segmentation.add_segment(seg)
         if splitter is None:
@@ -984,7 +987,25 @@ class DVector:
             )
         raise ValueError("Generated index doesn't match the index of the new " "data.")
 
-    def expand_to_other(self, other: DVector, match_props: bool = False):
+    def expand_to_other(self, other: DVector, match_props: bool = False) -> DVector:
+        """
+        Expand self segmentation to other.
+
+        This adds in all segments in other which are not in self, regardless of
+        whether all segments in self are also in other.
+
+        Parameters
+        ----------
+        other: DVector
+            The DVector to expand to
+        match_props: bool = False
+            Whether to use other to determine proportions for splitting. If True, other
+            summed over zones will be used as weighting for the split.
+
+        Returns
+        -------
+        self expanded to other as required.
+        """
         expansion_segs = other.segmentation - self.segmentation
         if match_props:
             splitter = other.data.sum(axis=1)
@@ -993,20 +1014,45 @@ class DVector:
         return self.add_segments(expansion_segs)
 
     @classmethod
-    def combine_from_dic(cls, in_dic: dict[str, DVector], new_seg: Segment, in_segmentation: Segmentation, zoning_system: ZoningSystem):
+    def combine_from_dic(
+        cls,
+        in_dic: dict[int, DVector],
+        new_seg: Segment,
+        in_segmentation: Segmentation,
+        zoning_system: ZoningSystem,
+    ):
+        """
+        Combine DVectors saved in a dictionary.
+
+        The dictionary keys form values of the added segment.
+
+        Parameters
+        ----------
+        in_dic: dic[int, DVector]
+            Dictionary containing keys of segment values, and DVectors to be combined.
+        new_seg: Segment
+            The Segment to be added in. Values must match the keys of in_dic
+        in_segmentation: Segmentation
+            The Segmentation of the DVectors in in_dic. Segmentation must be the same for
+            all of them
+        zoning_system: ZoningSystem
+            The zoning_system of the DVectors in in_dic. Must be the same for all.
+
+        Returns
+        -------
+        DVector combination of DVector in in_dic
+        """
         comb = {val: dvec.data for val, dvec in in_dic.items()}
         new_data = pd.concat(comb)
         new_segmentation = in_segmentation.add_segment(new_seg)
         new_data = new_data.reorder_levels(new_segmentation.naming_order).sort_index()
         return cls(
-            segmentation=new_segmentation,
-            import_data=new_data,
-            zoning_system=zoning_system
+            segmentation=new_segmentation, import_data=new_data, zoning_system=zoning_system
         )
 
     def filter_segment_value(self, segment_name: str, segment_values: int | list[int]):
         """
-        Filters a DVector on a given segment.
+        Filter a DVector on a given segment.
 
         Equivalent to .loc/.xs in pandas.
 
@@ -1042,7 +1088,16 @@ class DVector:
             low_memory=self.low_memory,
         )
 
-    def drop_by_segment_values(self, segment_name, segment_values):
+    def drop_by_segment_values(self, segment_name: str, segment_values: list[int]):
+        """Remove rows of DVector based on segment values.
+
+        Parameters
+        ----------
+        segment_name: str
+            The name of the segment to select values from.
+        segment_values: list[int]
+            The values to drop.
+        """
         new_data = self.data.copy()
         if isinstance(self.segmentation.ind, pd.MultiIndex):
             new_data = self.data.drop(segment_values, level=segment_name)
@@ -1060,6 +1115,22 @@ class DVector:
         )
 
     def translate_segment(self, from_seg, to_seg, reverse=False, drop_from=True):
+        """
+        Translate a segment in the DVector.
+
+        Parameters
+        ----------
+        from_seg:
+            Segment in DVector to translate.
+        to_seg:
+            Segment to translate from_seg to. A lookup for these must be defined
+            in the seg_translations folder.
+        reverse: bool = False
+            Whether to do this translation in reverse; by default translations are
+            defined as aggregations, running in reverse will not conserve totals.
+        drop_from: bool = True
+            Whether to remove from_seg from the resulting segmentation.
+        """
         new_segmentation, lookup = self.segmentation.translate_segment(
             from_seg, to_seg, reverse=reverse, drop_from=drop_from
         )
@@ -1087,6 +1158,16 @@ class DVector:
         )
 
     def trans_seg_from_lookup(self, lookup: SegConverter, drop_old: bool = False):
+        """
+        Translate segment(s) in self to new segment(s) from a lookup in SegConverter.
+
+        Parameters
+        ----------
+        lookup: SegConverter
+            The name of a lookup in SegConverter
+        drop_old: bool = False
+            Whether to drop old segments from resulting DVector
+        """
         lookup = SegConverter(lookup).get_conversion()
         drop_names = lookup.index.names
         new_names = lookup.columns
@@ -1118,6 +1199,14 @@ class DVector:
         )
 
     def calc_rmse(self, targets: list[IpfTarget]):
+        """
+        Calculate the rmse relative to a set of targets.
+
+        Parameters
+        ----------
+        targets: list[IpfTarget]
+            The targets to calc rmse relative to.
+        """
         mse = 0
         for target in targets:
             check = self.copy()
@@ -1139,10 +1228,18 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-    def validate_ipf_targets(self, targets):
+    def validate_ipf_targets(self, targets: list[IpfTarget]):
         """
-        Checks targets for ipf will work, raises errors if not.
-        Returns targets, with zone translations added in if relevant.
+        Check targets for ipf will work, raises errors if not.
+
+        Parameters
+        ----------
+        targets: list[IpfTarget]
+            List of IPF targets to validate.
+
+        Returns
+        -------
+        Input targets, with zone translations added in if relevant.
         """
         target_sum = 0
         for position, target in enumerate(targets):
@@ -1213,6 +1310,26 @@ class DVector:
         return targets
 
     def ipf(self, targets: list[IpfTarget], tol: float = 1e-5, max_iters: int = 100):
+        """
+        Implement iterative proportional fitting for DVectors.
+
+        Parameters
+        ----------
+        targets: list[IpfTarget]
+            A list of targets to try and match. Due to the nature of the process,
+            the final target in this list will be matched most closely to. This
+            doesn't matter much when a good convergence is achieved, but can have
+            a large impact when not.
+        tol: float = 1e-5
+            The RMSE between self and targets the process will attempt to reach
+            before stopping. Can also stop if consecutive iterations score the same.
+        max_iters: int = 100
+            The max number of iterations which can run before the process will stop.
+
+        Returns
+        -------
+        DVector matched to targets, rmse achieved.
+        """
         # check DVectors compatible
         targets = self.validate_ipf_targets(targets)
         new_dvec = self.copy()
@@ -1257,7 +1374,7 @@ class DVector:
             f"Last cycle saw a {rmse - prev_rmse} improvement in RMSE. "
             "May converge with more iterations."
         )
-        return new_dvec
+        return new_dvec, rmse
 
     @staticmethod
     def old_to_new_dvec(import_data: dict):
@@ -1281,7 +1398,7 @@ class DVector:
 
     def remove_zoning(self, fn: Callable = pd.DataFrame.sum) -> DVector:
         """
-        Aggregates all the zone values in DVector into a single value using fn.
+        Aggregate all the zone values in DVector into a single value using fn.
 
         Returns a copy of Dvector.
 
@@ -1318,7 +1435,7 @@ class DVector:
         )
 
     def sum_zoning(self):
-
+        """Sum over zones."""
         return self.remove_zoning()
 
     def write_sector_reports(
@@ -1326,11 +1443,11 @@ class DVector:
         segment_totals_path: PathLike,
         ca_sector_path: PathLike,
         ie_sector_path: PathLike,
-        lad_report_path: PathLike = None,
-        lad_report_seg: Segmentation = None,
+        lad_report_path: PathLike | None = None,
+        lad_report_seg: Segmentation | None = None,
     ) -> None:
         """
-        Writes segment, CA sector, and IE sector reports to disk
+        Write segment, CA sector, and IE sector reports to disk.
 
         Parameters
         ----------
@@ -1393,13 +1510,27 @@ class DVector:
             LOG.error("Error creating LAD report: %s", err)
 
     def sum(self):
-        """ """
+        """Sum DVector."""
         if isinstance(self.data, pd.DataFrame):
             return self.data.values.sum()
         if isinstance(self.data, pd.Series):
             return self.data.sum()
 
-    def sum_is_close(self, other, rel_tol, abs_tol):
+    def sum_is_close(self, other: DVector, rel_tol: float, abs_tol: float):
+        """
+        Check if self sums close to other.
+
+        Calls math.isclose on respective sums.
+
+        Parameters
+        ----------
+        other: DVector
+            The other DVector to compare self to
+        rel_tol: float
+            See math.isclose
+        abs_tol: float
+            see math.isclose
+        """
         return math.isclose(self.sum(), other.sum(), rel_tol=rel_tol, abs_tol=abs_tol)
 
     @staticmethod
@@ -1443,11 +1574,12 @@ class DVector:
     def balance_by_segments(
         self,
         other: DVector,
-        balancing_zones: ZoningSystem | BalancingZones = None,
+        balancing_zones: ZoningSystem | BalancingZones | None = None,
     ):
         """
-        Balance one DVector to another, meaning in the end the DVectors will
-        match at some level of detail.
+        Balance one DVector to another.
+
+        This means that in the end the DVectors will match at some level of detail.
 
         Parameters
         ----------
@@ -1478,7 +1610,7 @@ class DVector:
                         "balancing zones with individual values defined "
                         "for multiple segments."
                     )
-                seg = balancing_zones._segment_values.keys()[0]
+                seg = list(balancing_zones._segment_values.keys())[0]
                 vals = balancing_zones._segment_values[seg]
                 zone = balancing_zones._segment_zoning[seg]
                 self_slice = self.filter_segment_value(seg, vals)
@@ -1542,11 +1674,12 @@ class DVector:
 
 @dataclass
 class IpfTarget:
+    """Dataclass to store targets to pass to IPF method of DVector."""
 
     data: DVector
     zoning_diff: bool
     zone_translation: pd.DataFrame = None
-    segment_translations: dict[str, str] = (
+    segment_translations: dict[str, str] | None = (
         None  # keys are segment in target, values, segment in seed
     )
 

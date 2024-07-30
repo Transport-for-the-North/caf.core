@@ -165,10 +165,11 @@ class Segmentation:
         return {seg.name: seg for seg in self.segments}
 
     def get_segment(self, seg_name: str) -> Segment:
-        """Get a segment based on its name"""
+        """Get a segment based on its name."""
         return self.seg_dict[seg_name]
 
     def __iter__(self):
+        """Iterate through seg_dict."""
         return self.seg_dict.__iter__()
 
     @property
@@ -262,7 +263,7 @@ class Segmentation:
         segmentation: Segmentation,
         escalate_warning: bool = False,
         cut_read: bool = False,
-    ) -> Segmentation:
+    ) -> tuple[Segmentation, bool]:
         """
         Validate a segmentation from either a path to a csv, or a dataframe.
 
@@ -501,6 +502,7 @@ class Segmentation:
         return True
 
     def __len__(self):
+        """Return length of segmentation."""
         return len(self.ind())
 
     def __add__(self, other):
@@ -538,6 +540,11 @@ class Segmentation:
         return bool(self.overlap(other) == set(self.names))
 
     def __sub__(self, other):
+        """
+        Return segments in self but not in other.
+
+        This method will not error if other contains segments not in self.
+        """
         return [self.get_segment(i) for i in self.naming_order if i not in other.naming_order]
 
     def __ne__(self, other) -> bool:
@@ -601,7 +608,7 @@ class Segmentation:
 
     def add_segment(
         self,
-        new_seg: Segment | SegmentsSuper,
+        new_seg: Segment | SegmentsSuper | str,
         subset: Optional[dict[str, list[int]]] = None,
         new_naming_order: Optional[list[str]] = None,
     ):
@@ -623,6 +630,7 @@ class Segmentation:
         new_naming_order: Optional[list[str]] = None
             The naming order of the resultant segmentation. If not provided,
             the new segment will be appended to the end.
+
         Returns
         -------
         Segmentation
@@ -630,17 +638,23 @@ class Segmentation:
         out_segmentation = self.copy()
         custom = True
         if isinstance(new_seg, str):
-            new_seg = SegmentsSuper(new_seg).get_segment()
-        new_name = new_seg.name
+            inner_seg: Segment = SegmentsSuper(new_seg).get_segment()
+        elif isinstance(new_seg, SegmentsSuper):
+            inner_seg = new_seg.get_segment()
+        else:
+            inner_seg = new_seg
+        new_name = inner_seg.name
         if new_name in SegmentsSuper.values():
             custom = False
 
         if new_name in self.names:
             raise ValueError(f"{new_name} already contained in segmentation.")
         if custom:
-            out_segmentation.input.custom_segments.append(new_seg)
+            out_segmentation.input.custom_segments.append(inner_seg)
         else:
             out_segmentation.input.enum_segments.append(SegmentsSuper(new_name))
+            if inner_seg.values != SegmentsSuper(new_name).get_segment().values:
+                out_segmentation.input.subsets.update({new_name: inner_seg.int_values})
         if new_naming_order is not None:
             out_segmentation.input.naming_order = new_naming_order
         else:
@@ -667,7 +681,7 @@ class Segmentation:
             if SegmentsSuper(segment_name) in self.input.enum_segments:
                 self.input.enum_segments.remove(SegmentsSuper(segment_name))
             else:
-                self.input.custom_segments.remove(segment_name)
+                self.input.custom_segments.remove(self.get_segment(segment_name))
             if segment_name in self.input.subsets.keys():
                 del self.input.subsets[segment_name]
             self.reinit()
@@ -677,7 +691,7 @@ class Segmentation:
         if segment_name in SegmentsSuper.values():
             out_seg.enum_segments.remove(SegmentsSuper(segment_name))
         else:
-            out_seg.custom_segments.remove(segment_name)
+            out_seg.custom_segments.remove(self.get_segment(segment_name))
         if segment_name in out_seg.subsets.keys():
             del out_seg.subsets[segment_name]
         return Segmentation(out_seg)
@@ -727,13 +741,17 @@ def ordered_set(list_1: list, list_2: list) -> list:
 
 def product_multiindex(multi_index1, multi_index2):
     """
-    Takes two MultiIndex objects and returns their Cartesian product as a new MultiIndex.
+    Take two MultiIndex objects and return their Cartesian product as a new MultiIndex.
 
-    Parameters:
-    multi_index1 (pd.MultiIndex): The first MultiIndex.
-    multi_index2 (pd.MultiIndex): The second MultiIndex.
+    Parameters
+    ----------
+    multi_index1 : pd.MultiIndex
+        The first MultiIndex.
+    multi_index2: pd.MultiIndex
+        The second MultiIndex.
 
-    Returns:
+    Returns
+    -------
     pd.MultiIndex: A new MultiIndex which is the Cartesian product of the two input MultiIndices.
     """
     # Generate Cartesian product

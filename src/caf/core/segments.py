@@ -101,6 +101,7 @@ class Segment(BaseConfig):
         return list(self.values.keys())
 
     def __len__(self):
+        """Return length of segment."""
         return len(self.values)
 
     def translate_segment(self, new_seg, reverse: bool = False):

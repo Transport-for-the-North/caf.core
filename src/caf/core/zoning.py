@@ -10,7 +10,7 @@ import os
 import re
 from os import PathLike
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Union, Any
 import warnings
 
 import h5py
@@ -61,6 +61,7 @@ class TranslationWeighting(enum.Enum):
         return lookup[self]  # type: ignore
 
 
+# pylint: disable=too-many-public-methods
 class ZoningSystem:
     """Zoning definitions to provide common interface.
 
@@ -241,7 +242,7 @@ class ZoningSystem:
 
     @property
     def name_to_id(self) -> dict:
-        """Return a lookup dict of zone name to zone id"""
+        """Return a lookup dict of zone name to zone id."""
         return self.zone_names().reset_index().set_index("zone_name").to_dict()["zone_id"]
 
     @property
@@ -264,7 +265,7 @@ class ZoningSystem:
         """Return a lookup dict of zone id to zone description."""
         return self.zone_descriptions().to_dict()
 
-    def get_column(self, column: str) -> pd.Series:
+    def _get_column(self, column: str) -> pd.Series:
         """
         Get `column` from zones data.
 
@@ -289,7 +290,7 @@ class ZoningSystem:
         KeyError
             If zone descriptions column doesn't exist.
         """
-        return self.get_column(self._desc_column)
+        return self._get_column(self._desc_column)
 
     def zone_names(self) -> pd.Series:
         """
@@ -300,14 +301,14 @@ class ZoningSystem:
         KeyError
             If zone names column doesn't exist.
         """
-        return self.get_column(self._name_column)
+        return self._get_column(self._name_column)
 
     def _get_mask_column(self, name: str) -> pd.Series:
         """Get subset mask column from zones data, validate it contains bool values."""
         if name in (self._id_column, self._name_column, self._desc_column):
             raise ValueError(f"{name} column is not a subset mask column")
 
-        mask = self.get_column(name)
+        mask = self._get_column(name)
         if mask.dtype.kind != "b":
             raise TypeError(
                 f"found subset column ({name}) but it is the "
@@ -500,7 +501,9 @@ class ZoningSystem:
         """
         return f"{self.name}_to_{other.name}".lower()
 
-    def _replace_id(self, missing_rep, missing_id, translation, zone_system, translation_name, replacer):
+    def _replace_id(
+        self, missing_rep, missing_id, translation, zone_system, translation_name, replacer
+    ):
         if np.sum(missing_rep) > 0:
             if np.sum(missing_rep) >= np.sum(missing_id):
                 warnings.warn(
@@ -514,17 +517,11 @@ class ZoningSystem:
                     f"so that will be used. {np.sum(missing_rep)} missing for name, and "
                     f"{np.sum(missing_id)} missing for id."
                 )
-                translation[zone_system.column_name].replace(
-                    to_replace=replacer, inplace=True
-                )
+                translation[zone_system.column_name].replace(to_replace=replacer, inplace=True)
         else:
-            translation[zone_system.column_name].replace(
-                to_replace=replacer, inplace=True
-            )
+            translation[zone_system.column_name].replace(to_replace=replacer, inplace=True)
 
         return translation
-
-
 
     def validate_translation_data(
         self,
@@ -579,22 +576,36 @@ class ZoningSystem:
 
             if np.sum(missing_internal_id) > 0:
                 try:
-                    missing_internal_name: np.ndarray = ~np.isin(
+                    missing_internal_name: np.ndarray | float = ~np.isin(
                         zone_system.zone_names(), translation[zone_system.column_name].values
                     )
                 except KeyError:
                     missing_internal_name = np.inf
                 try:
-                    missing_internal_desc: np.ndarray = ~np.isin(
+                    missing_internal_desc: np.ndarray | float = ~np.isin(
                         zone_system.zone_descriptions(),
                         translation[zone_system.column_name].values,
                     )
                 except KeyError:
                     missing_internal_desc = np.inf
                 if np.sum(missing_internal_name) <= np.sum(missing_internal_desc):
-                    translation = self._replace_id(missing_internal_name, missing_internal_id, translation, zone_system, translation_name, zone_system.name_to_id)
+                    translation = self._replace_id(
+                        missing_internal_name,
+                        missing_internal_id,
+                        translation,
+                        zone_system,
+                        translation_name,
+                        zone_system.name_to_id,
+                    )
                 else:
-                    translation = self._replace_id(missing_internal_desc, missing_internal_id, translation, zone_system, translation_name, zone_system.desc_to_id)
+                    translation = self._replace_id(
+                        missing_internal_desc,
+                        missing_internal_id,
+                        translation,
+                        zone_system,
+                        translation_name,
+                        zone_system.desc_to_id,
+                    )
                 translation = translation[
                     translation[zone_system.column_name].isin(zone_system.zone_ids)
                 ]
@@ -673,7 +684,7 @@ class ZoningSystem:
 
     @staticmethod
     def trans_df_to_dict(trans_df, from_col, to_col, factor_col):
-        """Convert a translation dataframe to a dict"""
+        """Convert a translation dataframe to a dict."""
         if not (trans_df[factor_col] == 1).all():
             raise TranslationError("This method only works for nested zoning systems.")
         return trans_df.set_index(from_col)[to_col].to_dict()
@@ -809,6 +820,9 @@ class ZoningSystem:
         raise FileNotFoundError(f"{zone_dir} does not exist. Please recheck inputs.")
 
 
+# pylint: enable=too-many-public-methods
+
+
 class ZoningSystemMetaData(ctk.BaseConfig):
     """Class to store metadata relating to zoning systems in normits_demand."""
 
@@ -844,7 +858,7 @@ class BalancingZones:
         segmentation: Segmentation,
         default_zoning: ZoningSystem,
         segment_zoning: dict[str, ZoningSystem],
-        segment_values: dict[str, int | list[int]] = None,
+        segment_values: dict[str, list[int]] | None = None,
     ):
 
         # Validate inputs
@@ -861,10 +875,10 @@ class BalancingZones:
         self._default_zoning = default_zoning
         self._segment_zoning = segment_zoning
         self._segment_values = segment_values
-        self._unique_zoning = None
+        self._unique_zoning: dict[Any, Any] | None = None
 
     def get_zoning(self, segment_name: str) -> ZoningSystem:
-        """Return `ZoningSystem` for given `segment_name`
+        """Return `ZoningSystem` for given `segment_name`.
 
         Parameters
         ----------
@@ -883,11 +897,7 @@ class BalancingZones:
 
     @property
     def unique_zoning(self) -> dict[str, ZoningSystem]:
-        """Dict[str, ZoningSystem]: Dictionary containing a lookup of all
-        the unique `ZoningSystem` provided for the different segments.
-        The keys are the zone system name and values are the
-        `ZoningSystem` objects.
-        """
+        """Dictionary containing a lookup of segments to zoning systems."""
         if self._unique_zoning is None:
             self._unique_zoning = dict()
             for zoning in self._segment_zoning.values():
@@ -896,8 +906,8 @@ class BalancingZones:
             self._unique_zoning[self._default_zoning.name] = self._default_zoning
         return self._unique_zoning
 
-    def zoning_groups(self) -> tuple[ZoningSystem, list[str]]:
-        """Iterates through the unique zoning systems and provides list of segments.
+    def zoning_groups(self):
+        """Iterate through the unique zoning systems and provides list of segments.
 
         Yields
         ------
@@ -906,8 +916,10 @@ class BalancingZones:
         List[str]
             List of segment names which use this zone system.
         """
+
         def zone_name(s):
             return self.get_zoning(s).name
+
         zone_ls = sorted(self._segmentation.names, key=zone_name)
         for zone_name, segments in itertools.groupby(zone_ls, key=zone_name):
             zoning = self.unique_zoning[zone_name]
@@ -919,12 +931,13 @@ class BalancingZones:
 
     class BalancingConfClass(ctk.BaseConfig):
         """Cong class for balancing."""
+
         seg_conf: SegmentationInput
         zon_conf: ZoningSystemMetaData
         seg_zon: dict[str, ZoningSystemMetaData]
 
     def save(self, path: Path) -> None:
-        """Saves balancing zones to output file.
+        """Save balancing zones to output file.
 
         Output file is saved to a yaml file
 
@@ -960,11 +973,11 @@ class BalancingZones:
         BalancingZones
             Balancing zones with loaded parameters.
         """
-        conf = cls.BalancingConfClass.load(path)
+        conf = cls.BalancingConfClass.load_yaml(path)
         segmentation = Segmentation(conf.seg_conf)
         default_zoning = ZoningSystem.get_zoning(conf.zon_conf.name)
         segment_zoning = {}
-        for name, meta in conf.seg_zon:
+        for name, _ in conf.seg_zon:
             segment_zoning[name] = ZoningSystem.get_zoning(name)
         return cls(segmentation, default_zoning, segment_zoning)
 
