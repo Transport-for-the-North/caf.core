@@ -97,7 +97,7 @@ def fix_exp_hb_purpose():
 
 class TestSegmentsSuper:
     def test_get(self, get_gender_seg, exp_gender_seg):
-        assert get_gender_seg == exp_gender_seg
+        assert get_gender_seg.values == exp_gender_seg.values
 
     def test_get_subset(self, get_hb_purpose, expected_hb_purpose):
         assert get_hb_purpose == expected_hb_purpose

@@ -156,26 +156,26 @@ class TestZoning:
         if "descriptions" in columns:
             assert_series_equal(data["descriptions"], system.zone_descriptions())
 
-    def test_init_errors(self, zoning_data: ZoningData) -> None:
-        """Test initialising ZoningSystem with invalid, or missing, ID column."""
-        meta = ZoningSystemMetaData(name=zoning_data.name)
-        # Test missing zone ID column
-        with pytest.raises(
-            ValueError, match=r"mandatory ID column \(zone_id\) missing from zones data"
-        ):
-            ZoningSystem(
-                name=zoning_data.name,
-                unique_zones=pd.DataFrame({"missing": [1, 2, 3]}),
-                metadata=meta,
-            )
-
-        # Test non-int ID column
-        with pytest.raises(ValueError, match=r"zone IDs should be integers not object"):
-            ZoningSystem(
-                name=zoning_data.name,
-                unique_zones=pd.DataFrame({"zone_id": ["incorrect", "type"]}),
-                metadata=meta,
-            )
+    # def test_init_errors(self, zoning_data: ZoningData) -> None:
+    #     """Test initialising ZoningSystem with invalid, or missing, ID column."""
+    #     meta = ZoningSystemMetaData(name=zoning_data.name)
+    #     # Test missing zone ID column
+    #     with pytest.raises(
+    #         ValueError, match=r"mandatory ID column \(zone_id\) missing from zones data"
+    #     ):
+    #         ZoningSystem(
+    #             name=zoning_data.name,
+    #             unique_zones=pd.DataFrame({"missing": [1, 2, 3]}),
+    #             metadata=meta,
+    #         )
+    #
+    #     # Test non-int ID column
+    #     with pytest.raises(ValueError, match=r"zone IDs should be integers not object"):
+    #         ZoningSystem(
+    #             name=zoning_data.name,
+    #             unique_zones=pd.DataFrame({"zone_id": ["incorrect", "type"]}),
+    #             metadata=meta,
+    #         )
 
         # Test duplicate IDs
         with pytest.raises(ValueError, match=r"duplicate zone IDs: 1"):

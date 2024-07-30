@@ -141,7 +141,7 @@ class TestDvec:
 
     def test_add_segment_exclusion(self, basic_dvec_1):
         segment = SegmentsSuper("soc").get_segment()
-        out_dvec = basic_dvec_1.add_segment(segment, split_method="split")
+        out_dvec = basic_dvec_1.add_segments([segment], split_method="split")
         assert isclose(out_dvec.data.values.sum(), basic_dvec_1.data.values.sum())
 
     @pytest.mark.parametrize("dvec", ["basic_dvec_1", "basic_dvec_2", "single_seg_dvec"])
