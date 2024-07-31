@@ -19,6 +19,7 @@ import pandas as pd
 import caf.toolkit as ctk
 from caf.core.segmentation import Segmentation, SegmentationInput
 
+pd.set_option("future.no_silent_downcasting", True)
 LOG = logging.getLogger(__name__)
 
 # This is temporary, and will be an environment variable
@@ -204,7 +205,7 @@ class ZoningSystem:
             # Check if column contains strings "TRUE" and "FALSE"
             column = column.astype(str).str.strip().str.upper()
             if np.isin(column.unique(), ("TRUE", "FALSE")).all():
-                zones[name] = column.replace({"TRUE": True, "FALSE": False})
+                zones[name] = column.replace({"TRUE": True, "FALSE": False}).astype(bool)
                 subset_column.append(name)
                 continue
 

@@ -248,6 +248,7 @@ class DVector:
         val_col: Optional[str] = "val",
         low_memory: bool = False,
         cut_read: bool = False,
+        _bypass_validation: bool = False,
     ) -> None:
         """
         Init method.
@@ -268,6 +269,10 @@ class DVector:
             this is not given import data must contain only 1 column.
         low_memory: bool = False
             Set to True for low_memory dunder_methods.
+        _bypass_validation: bool = False
+            Can be used to bypass validation and save some time.
+            THIS IS ADDED AS AN OPTION TO USE IN IPF ONCE IT IS CERTAIN THE RETURN
+            IS CORRECT. DO NOT MANUALLY SET TO TRUE.
         """
         if zoning_system is not None:
             if not isinstance(zoning_system, ZoningSystem):
@@ -293,7 +298,9 @@ class DVector:
         self._val_col = val_col
 
         # Try to convert the given data into DVector format
-        if isinstance(import_data, (pd.DataFrame, pd.Series)):
+        if _bypass_validation:
+            self._data = import_data
+        elif isinstance(import_data, (pd.DataFrame, pd.Series)):
             self._data, self._segmentation = self._dataframe_to_dvec(
                 import_data, cut_read=cut_read
             )
@@ -521,6 +528,7 @@ class DVector:
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
         check_totals: bool = True,
         one_to_one: bool = False,
+        _bypass_validation: bool = False,
     ) -> DVector:
         """
         Translate this DVector into another zoning system and returns a new DVector.
@@ -601,13 +609,14 @@ class DVector:
             trans_vector = trans_vector.set_index(self.zoning_system.column_name)[
                 new_zoning.column_name
             ].to_dict()
-            translated = self.data.rename(columns=trans_vector).groupby(level=0, axis=1).sum()
+            translated = self.data.rename(columns=trans_vector).T.groupby(level=0).sum().T
             return DVector(
                 zoning_system=new_zoning,
                 segmentation=self.segmentation,
                 time_format=self.time_format,
                 import_data=translated,
                 low_memory=self.low_memory,
+                _bypass_validation=_bypass_validation,
             )
 
         transposed = self.data.transpose()
@@ -628,9 +637,10 @@ class DVector:
             time_format=self.time_format,
             import_data=translated,
             low_memory=self.low_memory,
+            _bypass_validation=_bypass_validation,
         )
 
-    def copy(self):
+    def copy(self, _bypass_validation: bool = True):
         """Class copy method."""
         if self._zoning_system is not None:
             out_zoning = self._zoning_system.copy()
@@ -642,6 +652,7 @@ class DVector:
             import_data=self._data.copy(),
             time_format=self.time_format,
             val_col=self.val_col,
+            _bypass_validation=_bypass_validation,
         )
 
     def overlap(self, other):
@@ -655,7 +666,12 @@ class DVector:
             )
 
     def _generic_dunder(
-        self, other, df_method, series_method, escalate_warnings: bool = False
+        self,
+        other,
+        df_method,
+        series_method,
+        escalate_warnings: bool = False,
+        _bypass_validation: bool = False,
     ):
         """
         Stop telling me to use the imperative mood pydocstyle.
@@ -668,7 +684,7 @@ class DVector:
         self.overlap(other)
         out = self.copy()
         # Takes exclusions into account before operating
-        if self.segmentation != other.segmentation:
+        if len(self.segmentation) < len(other.segmentation):
             out = self.expand_to_other(other)
 
         # Alternatively could just try the normal method and use the low memory if an exception is raised
@@ -743,7 +759,10 @@ class DVector:
         prod.sort_index(inplace=True)
         if prod.index.equals(self._data.index):
             return DVector(
-                segmentation=self.segmentation, import_data=prod, zoning_system=zoning
+                segmentation=self.segmentation,
+                import_data=prod,
+                zoning_system=zoning,
+                _bypass_validation=_bypass_validation,
             )
         # Index changed so the segmentation has changed. Segmentation should equal
         # the addition of the two segmentations (see __add__ method in segmentation)
@@ -763,13 +782,18 @@ class DVector:
                 f"rows have been dropped from the pure product."
             )
             prod = prod.loc[new_seg.ind()]
-        return DVector(segmentation=new_seg, import_data=prod, zoning_system=zoning)
+        return DVector(
+            segmentation=new_seg,
+            import_data=prod,
+            zoning_system=zoning,
+            _bypass_validation=_bypass_validation,
+        )
 
     def __len__(self):
         """Return the length of a DVector, defined as number of cells."""
         return len(self.segmentation) * len(self.zoning_system)
 
-    def __pow__(self, exponent: int | float):
+    def __pow__(self, exponent: int | float, _bypass_validation: bool = True):
         """Return the exponent of a DVector, essentially a wrapper around DataFrame's __pow__ method."""
         out_data = self.data**exponent
         return DVector(
@@ -778,23 +802,30 @@ class DVector:
             zoning_system=self.zoning_system,
             time_format=self.time_format,
             low_memory=self.low_memory,
+            _bypass_validation=_bypass_validation,
         )
 
-    def __mul__(self, other):
+    def __mul__(self, other, _bypass_validation: bool = False):
         """Multiply dunder method for DVector."""
-        return self._generic_dunder(other, pd.DataFrame.mul, pd.Series.mul)
+        return self._generic_dunder(
+            other, pd.DataFrame.mul, pd.Series.mul, _bypass_validation=_bypass_validation
+        )
 
     def __add__(self, other):
         """Add dunder method for DVector."""
         return self._generic_dunder(other, pd.DataFrame.add, pd.Series.add)
 
-    def __sub__(self, other):
+    def __sub__(self, other, _bypass_validation: bool = False):
         """Subtract dunder method for DVector."""
-        return self._generic_dunder(other, pd.DataFrame.sub, pd.Series.sub)
+        return self._generic_dunder(
+            other, pd.DataFrame.sub, pd.Series.sub, _bypass_validation=_bypass_validation
+        )
 
-    def __truediv__(self, other):
+    def __truediv__(self, other, _bypass_validation: bool = False):
         """Division dunder method for DVector."""
-        return self._generic_dunder(other, pd.DataFrame.div, pd.Series.div)
+        return self._generic_dunder(
+            other, pd.DataFrame.div, pd.Series.div, _bypass_validation=_bypass_validation
+        )
 
     def __eq__(self, other):
         """Equals dunder for DVector."""
@@ -810,7 +841,7 @@ class DVector:
         """Note equals dunder for DVector."""
         return not self.__eq__(other)
 
-    def aggregate(self, segs: list[str] | Segmentation):
+    def aggregate(self, segs: list[str] | Segmentation, _bypass_validation: bool = False):
         """
         Aggregate DVector to new segmentation.
 
@@ -839,6 +870,7 @@ class DVector:
             zoning_system=self.zoning_system,
             time_format=self.time_format,
             val_col=self.val_col,
+            _bypass_validation=_bypass_validation,
         )
 
     def split_by_other(self, other: DVector, agg_zone: ZoningSystem | None = None):
@@ -1114,7 +1146,9 @@ class DVector:
             low_memory=self.low_memory,
         )
 
-    def translate_segment(self, from_seg, to_seg, reverse=False, drop_from=True):
+    def translate_segment(
+        self, from_seg, to_seg, reverse=False, drop_from=True, _bypass_validation: bool = False
+    ):
         """
         Translate a segment in the DVector.
 
@@ -1135,9 +1169,8 @@ class DVector:
             from_seg, to_seg, reverse=reverse, drop_from=drop_from
         )
         if reverse:
-            lookup = lookup.to_frame()
-            lookup.set_index(from_seg, append=True, inplace=True)
-            new_data = self.data.join(lookup)
+            lookup = lookup.to_frame().set_index(from_seg, append=True).index
+            new_data = self.data.reindex(lookup, level=from_seg)
             if drop_from:
                 new_data = new_data.droplevel(from_seg)
         else:
@@ -1155,6 +1188,7 @@ class DVector:
             time_format=self.time_format,
             val_col=self.val_col,
             low_memory=self.low_memory,
+            _bypass_validation=_bypass_validation,
         )
 
     def trans_seg_from_lookup(self, lookup: SegConverter, drop_old: bool = False):
@@ -1212,7 +1246,9 @@ class DVector:
             check = self.copy()
             if target.zone_translation is not None:
                 check = self.translate_zoning(
-                    target.data.zoning_system, trans_vector=target.zone_translation
+                    target.data.zoning_system,
+                    trans_vector=target.zone_translation,
+                    _bypass_validation=True,
                 )
             if target.segment_translations is not None:
                 for seg in target.data.segmentation - self.segmentation:
@@ -1221,10 +1257,16 @@ class DVector:
                         lower_seg = self.segmentation.get_segment(
                             target.segment_translations[seg]
                         )
-                        check = check.translate_segment(from_seg=lower_seg.name, to_seg=seg)
+                        check = check.translate_segment(
+                            from_seg=lower_seg.name, to_seg=seg, _bypass_validation=True
+                        )
                     else:
                         raise ValueError("No translation defined for this segment.")
-            diff = (check.aggregate(target.data.segmentation) - target.data) ** 2
+            diff = (
+                check.aggregate(target.data.segmentation, _bypass_validation=True).__sub__(
+                    target.data, _bypass_validation=True
+                )
+            ) ** 2
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
@@ -1334,18 +1376,25 @@ class DVector:
         targets = self.validate_ipf_targets(targets)
         new_dvec = self.copy()
         prev_rmse = np.inf
+        bypass = False
         for i in range(max_iters):
             for target in targets:
+                if i > 0:
+                    bypass = True
                 inner = new_dvec.copy()
                 if target.segment_translations is not None:
                     for targ_seg, seed_seg in target.segment_translations.items():
-                        inner = inner.translate_segment(from_seg=seed_seg, to_seg=targ_seg)
-                agg = inner.aggregate(target.data.segmentation)
+                        inner = inner.translate_segment(
+                            from_seg=seed_seg, to_seg=targ_seg, _bypass_validation=bypass
+                        )
+                agg = inner.aggregate(target.data.segmentation, _bypass_validation=bypass)
                 if target.zone_translation is not None:
                     agg = agg.translate_zoning(
-                        target.data.zoning_system, trans_vector=target.zone_translation
+                        target.data.zoning_system,
+                        trans_vector=target.zone_translation,
+                        _bypass_validation=bypass,
                     )
-                factor = target.data / agg
+                factor = target.data.__truediv__(agg, _bypass_validation=bypass)
                 if target.zoning_diff:
                     factor = factor.translate_zoning(
                         self.zoning_system,
@@ -1356,12 +1405,15 @@ class DVector:
                 if target.segment_translations is not None:
                     for targ_seg, seed_seg in target.segment_translations.items():
                         factor = factor.translate_segment(
-                            from_seg=targ_seg, to_seg=seed_seg, reverse=True
+                            from_seg=targ_seg,
+                            to_seg=seed_seg,
+                            reverse=True,
+                            _bypass_validation=bypass,
                         )
-                new_dvec *= factor
+                new_dvec = new_dvec.__mul__(factor, _bypass_validation=bypass)
 
             rmse = new_dvec.calc_rmse(targets)
-            print(f"RMSE = {rmse} after {i} iterations.")
+            print(f"RMSE = {rmse} after {i + 1} iterations.")
             if rmse < tol:
                 print("Convergence met, returning DVector.")
                 return new_dvec
