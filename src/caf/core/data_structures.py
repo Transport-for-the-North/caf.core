@@ -7,6 +7,7 @@ Currently this is only the DVector class, but this may be expanded in the future
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Collection
 import enum
 import itertools
 import logging
@@ -1232,7 +1233,7 @@ class DVector:
             cut_read=True,
         )
 
-    def calc_rmse(self, targets: list[IpfTarget]):
+    def calc_rmse(self, targets: list[IpfTarget]) -> float:
         """
         Calculate the rmse relative to a set of targets.
 
@@ -1287,7 +1288,6 @@ class DVector:
         for position, target in enumerate(targets):
             # Check targets sum to the same, or they can't converge. Potentially could allow
             # IPF for non-agreeing targets to get as close as possible.
-            zoning_diff = False
             if target_sum == 0:
                 target_sum = target.data.sum()
             else:
@@ -1295,13 +1295,14 @@ class DVector:
                 if not math.isclose(target_sum, target.data.sum(), abs_tol=target_sum / 1e5):
                     raise ValueError(
                         "Input target DVectors do not have consistent "
-                        "sums, so ipf will fail."
+                        f"sums, so ipf will fail target at position {position} doesn't match "
+                        "the first target. It is possible later targets also don't match."
                     )
             # Check segmentations are compatible.
             if not target.data.segmentation.is_subset(self.segmentation):
                 if target.segment_translations is None:
                     raise ValueError(
-                        "The target segmentation is not a subset of the seed "
+                        f"The {position + 1}th target segmentation is not a subset of the seed "
                         "segmentation, but no correspondences are defined."
                     )
                 non_matching = target.data.segmentation - self.segmentation
@@ -1322,10 +1323,8 @@ class DVector:
 
             # Check zoning systems are compatible.
             if self.zoning_system != target.data.zoning_system:
-                zoning_diff = True
-                if target.zone_translation is not None:
-                    pass
-                else:
+                target.zoning_diff = True
+                if target.zone_translation is None:
                     try:
                         target.zone_translation = self.zoning_system.translate(
                             target.data.zoning_system
@@ -1351,9 +1350,11 @@ class DVector:
                     )
         return targets
 
-    def ipf(self, targets: list[IpfTarget], tol: float = 1e-5, max_iters: int = 100):
+    def ipf(self, targets: Collection[IpfTarget], tol: float = 1e-5, max_iters: int = 100) -> DVector:
         """
         Implement iterative proportional fitting for DVectors.
+
+        See: https://en.wikipedia.org/wiki/Iterative_proportional_fitting
 
         Parameters
         ----------
@@ -1413,12 +1414,12 @@ class DVector:
                 new_dvec = new_dvec.__mul__(factor, _bypass_validation=bypass)
 
             rmse = new_dvec.calc_rmse(targets)
-            print(f"RMSE = {rmse} after {i + 1} iterations.")
+            LOG.info(f"RMSE = {rmse} after {i + 1} iterations.")
             if rmse < tol:
                 print("Convergence met, returning DVector.")
                 return new_dvec
             if abs(rmse - prev_rmse) < tol:
-                print(f"RMSE has stopped improving at {rmse}.")
+                LOG.info(f"RMSE has stopped improving at {rmse}.")
                 return new_dvec
             prev_rmse = rmse
         warnings.warn(
@@ -1561,7 +1562,7 @@ class DVector:
         except Exception as err:
             LOG.error("Error creating LAD report: %s", err)
 
-    def sum(self):
+    def sum(self) -> float:
         """Sum DVector."""
         if isinstance(self.data, pd.DataFrame):
             return self.data.values.sum()
@@ -1726,11 +1727,30 @@ class DVector:
 
 @dataclass
 class IpfTarget:
-    """Dataclass to store targets to pass to IPF method of DVector."""
+    """
+    Dataclass to store targets to pass to IPF method of DVector.
+
+    Parameters
+    ----------
+    data: DVector
+        DVector containing the target data.
+    zoning_diff: bool | None = None
+        Whether target zoning is different to seed. This needn't be set by the user
+        as it is determined internally.
+    zone_translation: pd.DataFrame | None = None
+        A translation between the seed and target zoning if necessary. This must
+        be a strict aggregation from seed to target zoning. If left blank the
+        IPF method will attempt to find a translation and use that using DVector
+        translation methods.
+    segment_translations: dict[str, str] | None = None
+        A dict defining corresponding segments in seed for segments in target not
+        in seed. These will be used to find lookups in the seg_translations folder.
+        As with zoning, these must be strict aggregations from seed to target segment.
+    """
 
     data: DVector
-    zoning_diff: bool
-    zone_translation: pd.DataFrame = None
+    zoning_diff: bool | None = None
+    zone_translation: pd.DataFrame | None = None
     segment_translations: dict[str, str] | None = (
         None  # keys are segment in target, values, segment in seed
     )
