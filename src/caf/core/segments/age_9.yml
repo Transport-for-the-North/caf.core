@@ -50,6 +50,7 @@ exclusions:
     - 3
     - 4
     - 5
+    - -8
 - other_name: soc
   exclusions:
     1:
