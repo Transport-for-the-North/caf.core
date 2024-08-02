@@ -163,11 +163,6 @@ exclusions:
       - 4
       - 7
       - 10
-    5:
-      - 1
-      - 4
-      - 7
-      - 13
 - other_name: economic_status
   exclusions:
     1:

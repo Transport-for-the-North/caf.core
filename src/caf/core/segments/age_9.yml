@@ -110,3 +110,10 @@ exclusions:
     - 3
     - 4
     - 5
+- other_name: adult_nssec
+  exclusions:
+    9:
+    - 1
+    - 4
+    - 7
+    - 13

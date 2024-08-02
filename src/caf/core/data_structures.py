@@ -1206,7 +1206,7 @@ class DVector:
         lookup = SegConverter(lookup).get_conversion()
         drop_names = lookup.index.names
         new_names = lookup.columns
-        new_seg = self.segmentation
+        new_seg = self.segmentation.copy()
         for name in drop_names:
             if name not in self.segmentation.names:
                 raise ValueError(
