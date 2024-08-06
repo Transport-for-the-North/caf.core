@@ -4,9 +4,3 @@ values:
   1: No adults or 1 adult in household
   2: 2 adults in household
   3: 3 or more adults in household
-
-exclusions:
-- other_name: car_availability
-  exclusions:
-    1:
-    - 3
