@@ -1350,7 +1350,9 @@ class DVector:
                     )
         return targets
 
-    def ipf(self, targets: Collection[IpfTarget], tol: float = 1e-5, max_iters: int = 100) -> DVector:
+    def ipf(
+        self, targets: Collection[IpfTarget], tol: float = 1e-5, max_iters: int = 100
+    ) -> DVector:
         """
         Implement iterative proportional fitting for DVectors.
 
