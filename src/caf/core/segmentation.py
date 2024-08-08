@@ -289,7 +289,6 @@ class Segmentation:
             df = pd.read_csv(source)
         else:
             df = source
-
         naming_order = segmentation.naming_order
         conf = segmentation.input.copy()
         if df.index.names == naming_order:
@@ -305,6 +304,9 @@ class Segmentation:
             read_index = df.index
         # Index to validate against
         built_index = segmentation.ind()
+        # TODO DELETE THIS
+        df = df.loc[read_index.intersection(built_index)]
+        read_index = df.index
         # I think an error would already be raised at this point
         if built_index.names != read_index.names:
             raise ValueError(
@@ -352,7 +354,6 @@ class Segmentation:
 
         built_segmentation = cls(conf)
         built_index = built_segmentation.ind()
-
         if read_index.equals(built_index):
             return built_segmentation, False
         # Still doesn't match, this is probably an exclusion error. User should check that
