@@ -641,6 +641,17 @@ class DVector:
             _bypass_validation=_bypass_validation,
         )
 
+    def split_by_agg_zoning(self, agg_zoning: ZoningSystem):
+        trans = self.zoning_system.translate(agg_zoning)
+        out_dvecs = {}
+        for zone in trans[agg_zoning.column_name].unique():
+            zones = trans[trans[agg_zoning.column_name] == zone][self.zoning_system.column_name]
+            new_data = self.data[zones]
+            out_dvecs[zone] = DVector(import_data=new_data,
+                                      segmentation=self.segmentation,
+                                      zoning_system=self.zoning_system)
+        return out_dvecs
+    
     def copy(self, _bypass_validation: bool = True):
         """Class copy method."""
         if self._zoning_system is not None:
@@ -1356,7 +1367,11 @@ class DVector:
         return targets
 
     def ipf(
-        self, targets: Collection[IpfTarget], tol: float = 1e-5, max_iters: int = 100, zone_trans_cache: pathlib.Path | None = None
+        self,
+        targets: Collection[IpfTarget],
+        tol: float = 1e-5,
+        max_iters: int = 100,
+        zone_trans_cache: pathlib.Path | None = None,
     ) -> DVector:
         """
         Implement iterative proportional fitting for DVectors.
