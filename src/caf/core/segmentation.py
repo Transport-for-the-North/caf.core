@@ -210,7 +210,7 @@ class Segmentation:
                 if len(set(lookup.index.names).intersection(joined.index.names)) > 0:
                     joined = joined.join(lookup, how="inner")
                 else:
-                    new_ind = product_multiindex(joined.index, lookup)
+                    new_ind = product_multiindex(joined.index, lookup.index)
                     joined = pd.DataFrame(index=new_ind)
         no_prod = list(set(no_prod))
         return joined, no_prod
@@ -304,9 +304,6 @@ class Segmentation:
             read_index = df.index
         # Index to validate against
         built_index = segmentation.ind()
-        # TODO DELETE THIS
-        df = df.loc[read_index.intersection(built_index)]
-        read_index = df.index
         # I think an error would already be raised at this point
         if built_index.names != read_index.names:
             raise ValueError(

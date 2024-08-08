@@ -820,6 +820,25 @@ class ZoningSystem:
                 ) from exc
         raise FileNotFoundError(f"{zone_dir} does not exist. Please recheck inputs.")
 
+    @classmethod
+    def zoning_from_shapefile(cls, name, shapefile, name_col, tfn_bound = Path(r"Y:\Data Strategy\GIS Shapefiles\TfN Boundary\Transport_for_the_north_boundary_2020_generalised.shp")):
+        try:
+            import geopandas as gpd
+        except ImportError:
+            raise ImportError("Geopandas must be installed to use this method.")
+        gdf = gpd.read_file(shapefile)[[name_col, 'geometry']]
+        tfn_bound = gpd.read_file(tfn_bound)
+        inner = gdf.sjoin(tfn_bound, predicate='within')
+        gdf['internal'] = False
+        gdf.loc[inner.index, 'internal'] = True
+        gdf['external'] = ~gdf['internal']
+        gdf.index += 1
+        gdf.index.name = 'zone_id'
+        gdf.rename(columns={name_col: 'zone_name'}, inplace=True)
+        gdf.reset_index(inplace=True)
+        zoning = gdf[['zone_id', 'zone_name', 'internal', 'external']]
+        meta = ZoningSystemMetaData(name=name, shapefile_path=shapefile)
+        return cls(name=name, unique_zones=zoning, metadata=meta)
 
 # pylint: enable=too-many-public-methods
 
