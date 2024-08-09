@@ -823,17 +823,36 @@ class ZoningSystem:
     @classmethod
     def zoning_from_shapefile(
         cls,
-        name,
-        shapefile,
-        name_col,
-        tfn_bound=Path(
+        name: str,
+        shapefile: PathLike,
+        name_col: str,
+        tfn_bound: PathLike=Path(
             r"Y:\Data Strategy\GIS Shapefiles\TfN Boundary\Transport_for_the_north_boundary_2020_generalised.shp"
         ),
-    ):
+    ) -> ZoneSystem:
+        """
+        Produce a ZoningSystem from a shapefile.
+
+        Parameters
+        ----------
+        name: str
+            The name of the zone system.
+        shapefile: PathLike
+            A path to the shapefile to generate the zoning from.
+        name_col:
+            The column in the shapefile containing the zone 'names'.
+        tfn_bound_path:
+            A path to a polygon shapefile used to determine internal/external in
+            resulting ZoneSystem
+
+        Returns
+        -------
+        ZoneSystem
+        """
         try:
             import geopandas as gpd
-        except ImportError:
-            raise ImportError("Geopandas must be installed to use this method.")
+        except ImportError as exc:
+            raise ImportError("Geopandas must be installed to use this method.") from exc
         gdf = gpd.read_file(shapefile)[[name_col, "geometry"]]
         tfn_bound = gpd.read_file(tfn_bound)
         inner = gdf.sjoin(tfn_bound, predicate="within")

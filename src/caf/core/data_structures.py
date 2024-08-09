@@ -641,17 +641,47 @@ class DVector:
             _bypass_validation=_bypass_validation,
         )
 
-    def split_by_agg_zoning(self, agg_zoning: ZoningSystem):
-        trans = self.zoning_system.translate(agg_zoning)
+    def split_by_agg_zoning(
+        self, agg_zoning: ZoningSystem, trans: pd.DataFrame | None = None
+    ) -> dict[int, DVector]:
+        """ "
+        Split a DVector into a different new DVector for each aggregate zone.
+
+        Returns a dictionary with keys of agg_zone id and values of DVectors. The
+        returned dvectors are still in original zoning, but each will be a subset of
+        the full zone system.
+
+        Parameters
+        ----------
+        agg_zoning: ZoningSystem
+            The zoning system to split self by. Must be a strict aggregation of self.zoning_system
+        trans: pd.DataFrame | None = None
+            The translation to use to split the DVector. If left as None this will be
+            found using the DVector method.
+
+        Returns
+        -------
+        dict[int, DVector]
+            A dict of self split into DVectors for each zone in agg_zoning
+        """
+        if trans is None:
+            trans = self.zoning_system.translate(agg_zoning)
+        else:
+            trans = self.zoning_system.validate_translation_data(agg_zoning, trans)
         out_dvecs = {}
         for zone in trans[agg_zoning.column_name].unique():
-            zones = trans[trans[agg_zoning.column_name] == zone][self.zoning_system.column_name]
+            zones = trans[trans[agg_zoning.column_name] == zone][
+                self.zoning_system.column_name
+            ]
+            zones = self.data.columns.intersection(zones)
             new_data = self.data[zones]
-            out_dvecs[zone] = DVector(import_data=new_data,
-                                      segmentation=self.segmentation,
-                                      zoning_system=self.zoning_system)
+            out_dvecs[zone] = DVector(
+                import_data=new_data,
+                segmentation=self.segmentation,
+                zoning_system=self.zoning_system,
+            )
         return out_dvecs
-    
+
     def copy(self, _bypass_validation: bool = True):
         """Class copy method."""
         if self._zoning_system is not None:
@@ -740,7 +770,8 @@ class DVector:
                 if isinstance(self.data, pd.Series):
                     prod = series_method(out.data, other.data)
                 else:
-                    prod = df_method(out.data, other.data)
+                    return_zones = out.data.columns.intersection(other.data.columns)
+                    prod = df_method(out.data[return_zones], other.data[return_zones])
                 # Either None if both are None, or the right zone system
                 zoning = self.zoning_system
 
@@ -1092,6 +1123,28 @@ class DVector:
         new_data = new_data.reorder_levels(new_segmentation.naming_order).sort_index()
         return cls(
             segmentation=new_segmentation, import_data=new_data, zoning_system=zoning_system
+        )
+
+    def select_zone(self, zone_id) -> DVector:
+        """
+        Return a DVector for a single zone in a DVector.
+
+        Parameters
+        ----------
+        zone_id: int
+            The zone to select.
+
+        Returns
+        -------
+        DVector:
+            A DVector for a single zone, data will be a series.
+        """
+        out_data = self.data[zone_id]
+        return DVector(
+            import_data=out_data,
+            segmentation=self.segmentation,
+            zoning_system=None,
+            time_format=self.time_format,
         )
 
     def filter_segment_value(self, segment_name: str, segment_values: int | list[int]):
