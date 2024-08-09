@@ -1359,7 +1359,11 @@ class DVector:
         return targets
 
     def ipf(
-        self, targets: Collection[IpfTarget], tol: float = 1e-5, max_iters: int = 100, zone_trans_cache: pathlib.Path | None = None
+        self,
+        targets: Collection[IpfTarget],
+        tol: float = 1e-5,
+        max_iters: int = 100,
+        zone_trans_cache: pathlib.Path | None = None,
     ) -> DVector:
         """
         Implement iterative proportional fitting for DVectors.
@@ -1405,13 +1409,15 @@ class DVector:
                         trans_vector=target.zone_translation,
                         _bypass_validation=bypass,
                     )
-                factor = (target.data.__truediv__(agg, _bypass_validation=bypass))
+                factor = target.data.__truediv__(agg, _bypass_validation=bypass)
                 factor.fillna(0)
                 if (factor.data == np.inf).any():
-                    warnings.warn("Inf factors being applied. This means there "
-                                  "were zeroes in the aggregated seed matrix, which will "
-                                  "remain zero throughout IPF. This will affect the process's "
-                                  "ability to converge properly.")
+                    warnings.warn(
+                        "Inf factors being applied. This means there "
+                        "were zeroes in the aggregated seed matrix, which will "
+                        "remain zero throughout IPF. This will affect the process's "
+                        "ability to converge properly."
+                    )
 
                 if target.zoning_diff:
                     factor = factor.translate_zoning(
