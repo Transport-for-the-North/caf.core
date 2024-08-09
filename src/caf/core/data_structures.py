@@ -1411,7 +1411,7 @@ class DVector:
                     )
                 factor = target.data.__truediv__(agg, _bypass_validation=bypass)
                 factor.fillna(0)
-                if (factor.data == np.inf).any():
+                if (factor.data.values == np.inf).any():
                     warnings.warn(
                         "Inf factors being applied. This means there "
                         "were zeroes in the aggregated seed matrix, which will "
