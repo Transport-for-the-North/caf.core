@@ -1211,6 +1211,9 @@ class DVector:
             low_memory=self.low_memory,
         )
 
+    def fillna(self, infill_value: float | int) -> DVector:
+        self.data = self.data.fillna(infill_value)
+
     def translate_segment(
         self, from_seg, to_seg, reverse=False, drop_from=True, _bypass_validation: bool = False
     ):
@@ -1471,6 +1474,15 @@ class DVector:
                         _bypass_validation=bypass,
                     )
                 factor = target.data.__truediv__(agg, _bypass_validation=bypass)
+                factor.fillna(0)
+                if (factor.data.values == np.inf).any():
+                    warnings.warn(
+                        "Inf factors being applied. This means there "
+                        "were zeroes in the aggregated seed matrix, which will "
+                        "remain zero throughout IPF. This will affect the process's "
+                        "ability to converge properly."
+                    )
+
                 if target.zoning_diff:
                     factor = factor.translate_zoning(
                         self.zoning_system,
