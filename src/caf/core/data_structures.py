@@ -1274,7 +1274,7 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-    def validate_ipf_targets(self, targets: list[IpfTarget]):
+    def validate_ipf_targets(self, targets: list[IpfTarget], cache_path=None):
         """
         Check targets for ipf will work, raises errors if not.
 
@@ -1329,9 +1329,14 @@ class DVector:
                 target.zoning_diff = True
                 if target.zone_translation is None:
                     try:
-                        target.zone_translation = self.zoning_system.translate(
-                            target.data.zoning_system
-                        )
+                        if cache_path is not None:
+                            target.zone_translation = self.zoning_system.translate(
+                                target.data.zoning_system, cache_path=cache_path
+                            )
+                        else:
+                            target.zone_translation = self.zoning_system.translate(
+                                target.data.zoning_system
+                            )
                     except TranslationError:
                         raise TranslationError(
                             "No zone_translation was found for "
@@ -1354,7 +1359,7 @@ class DVector:
         return targets
 
     def ipf(
-        self, targets: Collection[IpfTarget], tol: float = 1e-5, max_iters: int = 100
+        self, targets: Collection[IpfTarget], tol: float = 1e-5, max_iters: int = 100, zone_trans_cache: pathlib.Path | None = None
     ) -> DVector:
         """
         Implement iterative proportional fitting for DVectors.
@@ -1379,7 +1384,7 @@ class DVector:
         DVector matched to targets, rmse achieved.
         """
         # check DVectors compatible
-        targets = self.validate_ipf_targets(targets)
+        targets = self.validate_ipf_targets(targets, zone_trans_cache)
         new_dvec = self.copy()
         prev_rmse = np.inf
         bypass = False
