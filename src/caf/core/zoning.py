@@ -11,6 +11,7 @@ import re
 from os import PathLike
 from pathlib import Path
 from typing import Literal, Optional, Union, Any
+from typing_extensions import Self
 import warnings
 
 import h5py
@@ -826,10 +827,10 @@ class ZoningSystem:
         name: str,
         shapefile: PathLike,
         name_col: str,
-        tfn_bound: PathLike=Path(
+        tfn_bound: PathLike = Path(
             r"Y:\Data Strategy\GIS Shapefiles\TfN Boundary\Transport_for_the_north_boundary_2020_generalised.shp"
         ),
-    ) -> ZoneSystem:
+    ) -> Self:
         """
         Produce a ZoningSystem from a shapefile.
 
@@ -849,10 +850,12 @@ class ZoningSystem:
         -------
         ZoneSystem
         """
+        # pylint: disable=import-outside-toplevel
         try:
             import geopandas as gpd
         except ImportError as exc:
             raise ImportError("Geopandas must be installed to use this method.") from exc
+        # pylint: enable=import-outside-toplevel
         gdf = gpd.read_file(shapefile)[[name_col, "geometry"]]
         tfn_bound = gpd.read_file(tfn_bound)
         inner = gdf.sjoin(tfn_bound, predicate="within")
@@ -864,7 +867,7 @@ class ZoningSystem:
         gdf.rename(columns={name_col: "zone_name"}, inplace=True)
         gdf.reset_index(inplace=True)
         zoning = gdf[["zone_id", "zone_name", "internal", "external"]]
-        meta = ZoningSystemMetaData(name=name, shapefile_path=shapefile)
+        meta = ZoningSystemMetaData(name=name, shapefile_path=Path(shapefile))
         return cls(name=name, unique_zones=zoning, metadata=meta)
 
 

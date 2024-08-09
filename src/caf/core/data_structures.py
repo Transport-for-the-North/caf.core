@@ -644,7 +644,7 @@ class DVector:
     def split_by_agg_zoning(
         self, agg_zoning: ZoningSystem, trans: pd.DataFrame | None = None
     ) -> dict[int, DVector]:
-        """ "
+        """
         Split a DVector into a different new DVector for each aggregate zone.
 
         Returns a dictionary with keys of agg_zone id and values of DVectors. The
@@ -799,7 +799,6 @@ class DVector:
                     "to match the other."
                 )
         # Index unchanged, aside from possible order. Segmentation remained the same
-        prod.sort_index(inplace=True)
         if prod.index.equals(self._data.index):
             return DVector(
                 segmentation=self.segmentation,
@@ -1211,7 +1210,8 @@ class DVector:
             low_memory=self.low_memory,
         )
 
-    def fillna(self, infill_value: float | int) -> DVector:
+    def fillna(self, infill_value: float | int):
+        """Wrap fillna dataframe method."""
         self.data = self.data.fillna(infill_value)
 
     def translate_segment(
@@ -1338,7 +1338,7 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-    def validate_ipf_targets(self, targets: list[IpfTarget], cache_path=None):
+    def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
         """
         Check targets for ipf will work, raises errors if not.
 
@@ -1351,7 +1351,7 @@ class DVector:
         -------
         Input targets, with zone translations added in if relevant.
         """
-        target_sum = 0
+        target_sum = 0.0
         for position, target in enumerate(targets):
             # Check targets sum to the same, or they can't converge. Potentially could allow
             # IPF for non-agreeing targets to get as close as possible.
@@ -1427,8 +1427,8 @@ class DVector:
         targets: Collection[IpfTarget],
         tol: float = 1e-5,
         max_iters: int = 100,
-        zone_trans_cache: pathlib.Path | None = None,
-    ) -> DVector:
+        zone_trans_cache: Path | None = None,
+    ) -> tuple[DVector, float]:
         """
         Implement iterative proportional fitting for DVectors.
 
@@ -1655,6 +1655,7 @@ class DVector:
             return self.data.values.sum()
         if isinstance(self.data, pd.Series):
             return self.data.sum()
+        raise ValueError("This error can't be raised but mypy is complaining.")
 
     def sum_is_close(self, other: DVector, rel_tol: float, abs_tol: float):
         """
