@@ -14,7 +14,7 @@ import logging
 import math
 import operator
 import warnings
-from os import PathLike
+from os import PathLike, listdir
 from pathlib import Path
 from typing import Optional, Union, Callable, Literal
 from dataclasses import dataclass
@@ -26,7 +26,7 @@ import caf.toolkit as ctk
 
 
 # pylint: disable=no-name-in-module,import-error
-from caf.core.segmentation import Segmentation, SegmentationWarning
+from caf.core.segmentation import Segmentation, SegmentationWarning, SegmentationError
 from caf.core.zoning import (
     ZoningSystem,
     TranslationWeighting,
@@ -1579,6 +1579,41 @@ class DVector:
             time_format=self.time_format,
             import_data=summed,
         )
+
+    @classmethod
+    def concat_from_dir(cls, dir: PathLike, zoning: ZoningSystem | None = None, segmentation: Segmentation | None = None):
+        dir = Path(dir)
+        dvecs = []
+        for file in listdir(dir):
+            if file.endswith('hdf'):
+                try:
+                    dvec = cls.load(dir / file)
+                except:
+                    continue
+                if zoning is None:
+                    zoning = dvec.zoning_system
+                else:
+                    if dvec.zoning_system != zoning:
+                        dvec = dvec.translate_zoning(zoning)
+                if segmentation is None:
+                    segmentation = dvec.segmentation
+                else:
+                    if dvec.segmentation != segmentation:
+                        if segmentation.is_subset(dvec.segmentation):
+                            dvec = dvec.aggregate(segmentation)
+                        else:
+                            raise SegmentationError("Dvec cannot be aggregated to a segmentation which is "
+                                                    "not a subset of the current segmentation."
+                                                    )
+                dvecs.append(dvec)
+        new_data = pd.concat([dvec.data for dvec in dvecs])
+        return cls(import_data=new_data,
+                   segmentation=segmentation,
+                   zoning_system=zoning,
+                   )
+
+
+
 
     def sum_zoning(self):
         """Sum over zones."""
