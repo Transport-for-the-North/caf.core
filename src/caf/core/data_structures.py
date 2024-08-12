@@ -1342,30 +1342,6 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-    @staticmethod
-    def check_compatibility(targets, adjust: bool = False):
-        targ_dict = {i: j for i, j in enumerate(targets)}
-        rmses = {}
-        for pos in list(itertools.combinations(reversed(targ_dict), 2)):
-            target_1, target_2 = targ_dict[pos[1]].data, targ_dict[pos[0]].data
-            if target_1.zoning_system != target_2.zoning_system:
-                continue
-            common_segs = target_1.segmentation.overlap(target_2.segmentation)
-            if len(common_segs) == 0:
-                agg_1 = target_1.data.sum()
-                agg_2 = target_2.data.sum()
-            else:
-                agg_1 = target_1.aggregate(list(common_segs))
-                agg_2 = target_2.aggregate(list(common_segs))
-            diff = (agg_1 - agg_2) ** 2
-            rmse = (diff.sum() / len(diff)) ** 0.5
-            rmses[tuple(common_segs)] = rmse
-            if adjust:
-                adj = agg_2 / agg_1
-                target_1 *= adj
-                targ_dict[pos[0]].data = target_1
-        targets = list(targ_dict.values())
-        return pd.DataFrame.from_dict(rmses, orient="index"), targets
 
     def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
         """
@@ -1887,6 +1863,31 @@ class IpfTarget:
     segment_translations: dict[str, str] | None = (
         None  # keys are segment in target, values, segment in seed
     )
+
+    @staticmethod
+    def check_compatibility(targets, adjust: bool = False):
+        targ_dict = {i: j for i, j in enumerate(targets)}
+        rmses = {}
+        for pos in list(itertools.combinations(reversed(targ_dict), 2)):
+            target_1, target_2 = targ_dict[pos[1]].data, targ_dict[pos[0]].data
+            if target_1.zoning_system != target_2.zoning_system:
+                continue
+            common_segs = target_1.segmentation.overlap(target_2.segmentation)
+            if len(common_segs) == 0:
+                agg_1 = target_1.data.sum()
+                agg_2 = target_2.data.sum()
+            else:
+                agg_1 = target_1.aggregate(list(common_segs))
+                agg_2 = target_2.aggregate(list(common_segs))
+            diff = (agg_1 - agg_2) ** 2
+            rmse = (diff.sum() / len(diff)) ** 0.5
+            rmses[tuple(common_segs)] = rmse
+            if adjust:
+                adj = agg_2 / agg_1
+                target_1 *= adj
+                targ_dict[pos[0]].data = target_1
+        targets = list(targ_dict.values())
+        return pd.DataFrame.from_dict(rmses, orient="index"), targets
 
 
 # # # FUNCTIONS # # #
