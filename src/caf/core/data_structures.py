@@ -799,6 +799,7 @@ class DVector:
                     "to match the other."
                 )
         # Index unchanged, aside from possible order. Segmentation remained the same
+        prod.sort_index(inplace=True)
         if prod.index.equals(self._data.index):
             return DVector(
                 segmentation=self.segmentation,
@@ -1341,6 +1342,28 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
+    @classmethod
+    def check_compatibility(cls, targets):
+        combinations = list(itertools.combinations(targets, 2))
+        rmses = {}
+        for comb in combinations:
+            target_1, target_2 = comb[0].data, comb[1].data
+            if target_1.zoning_system != target_2.zoning_system:
+                continue
+            common_segs = target_1.segmentation.overlap(target_2.segmentation)
+            if len(common_segs) == 0:
+                diff = (target_1.data.sum() - target_2.data.sum()) ** 2
+            else:
+                agg_1 = target_1.aggregate(list(common_segs))
+                agg_2 = target_2.aggregate(list(common_segs))
+                diff = (agg_1 - agg_2) ** 2
+            rmse = (diff.sum() / len(diff)) ** 0.5
+            rmses[tuple(common_segs)] = rmse
+        return pd.DataFrame.from_dict(rmses)
+
+
+
+
     def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
         """
         Check targets for ipf will work, raises errors if not.
@@ -1480,7 +1503,7 @@ class DVector:
                 factor.fillna(0)
                 if (factor.data.values == np.inf).any():
                     warnings.warn(
-                        "Inf factors being applied. This means there "
+                        "Inf factors produced. This means there "
                         "were zeroes in the aggregated seed matrix, which will "
                         "remain zero throughout IPF. This will affect the process's "
                         "ability to converge properly."
@@ -1509,10 +1532,10 @@ class DVector:
             LOG.info(f"RMSE = {rmse} after {i + 1} iterations.")
             if rmse < tol:
                 print("Convergence met, returning DVector.")
-                return new_dvec
+                return new_dvec, rmse
             if abs(rmse - prev_rmse) < tol:
                 LOG.info(f"RMSE has stopped improving at {rmse}.")
-                return new_dvec
+                return new_dvec, rmse
             prev_rmse = rmse
         warnings.warn(
             "Convergence has not been met, and RMSE has not stopped improving. "
