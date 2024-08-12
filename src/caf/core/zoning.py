@@ -257,6 +257,10 @@ class ZoningSystem:
         return self.internal().to_dict()
 
     @property
+    def id_to_external(self) -> dict:
+        return self.external().to_dict()
+
+    @property
     def desc_to_id(self) -> dict:
         """Return a lookup dict of zone description to zone id."""
         return (

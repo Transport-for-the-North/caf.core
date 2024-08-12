@@ -1342,8 +1342,8 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-    @classmethod
-    def check_compatibility(cls, targets, adjust: bool = False):
+    @staticmethod
+    def check_compatibility(targets, adjust: bool = False):
         targ_dict = {i: j for i, j in enumerate(targets)}
         rmses = {}
         for pos in list(itertools.combinations(reversed(targ_dict), 2)):
@@ -1609,7 +1609,9 @@ class DVector:
         return self.remove_zoning()
 
     def to_ie(self):
-        new_data = self.data.rename(columns=self.zoning_system.id_to_internal)
+        new_data = self.data.rename(columns=self.zoning_system.id_to_external)
+        new_data = new_data.T.groupby(level=0).sum().T
+        new_data.columns = [int(i) + 1 for i in new_data.columns]
         new_zoning = ZoningSystem.get_zoning("ie_sector")
         return DVector(
             import_data=new_data,
@@ -1696,7 +1698,7 @@ class DVector:
             return self.data.sum()
         raise ValueError("This error can't be raised but mypy is complaining.")
 
-    def sum_is_close(self, other: DVector, rel_tol: float, abs_tol: float):
+    def sum_is_close(self, other: DVector | float, rel_tol: float, abs_tol: float):
         """
         Check if self sums close to other.
 
@@ -1711,7 +1713,11 @@ class DVector:
         abs_tol: float
             see math.isclose
         """
-        return math.isclose(self.sum(), other.sum(), rel_tol=rel_tol, abs_tol=abs_tol)
+        if isinstance(other, DVector):
+            other_sum = other.sum()
+        else:
+            other_sum = other
+        return math.isclose(self.sum(), other_sum, rel_tol=rel_tol, abs_tol=abs_tol)
 
     @staticmethod
     def _balance_zones_internal(
