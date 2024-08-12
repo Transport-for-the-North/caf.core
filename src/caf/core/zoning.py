@@ -310,7 +310,7 @@ class ZoningSystem:
         return self._get_column(self._name_column)
 
     def internal(self) -> pd.Series:
-        return self._get_column('internal')
+        return self._get_column("internal")
 
     def _get_mask_column(self, name: str) -> pd.Series:
         """Get subset mask column from zones data, validate it contains bool values."""

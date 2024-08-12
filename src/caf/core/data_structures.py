@@ -1474,7 +1474,7 @@ class DVector:
                         _bypass_validation=bypass,
                     )
                 factor = target.data.__truediv__(agg, _bypass_validation=bypass)
-                factor = factor.fillna(0)
+                factor.fillna(0)
                 if (factor.data.values == np.inf).any():
                     warnings.warn(
                         "Inf factors being applied. This means there "
@@ -1580,12 +1580,13 @@ class DVector:
 
     def to_ie(self):
         new_data = self.data.rename(columns=self.zoning_system.id_to_internal)
-        new_zoning = ZoningSystem.get_zoning('ie_sector')
-        return DVector(import_data=new_data,
-                       zoning_system=new_zoning,
-                       segmentation=self.segmentation,
-                       time_format=self.time_format,
-                       )
+        new_zoning = ZoningSystem.get_zoning("ie_sector")
+        return DVector(
+            import_data=new_data,
+            zoning_system=new_zoning,
+            segmentation=self.segmentation,
+            time_format=self.time_format,
+        )
 
     def write_sector_reports(
         self,
