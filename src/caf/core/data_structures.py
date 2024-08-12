@@ -1474,7 +1474,7 @@ class DVector:
                         _bypass_validation=bypass,
                     )
                 factor = target.data.__truediv__(agg, _bypass_validation=bypass)
-                factor.fillna(0)
+                factor = factor.fillna(0)
                 if (factor.data.values == np.inf).any():
                     warnings.warn(
                         "Inf factors being applied. This means there "
@@ -1578,6 +1578,15 @@ class DVector:
         """Sum over zones."""
         return self.remove_zoning()
 
+    def to_ie(self):
+        new_data = self.data.rename(columns=self.zoning_system.id_to_internal)
+        new_zoning = ZoningSystem.get_zoning('ie_sector')
+        return DVector(import_data=new_data,
+                       zoning_system=new_zoning,
+                       segmentation=self.segmentation,
+                       time_format=self.time_format,
+                       )
+
     def write_sector_reports(
         self,
         segment_totals_path: PathLike,
@@ -1622,17 +1631,16 @@ class DVector:
         df.to_csv(segment_totals_path)
 
         # Segment by CA Sector total reports - 1 to 1, No weighting
-        try:
-            tfn_ca_sectors = ZoningSystem.get_zoning("ca_sector_2020")
-            dvec = self.translate_zoning(tfn_ca_sectors)
-            dvec.data.to_csv(ca_sector_path)
-        except Exception as err:
-            LOG.error("Error creating CA sector report: %s", err)
+        # try:
+        tfn_ca_sectors = ZoningSystem.get_zoning("ca_sector_2020")
+        dvec = self.translate_zoning(tfn_ca_sectors)
+        dvec.data.to_csv(ca_sector_path)
+        # except Exception as err:
+        #     LOG.error("Error creating CA sector report: %s", err)
 
         # Segment by IE Sector total reports - 1 to 1, No weighting
         try:
-            ie_sectors = ZoningSystem.get_zoning("ie_sector")
-            dvec = self.translate_zoning(ie_sectors)
+            dvec = self.to_ie()
             dvec.data.to_csv(ie_sector_path)
         except Exception as err:
             LOG.error("Error creating IE sector report: %s", err)
