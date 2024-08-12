@@ -1364,6 +1364,7 @@ class DVector:
                 adj = agg_2 / agg_1
                 target_1 *= adj
                 targ_dict[pos[0]].data = target_1
+        targets = list(targ_dict.values())
         return pd.DataFrame.from_dict(rmses, orient="index"), targets
 
     def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
