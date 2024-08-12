@@ -1343,26 +1343,30 @@ class DVector:
         return mse**0.5
 
     @classmethod
-    def check_compatibility(cls, targets):
-        combinations = list(itertools.combinations(targets, 2))
+    def check_compatibility(cls, targets, adjust: bool = False):
+        targ_dict = {i: j for i, j in enumerate(targets)}
+        combinations = list(itertools.combinations(targ_dict, 2))
         rmses = {}
-        for comb in combinations:
-            target_1, target_2 = comb[0].data, comb[1].data
+        for pos in combinations:
+            target_1, target_2 = targ_dict[pos[0]].data, targ_dict[pos[1]].data
             if target_1.zoning_system != target_2.zoning_system:
                 continue
             common_segs = target_1.segmentation.overlap(target_2.segmentation)
             if len(common_segs) == 0:
-                diff = (target_1.data.sum() - target_2.data.sum()) ** 2
+                agg_1 = target_1.data.sum()
+                agg_2 = target_2.data.sum()
             else:
                 agg_1 = target_1.aggregate(list(common_segs))
                 agg_2 = target_2.aggregate(list(common_segs))
-                diff = (agg_1 - agg_2) ** 2
+            diff = (agg_1 - agg_2) ** 2
             rmse = (diff.sum() / len(diff)) ** 0.5
             rmses[tuple(common_segs)] = rmse
-        return pd.DataFrame.from_dict(rmses)
-
-
-
+            if adjust:
+                # The earlier target is always adjusted to the later
+                adj = agg_2 / agg_1
+                target_1 *= adj
+                targets[pos[0]].data = target_1
+        return pd.DataFrame.from_dict(rmses, orient="index"), targets
 
     def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
         """
@@ -1509,7 +1513,6 @@ class DVector:
                         "ability to converge properly."
                     )
                     factor.fill(np.inf, 0)
-
 
                 if target.zoning_diff:
                     factor = factor.translate_zoning(
