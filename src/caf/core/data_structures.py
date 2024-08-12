@@ -1345,10 +1345,9 @@ class DVector:
     @classmethod
     def check_compatibility(cls, targets, adjust: bool = False):
         targ_dict = {i: j for i, j in enumerate(targets)}
-        combinations = list(itertools.combinations(targ_dict, 2))
         rmses = {}
-        for pos in combinations:
-            target_1, target_2 = targ_dict[pos[0]].data, targ_dict[pos[1]].data
+        for pos in list(itertools.combinations(reversed(targ_dict), 2)):
+            target_1, target_2 = targ_dict[pos[1]].data, targ_dict[pos[0]].data
             if target_1.zoning_system != target_2.zoning_system:
                 continue
             common_segs = target_1.segmentation.overlap(target_2.segmentation)
@@ -1362,7 +1361,6 @@ class DVector:
             rmse = (diff.sum() / len(diff)) ** 0.5
             rmses[tuple(common_segs)] = rmse
             if adjust:
-                # The earlier target is always adjusted to the later
                 adj = agg_2 / agg_1
                 target_1 *= adj
                 targets[pos[0]].data = target_1
