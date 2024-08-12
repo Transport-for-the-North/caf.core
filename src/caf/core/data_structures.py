@@ -1214,6 +1214,9 @@ class DVector:
         """Wrap fillna dataframe method."""
         self.data = self.data.fillna(infill_value)
 
+    def fill(self, find_value: float | int, infill_value: float | int):
+        self.data = self.data.replace(to_replace={find_value: infill_value})
+
     def translate_segment(
         self, from_seg, to_seg, reverse=False, drop_from=True, _bypass_validation: bool = False
     ):
@@ -1482,6 +1485,8 @@ class DVector:
                         "remain zero throughout IPF. This will affect the process's "
                         "ability to converge properly."
                     )
+                    factor.fill(np.inf, 0)
+
 
                 if target.zoning_diff:
                     factor = factor.translate_zoning(
