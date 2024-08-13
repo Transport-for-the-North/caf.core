@@ -7,6 +7,7 @@ Currently this is only the DVector class, but this may be expanded in the future
 from __future__ import annotations
 
 import tempfile
+from numbers import Number
 from collections.abc import Collection
 import enum
 import itertools
@@ -720,6 +721,16 @@ class DVector:
 
         A generic dunder method which is called by each of the dunder methods.
         """
+        if isinstance(other, Number):
+            if isinstance(self.data, pd.DataFrame):
+                prod = df_method(self.data, other)
+            else:
+                prod = series_method(self.data, other)
+            return DVector(import_data=prod,
+                           segmentation=self.segmentation,
+                           zoning_system=self.zoning_system,
+                           time_format=self.time_format,
+                           _bypass_validation=True)
         if escalate_warnings:
             warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
@@ -1606,7 +1617,7 @@ class DVector:
                                                     "not a subset of the current segmentation."
                                                     )
                 dvecs.append(dvec)
-        new_data = pd.concat([dvec.data for dvec in dvecs])
+        new_data = pd.concat([dvec.data for dvec in dvecs], axis=1)
         return cls(import_data=new_data,
                    segmentation=segmentation,
                    zoning_system=zoning,
@@ -1919,8 +1930,10 @@ class IpfTarget:
             rmses[tuple(common_segs)] = rmse
             if adjust:
                 adj = agg_2 / agg_1
+                adj.fill(np.inf, 0)
                 target_1 *= adj
-                targ_dict[pos[0]].data = target_1
+                target_1 *= target_2.sum() / target_1.sum()
+                targ_dict[pos[1]].data = target_1
         targets = list(targ_dict.values())
         return pd.DataFrame.from_dict(rmses, orient="index"), targets
 
