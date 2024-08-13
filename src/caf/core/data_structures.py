@@ -7,6 +7,7 @@ Currently this is only the DVector class, but this may be expanded in the future
 from __future__ import annotations
 
 import tempfile
+from numbers import Number
 from collections.abc import Collection
 import enum
 import itertools
@@ -14,7 +15,7 @@ import logging
 import math
 import operator
 import warnings
-from os import PathLike
+from os import PathLike, listdir
 from pathlib import Path
 from typing import Optional, Union, Callable, Literal
 from dataclasses import dataclass
@@ -26,7 +27,7 @@ import caf.toolkit as ctk
 
 
 # pylint: disable=no-name-in-module,import-error
-from caf.core.segmentation import Segmentation, SegmentationWarning
+from caf.core.segmentation import Segmentation, SegmentationWarning, SegmentationError
 from caf.core.zoning import (
     ZoningSystem,
     TranslationWeighting,
@@ -720,6 +721,16 @@ class DVector:
 
         A generic dunder method which is called by each of the dunder methods.
         """
+        if isinstance(other, Number):
+            if isinstance(self.data, pd.DataFrame):
+                prod = df_method(self.data, other)
+            else:
+                prod = series_method(self.data, other)
+            return DVector(import_data=prod,
+                           segmentation=self.segmentation,
+                           zoning_system=self.zoning_system,
+                           time_format=self.time_format,
+                           _bypass_validation=True)
         if escalate_warnings:
             warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
@@ -799,6 +810,7 @@ class DVector:
                     "to match the other."
                 )
         # Index unchanged, aside from possible order. Segmentation remained the same
+        prod.sort_index(inplace=True)
         if prod.index.equals(self._data.index):
             return DVector(
                 segmentation=self.segmentation,
@@ -1214,6 +1226,9 @@ class DVector:
         """Wrap fillna dataframe method."""
         self.data = self.data.fillna(infill_value)
 
+    def fill(self, find_value: float | int, infill_value: float | int):
+        self.data = self.data.replace(to_replace={find_value: infill_value})
+
     def translate_segment(
         self, from_seg, to_seg, reverse=False, drop_from=True, _bypass_validation: bool = False
     ):
@@ -1337,6 +1352,7 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
+
     def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
         """
         Check targets for ipf will work, raises errors if not.
@@ -1364,6 +1380,12 @@ class DVector:
                         f"sums, so ipf will fail target at position {position} doesn't match "
                         "the first target. It is possible later targets also don't match."
                     )
+            # Check for zeros
+            zeros = target.data.data.to_numpy() == 0
+            if np.sum(zeros) > 0:
+                warnings.warn(f"There are {np.sum(zeros)} zeros in the target data, making "
+                              f"up {np.sum(zeros) * 100 / (zeros.shape[0] * zeros.shape[1])}% of "
+                              f"the target data. The more zeros, the worse the IPF process will work.")
             # Check segmentations are compatible.
             if not target.data.segmentation.is_subset(self.segmentation):
                 if target.segment_translations is None:
@@ -1475,12 +1497,7 @@ class DVector:
                 factor = target.data.__truediv__(agg, _bypass_validation=bypass)
                 factor.fillna(0)
                 if (factor.data.values == np.inf).any():
-                    warnings.warn(
-                        "Inf factors being applied. This means there "
-                        "were zeroes in the aggregated seed matrix, which will "
-                        "remain zero throughout IPF. This will affect the process's "
-                        "ability to converge properly."
-                    )
+                    factor.fill(np.inf, 0)
 
                 if target.zoning_diff:
                     factor = factor.translate_zoning(
@@ -1503,10 +1520,10 @@ class DVector:
             LOG.info(f"RMSE = {rmse} after {i + 1} iterations.")
             if rmse < tol:
                 print("Convergence met, returning DVector.")
-                return new_dvec
+                return new_dvec, rmse
             if abs(rmse - prev_rmse) < tol:
                 LOG.info(f"RMSE has stopped improving at {rmse}.")
-                return new_dvec
+                return new_dvec, rmse
             prev_rmse = rmse
         warnings.warn(
             "Convergence has not been met, and RMSE has not stopped improving. "
@@ -1573,9 +1590,56 @@ class DVector:
             import_data=summed,
         )
 
+    @classmethod
+    def concat_from_dir(cls, dir: PathLike, zoning: ZoningSystem | None = None, segmentation: Segmentation | None = None):
+        dir = Path(dir)
+        dvecs = []
+        for file in listdir(dir):
+            if file.endswith('hdf'):
+                try:
+                    dvec = cls.load(dir / file)
+                except:
+                    continue
+                if zoning is None:
+                    zoning = dvec.zoning_system
+                else:
+                    if dvec.zoning_system != zoning:
+                        dvec = dvec.translate_zoning(zoning)
+                if segmentation is None:
+                    segmentation = dvec.segmentation
+                else:
+                    if dvec.segmentation != segmentation:
+                        if segmentation.is_subset(dvec.segmentation):
+                            dvec = dvec.aggregate(segmentation)
+                        else:
+                            raise SegmentationError("Dvec cannot be aggregated to a segmentation which is "
+                                                    "not a subset of the current segmentation."
+                                                    )
+                dvecs.append(dvec)
+        new_data = pd.concat([dvec.data for dvec in dvecs], axis=1)
+        return cls(import_data=new_data,
+                   segmentation=segmentation,
+                   zoning_system=zoning,
+                   )
+
+
+
+
     def sum_zoning(self):
         """Sum over zones."""
         return self.remove_zoning()
+
+    def to_ie(self):
+        new_data = self.data.rename(columns=self.zoning_system.id_to_external)
+        new_data = new_data.T.groupby(level=0).sum().T
+        new_data.columns = [int(i) + 1 for i in new_data.columns]
+        new_zoning = ZoningSystem.get_zoning("ie_sector")
+        return DVector(
+            import_data=new_data,
+            zoning_system=new_zoning,
+            segmentation=self.segmentation,
+            time_format=self.time_format,
+        )
 
     def write_sector_reports(
         self,
@@ -1621,17 +1685,16 @@ class DVector:
         df.to_csv(segment_totals_path)
 
         # Segment by CA Sector total reports - 1 to 1, No weighting
-        try:
-            tfn_ca_sectors = ZoningSystem.get_zoning("ca_sector_2020")
-            dvec = self.translate_zoning(tfn_ca_sectors)
-            dvec.data.to_csv(ca_sector_path)
-        except Exception as err:
-            LOG.error("Error creating CA sector report: %s", err)
+        # try:
+        tfn_ca_sectors = ZoningSystem.get_zoning("ca_sector_2020")
+        dvec = self.translate_zoning(tfn_ca_sectors)
+        dvec.data.to_csv(ca_sector_path)
+        # except Exception as err:
+        #     LOG.error("Error creating CA sector report: %s", err)
 
         # Segment by IE Sector total reports - 1 to 1, No weighting
         try:
-            ie_sectors = ZoningSystem.get_zoning("ie_sector")
-            dvec = self.translate_zoning(ie_sectors)
+            dvec = self.to_ie()
             dvec.data.to_csv(ie_sector_path)
         except Exception as err:
             LOG.error("Error creating IE sector report: %s", err)
@@ -1656,7 +1719,7 @@ class DVector:
             return self.data.sum()
         raise ValueError("This error can't be raised but mypy is complaining.")
 
-    def sum_is_close(self, other: DVector, rel_tol: float, abs_tol: float):
+    def sum_is_close(self, other: DVector | float, rel_tol: float, abs_tol: float):
         """
         Check if self sums close to other.
 
@@ -1671,7 +1734,11 @@ class DVector:
         abs_tol: float
             see math.isclose
         """
-        return math.isclose(self.sum(), other.sum(), rel_tol=rel_tol, abs_tol=abs_tol)
+        if isinstance(other, DVector):
+            other_sum = other.sum()
+        else:
+            other_sum = other
+        return math.isclose(self.sum(), other_sum, rel_tol=rel_tol, abs_tol=abs_tol)
 
     @staticmethod
     def _balance_zones_internal(
@@ -1841,6 +1908,33 @@ class IpfTarget:
     segment_translations: dict[str, str] | None = (
         None  # keys are segment in target, values, segment in seed
     )
+
+    @staticmethod
+    def check_compatibility(targets, adjust: bool = False):
+        targ_dict = {i: j for i, j in enumerate(targets)}
+        rmses = {}
+        for pos in list(itertools.combinations(reversed(targ_dict), 2)):
+            target_1, target_2 = targ_dict[pos[1]].data, targ_dict[pos[0]].data
+            if target_1.zoning_system != target_2.zoning_system:
+                continue
+            common_segs = target_1.segmentation.overlap(target_2.segmentation)
+            if len(common_segs) == 0:
+                agg_1 = target_1.data.sum()
+                agg_2 = target_2.data.sum()
+            else:
+                agg_1 = target_1.aggregate(list(common_segs))
+                agg_2 = target_2.aggregate(list(common_segs))
+            diff = (agg_1 - agg_2) ** 2
+            rmse = (diff.sum() / len(diff)) ** 0.5
+            rmses[tuple(common_segs)] = rmse
+            if adjust:
+                adj = agg_2 / agg_1
+                adj.fill(np.inf, 0)
+                target_1 *= adj
+                target_1 *= target_2.sum() / target_1.sum()
+                targ_dict[pos[1]].data = target_1
+        targets = list(targ_dict.values())
+        return pd.DataFrame.from_dict(rmses, orient="index"), targets
 
 
 # # # FUNCTIONS # # #

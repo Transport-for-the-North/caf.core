@@ -253,6 +253,14 @@ class ZoningSystem:
         return self.zone_names().to_dict()
 
     @property
+    def id_to_internal(self) -> dict:
+        return self.internal().to_dict()
+
+    @property
+    def id_to_external(self) -> dict:
+        return self.external().to_dict()
+
+    @property
     def desc_to_id(self) -> dict:
         """Return a lookup dict of zone description to zone id."""
         return (
@@ -304,6 +312,9 @@ class ZoningSystem:
             If zone names column doesn't exist.
         """
         return self._get_column(self._name_column)
+
+    def internal(self) -> pd.Series:
+        return self._get_column("internal")
 
     def _get_mask_column(self, name: str) -> pd.Series:
         """Get subset mask column from zones data, validate it contains bool values."""
