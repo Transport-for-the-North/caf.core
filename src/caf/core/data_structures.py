@@ -1381,6 +1381,12 @@ class DVector:
                         f"sums, so ipf will fail target at position {position} doesn't match "
                         "the first target. It is possible later targets also don't match."
                     )
+            # Check for zeros
+            zeros = target.data.data.to_numpy() == 0
+            if np.sum(zeros) > 0:
+                warnings.warn(f"There are {np.sum(zeros)} zeros in the target data, making "
+                              f"up {np.sum(zeros) * 100 / (zeros.shape[0] * zeros.shape[1])}% of "
+                              f"the target data. The more zeros, the worse the IPF process will work.")
             # Check segmentations are compatible.
             if not target.data.segmentation.is_subset(self.segmentation):
                 if target.segment_translations is None:
@@ -1492,12 +1498,6 @@ class DVector:
                 factor = target.data.__truediv__(agg, _bypass_validation=bypass)
                 factor.fillna(0)
                 if (factor.data.values == np.inf).any():
-                    warnings.warn(
-                        "Inf factors produced. This means there "
-                        "were zeroes in the aggregated seed matrix, which will "
-                        "remain zero throughout IPF. This will affect the process's "
-                        "ability to converge properly."
-                    )
                     factor.fill(np.inf, 0)
 
                 if target.zoning_diff:
