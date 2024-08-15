@@ -612,6 +612,11 @@ class DVector:
                 new_zoning.column_name
             ].to_dict()
             translated = self.data.rename(columns=trans_vector).T.groupby(level=0).sum().T
+            new_zones = set(trans_vector.values())
+            untranslated = [i for i in translated.columns if i not in new_zones]
+            if len(untranslated) > 0:
+                warnings.warn(f"{untranslated} zones not translated. These are being dropped.")
+            translated.drop(untranslated, axis=1, inplace=True)
             return DVector(
                 zoning_system=new_zoning,
                 segmentation=self.segmentation,
@@ -1741,6 +1746,23 @@ class DVector:
             other_sum = other
         return math.isclose(self.sum(), other_sum, rel_tol=rel_tol, abs_tol=abs_tol)
 
+    def add_value_to_subset(self, segment: str, value: int, data: pd.DataFrame):
+        new_seg = self.segmentation.copy()
+        new_seg.input.subsets[segment].append(value)
+        new_seg = new_seg.reinit()
+        new_data = self.data
+        if data.index.names != new_data.index.names:
+            data[segment] = value
+            data.set_index(segment, append=True, inplace=True)
+            data.index = data.index.reorder_levels(self.segmentation.naming_order)
+        new_data  =pd.concat([new_data, data])
+        return DVector(import_data=new_data,
+                       segmentation=new_seg,
+                       zoning_system=self.zoning_system,
+                       time_format=self.time_format)
+
+
+
     @staticmethod
     def _balance_zones_internal(
         self_data: pd.DataFrame,
@@ -1936,6 +1958,4 @@ class IpfTarget:
                 targ_dict[pos[1]].data = target_1
         targets = list(targ_dict.values())
         return pd.DataFrame.from_dict(rmses, orient="index"), targets
-
-
-# # # FUNCTIONS # # #
+    
