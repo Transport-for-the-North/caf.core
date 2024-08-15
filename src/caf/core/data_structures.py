@@ -1316,8 +1316,7 @@ class DVector:
             zoning_system=self.zoning_system,
             time_format=self.time_format,
             low_memory=self.low_memory,
-            val_col=self.val_col,
-            cut_read=True,
+            val_col=self.val_col
         )
 
     def calc_rmse(self, targets: list[IpfTarget]) -> float:
