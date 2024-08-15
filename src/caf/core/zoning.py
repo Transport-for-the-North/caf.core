@@ -316,6 +316,9 @@ class ZoningSystem:
     def internal(self) -> pd.Series:
         return self._get_column("internal")
 
+    def external(self) -> pd.Series:
+        return self._get_column("external")
+
     def _get_mask_column(self, name: str) -> pd.Series:
         """Get subset mask column from zones data, validate it contains bool values."""
         if name in (self._id_column, self._name_column, self._desc_column):
