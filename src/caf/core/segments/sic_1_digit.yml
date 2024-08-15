@@ -23,7 +23,12 @@ values:
   20: 'T : Activities of households as employers;undifferentiated goods-and services-producing
     activities of households for own use'
   21: 'U : Activities of extraterritorial organisations and bodies'
+  -1: 'n/a'
 lookups:
+- other_name: soc
+  exclusions:
+    1:
+    - 4
 - other_name: sic_2_digit
   exclusions:
     1:

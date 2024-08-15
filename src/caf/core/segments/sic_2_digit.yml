@@ -95,7 +95,12 @@ values:
   98: '98 : Undifferentiated goods- and services-producing activities of private households
     for own use'
   99: '99 : Activities of extraterritorial organisations and bodies'
+  -1: 'n/a'
 lookups:
+- other_name: soc
+  exclusions:
+    1:
+    - 4
 - other_name: sic_4_digit
   exclusions:
     1:

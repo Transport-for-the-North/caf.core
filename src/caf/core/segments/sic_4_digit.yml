@@ -616,5 +616,9 @@ values:
   614: '9810 : Undifferentiated goods-producing activities of private households for own use'
   615: '9820 : Undifferentiated service-producing activities of private households for own use'
   616: '9900 : Activities of extraterritorial organisations and bodies'
-# No exclusions written as this segementation is only expected to be combined with
-# other sic combinations and a translate segment method should be used instead.
+  -1: 'n/a/'
+lookups:
+- other_name: soc
+  exclusions:
+    1:
+    - 4
