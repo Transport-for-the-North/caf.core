@@ -27,7 +27,7 @@ values:
 lookups:
 - other_name: soc
   exclusions:
-    1:
+    -1:
     - 4
 - other_name: sic_2_digit
   exclusions:

@@ -731,11 +731,13 @@ class DVector:
                 prod = df_method(self.data, other)
             else:
                 prod = series_method(self.data, other)
-            return DVector(import_data=prod,
-                           segmentation=self.segmentation,
-                           zoning_system=self.zoning_system,
-                           time_format=self.time_format,
-                           _bypass_validation=True)
+            return DVector(
+                import_data=prod,
+                segmentation=self.segmentation,
+                zoning_system=self.zoning_system,
+                time_format=self.time_format,
+                _bypass_validation=True,
+            )
         if escalate_warnings:
             warnings.filterwarnings("error", category=SegmentationWarning)
         # Make sure the two DVectors have overlapping indices
@@ -1316,7 +1318,7 @@ class DVector:
             zoning_system=self.zoning_system,
             time_format=self.time_format,
             low_memory=self.low_memory,
-            val_col=self.val_col
+            val_col=self.val_col,
         )
 
     def calc_rmse(self, targets: list[IpfTarget]) -> float:
@@ -1357,7 +1359,6 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-
     def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
         """
         Check targets for ipf will work, raises errors if not.
@@ -1388,9 +1389,11 @@ class DVector:
             # Check for zeros
             zeros = target.data.data.to_numpy() == 0
             if np.sum(zeros) > 0:
-                warnings.warn(f"There are {np.sum(zeros)} zeros in the target data, making "
-                              f"up {np.sum(zeros) * 100 / (zeros.shape[0] * zeros.shape[1])}% of "
-                              f"the target data. The more zeros, the worse the IPF process will work.")
+                warnings.warn(
+                    f"There are {np.sum(zeros)} zeros in the target data, making "
+                    f"up {np.sum(zeros) * 100 / (zeros.shape[0] * zeros.shape[1])}% of "
+                    f"the target data. The more zeros, the worse the IPF process will work."
+                )
             # Check segmentations are compatible.
             if not target.data.segmentation.is_subset(self.segmentation):
                 if target.segment_translations is None:
@@ -1596,11 +1599,16 @@ class DVector:
         )
 
     @classmethod
-    def concat_from_dir(cls, dir: PathLike, zoning: ZoningSystem | None = None, segmentation: Segmentation | None = None):
+    def concat_from_dir(
+        cls,
+        dir: PathLike,
+        zoning: ZoningSystem | None = None,
+        segmentation: Segmentation | None = None,
+    ):
         dir = Path(dir)
         dvecs = []
         for file in listdir(dir):
-            if file.endswith('hdf'):
+            if file.endswith("hdf"):
                 try:
                     dvec = cls.load(dir / file)
                 except:
@@ -1617,18 +1625,17 @@ class DVector:
                         if segmentation.is_subset(dvec.segmentation):
                             dvec = dvec.aggregate(segmentation)
                         else:
-                            raise SegmentationError("Dvec cannot be aggregated to a segmentation which is "
-                                                    "not a subset of the current segmentation."
-                                                    )
+                            raise SegmentationError(
+                                "Dvec cannot be aggregated to a segmentation which is "
+                                "not a subset of the current segmentation."
+                            )
                 dvecs.append(dvec)
         new_data = pd.concat([dvec.data for dvec in dvecs], axis=1)
-        return cls(import_data=new_data,
-                   segmentation=segmentation,
-                   zoning_system=zoning,
-                   )
-
-
-
+        return cls(
+            import_data=new_data,
+            segmentation=segmentation,
+            zoning_system=zoning,
+        )
 
     def sum_zoning(self):
         """Sum over zones."""
@@ -1754,13 +1761,13 @@ class DVector:
             data[segment] = value
             data.set_index(segment, append=True, inplace=True)
             data.index = data.index.reorder_levels(self.segmentation.naming_order)
-        new_data  =pd.concat([new_data, data])
-        return DVector(import_data=new_data,
-                       segmentation=new_seg,
-                       zoning_system=self.zoning_system,
-                       time_format=self.time_format)
-
-
+        new_data = pd.concat([new_data, data])
+        return DVector(
+            import_data=new_data,
+            segmentation=new_seg,
+            zoning_system=self.zoning_system,
+            time_format=self.time_format,
+        )
 
     @staticmethod
     def _balance_zones_internal(
@@ -1957,4 +1964,3 @@ class IpfTarget:
                 targ_dict[pos[1]].data = target_1
         targets = list(targ_dict.values())
         return pd.DataFrame.from_dict(rmses, orient="index"), targets
-    
