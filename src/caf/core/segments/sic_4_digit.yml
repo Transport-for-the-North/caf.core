@@ -617,8 +617,10 @@ values:
   615: '9820 : Undifferentiated service-producing activities of private households for own use'
   616: '9900 : Activities of extraterritorial organisations and bodies'
   -1: 'n/a/'
-lookups:
+exclusions:
 - other_name: soc
   exclusions:
     -1:
-    - 4
+    - 1
+    - 2
+    - 3
