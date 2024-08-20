@@ -1939,7 +1939,24 @@ class IpfTarget:
     )
 
     @staticmethod
-    def check_compatibility(targets, adjust: bool = False):
+    def check_compatibility(targets: Collection[IpfTarget],
+                            adjust: bool = False):
+        """
+        Check compatibility between ipf targets, and optionally adjust to match.
+
+        This will check rmse between targets and return a rmse value for the set.
+        If adjust is set to True then all targets will be set to match the last
+        target at whatever level of zoning/segmentation they match. If two targets
+        don't match at any level of zoning/segmentation this method will not
+        attempt to convert to check, it will just ignore those.
+
+        Parameters
+        ----------
+        targets: Collection[IpfTarget]
+            The targets to check.
+        adjust: bool = False
+            Whether to change the targets or just report on their compatibility.
+        """
         targ_dict = {i: j for i, j in enumerate(targets)}
         rmses = {}
         for pos in list(itertools.combinations(reversed(targ_dict), 2)):
