@@ -298,14 +298,13 @@ class DVector:
 
         # Set defaults if args not set
         self._val_col = val_col
+        self._cut_read = cut_read
 
         # Try to convert the given data into DVector format
         if _bypass_validation:
             self._data = import_data
         elif isinstance(import_data, (pd.DataFrame, pd.Series)):
-            self._data, self._segmentation = self._dataframe_to_dvec(
-                import_data, cut_read=cut_read
-            )
+            self._data, self._segmentation = self._dataframe_to_dvec(import_data)
         else:
             raise NotImplementedError(
                 "Don't know how to deal with anything other than: pandas DF, or dict"
@@ -406,14 +405,14 @@ class DVector:
                 f"\tExpected one of: {self._valid_time_formats()}"
             ) from exc
 
-    def _dataframe_to_dvec(self, import_data: pd.DataFrame, cut_read: bool = False):
+    def _dataframe_to_dvec(self, import_data: pd.DataFrame):
         """
         Take a dataframe and ensure it is in DVec data format.
 
         This requires the dataframe to be in wide format.
         """
         seg, expand_to_read = Segmentation.validate_segmentation(
-            source=import_data, segmentation=self.segmentation, cut_read=cut_read
+            source=import_data, segmentation=self.segmentation, cut_read=self._cut_read
         )
 
         if len(seg.naming_order) > 1:
@@ -427,7 +426,7 @@ class DVector:
                 sorted_data.join(expander, how="outer").fillna(0).drop("dummy", axis=1)
             )
 
-        if cut_read:
+        if self._cut_read:
             full_sum = sorted_data.values.sum()
             import_data = sorted_data.reindex(
                 seg.ind(), axis="index", method=None
@@ -1939,8 +1938,7 @@ class IpfTarget:
     )
 
     @staticmethod
-    def check_compatibility(targets: Collection[IpfTarget],
-                            adjust: bool = False):
+    def check_compatibility(targets: Collection[IpfTarget], adjust: bool = False):
         """
         Check compatibility between ipf targets, and optionally adjust to match.
 
