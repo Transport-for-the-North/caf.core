@@ -623,6 +623,7 @@ class DVector:
                 import_data=translated,
                 low_memory=self.low_memory,
                 _bypass_validation=_bypass_validation,
+                cut_read=self._cut_read,
             )
 
         transposed = self.data.transpose()
@@ -644,6 +645,7 @@ class DVector:
             import_data=translated,
             low_memory=self.low_memory,
             _bypass_validation=_bypass_validation,
+            cut_read=self._cut_read,
         )
 
     def split_by_agg_zoning(
@@ -684,6 +686,7 @@ class DVector:
                 import_data=new_data,
                 segmentation=self.segmentation,
                 zoning_system=self.zoning_system,
+                cut_read=self._cut_read,
             )
         return out_dvecs
 
@@ -700,6 +703,7 @@ class DVector:
             time_format=self.time_format,
             val_col=self.val_col,
             _bypass_validation=_bypass_validation,
+            cut_read=self._cut_read,
         )
 
     def overlap(self, other):
@@ -736,6 +740,7 @@ class DVector:
                 zoning_system=self.zoning_system,
                 time_format=self.time_format,
                 _bypass_validation=True,
+                cut_read=self._cut_read,
             )
         if escalate_warnings:
             warnings.filterwarnings("error", category=SegmentationWarning)
@@ -823,6 +828,7 @@ class DVector:
                 import_data=prod,
                 zoning_system=zoning,
                 _bypass_validation=_bypass_validation,
+                cut_read=self._cut_read,
             )
         # Index changed so the segmentation has changed. Segmentation should equal
         # the addition of the two segmentations (see __add__ method in segmentation)
@@ -847,6 +853,7 @@ class DVector:
             import_data=prod,
             zoning_system=zoning,
             _bypass_validation=_bypass_validation,
+            cut_read=self._cut_read,
         )
 
     def __len__(self):
@@ -863,6 +870,7 @@ class DVector:
             time_format=self.time_format,
             low_memory=self.low_memory,
             _bypass_validation=_bypass_validation,
+            cut_read=self._cut_read,
         )
 
     def __mul__(self, other, _bypass_validation: bool = False):
@@ -931,6 +939,7 @@ class DVector:
             time_format=self.time_format,
             val_col=self.val_col,
             _bypass_validation=_bypass_validation,
+            cut_read=self._cut_read,
         )
 
     def split_by_other(self, other: DVector, agg_zone: ZoningSystem | None = None):
@@ -1001,6 +1010,7 @@ class DVector:
             time_format=other.time_format,
             val_col=other.val_col,
             low_memory=other.low_memory,
+            cut_read=self._cut_read,
         )
         return self * splitting_dvec
 
@@ -1066,6 +1076,7 @@ class DVector:
                 segmentation=new_segmentation,
                 zoning_system=self.zoning_system,
                 import_data=new_data,
+                cut_read=self._cut_read,
             )
         if new_data.drop(new_segmentation.ind()).sum().sum() == 0:
             SegmentationWarning(
@@ -1076,6 +1087,7 @@ class DVector:
                 segmentation=new_segmentation,
                 zoning_system=self.zoning_system,
                 import_data=new_data.loc[new_segmentation.ind()],
+                cut_read=self._cut_read,
             )
         raise ValueError("Generated index doesn't match the index of the new " "data.")
 
@@ -1162,6 +1174,7 @@ class DVector:
             segmentation=self.segmentation,
             zoning_system=None,
             time_format=self.time_format,
+            cut_read=self._cut_read,
         )
 
     def filter_segment_value(self, segment_name: str, segment_values: int | list[int]):
@@ -1200,6 +1213,7 @@ class DVector:
             time_format=self.time_format,
             val_col=self.val_col,
             low_memory=self.low_memory,
+            cut_read=self._cut_read,
         )
 
     def drop_by_segment_values(self, segment_name: str, segment_values: list[int]):
@@ -1226,6 +1240,7 @@ class DVector:
             time_format=self.time_format,
             val_col=self.val_col,
             low_memory=self.low_memory,
+            cut_read=self._cut_read,
         )
 
     def fillna(self, infill_value: float | int):
@@ -1278,6 +1293,7 @@ class DVector:
             val_col=self.val_col,
             low_memory=self.low_memory,
             _bypass_validation=_bypass_validation,
+            cut_read=self._cut_read,
         )
 
     def trans_seg_from_lookup(self, lookup: SegConverter, drop_old: bool = False):
@@ -1318,6 +1334,7 @@ class DVector:
             time_format=self.time_format,
             low_memory=self.low_memory,
             val_col=self.val_col,
+            cut_read=self._cut_read,
         )
 
     def calc_rmse(self, targets: list[IpfTarget]) -> float:
@@ -1595,6 +1612,7 @@ class DVector:
             segmentation=self.segmentation,
             time_format=self.time_format,
             import_data=summed,
+            cut_read=self._cut_read,
         )
 
     @classmethod
@@ -1650,6 +1668,7 @@ class DVector:
             zoning_system=new_zoning,
             segmentation=self.segmentation,
             time_format=self.time_format,
+            cut_read=self._cut_read,
         )
 
     def write_sector_reports(
@@ -1766,6 +1785,7 @@ class DVector:
             segmentation=new_seg,
             zoning_system=self.zoning_system,
             time_format=self.time_format,
+            cut_read=self._cut_read,
         )
 
     @staticmethod
@@ -1904,6 +1924,7 @@ class DVector:
             segmentation=self.segmentation,
             zoning_system=self.zoning_system,
             time_format=self.time_format,
+            cut_read=self._cut_read,
         )
 
 
