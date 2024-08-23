@@ -24,3 +24,7 @@ exclusions:
   exclusions:
     1:
     - 1
+- other_name: economic_status
+  exclusions:
+    1:
+    - -8
