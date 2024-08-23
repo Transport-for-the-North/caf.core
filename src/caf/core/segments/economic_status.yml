@@ -8,3 +8,16 @@ values:
   5: Economically inactive student
   6: Economically inactive
   -8: Other
+exclusions:
+- other_name: adult_nssec
+  exclusions:
+    1:
+      - 10
+    3:
+      - 10
+    5:
+      - 1
+      - 4
+      - 7
+      - 10
+
