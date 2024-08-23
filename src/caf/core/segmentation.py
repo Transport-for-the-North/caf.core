@@ -8,6 +8,7 @@ enumeration from caf.core.segments. Both are used for building segmentations.
 from __future__ import annotations
 
 # Built-Ins
+import copy
 import warnings
 from typing import Union, Literal, Optional
 from os import PathLike
@@ -290,7 +291,7 @@ class Segmentation:
         else:
             df = source
         naming_order = segmentation.naming_order
-        conf = segmentation.input.copy()
+        conf = copy.deepcopy(segmentation.input)
         if df.index.names == naming_order:
             df.sort_index(inplace=True)
             read_index = df.index
