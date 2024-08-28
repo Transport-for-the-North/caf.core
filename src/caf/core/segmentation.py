@@ -192,18 +192,26 @@ class Segmentation:
         """Produce and index from the lookups of the segments."""
         lookups = []
         no_prod = []
-        copy_iterator = self.naming_order.copy()
+        copy_iterator = self.segments.copy()
         for own_seg in self.segments:
             for other_seg in copy_iterator:
-                if other_seg == own_seg.name:
+                if other_seg.name == own_seg.name:
                     continue
-                if other_seg in own_seg.lookup_segs:
-                    lookup = pd.DataFrame(index=own_seg.lookup_indices(other_seg))
-                    lookup.index.names = [own_seg.name, other_seg]
+                if other_seg.name in own_seg.lookup_segs:
+                    lookup = (
+                        pd.DataFrame(index=own_seg.lookup_indices(other_seg.name))
+                        .reset_index()
+                        .rename(columns={"dummy": own_seg.name})
+                    )
+                    lookup = lookup[
+                        (lookup[own_seg.name].isin(own_seg.int_values))
+                        & (lookup[other_seg.name].isin(other_seg.int_values))
+                    ]
+                    lookup.set_index([own_seg.name, other_seg.name], inplace=True)
                     # lookup['val'] = 1
                     lookups.append(lookup)
                     no_prod.append(own_seg.name)
-                    no_prod.append(other_seg)
+                    no_prod.append(other_seg.name)
         joined = None
         if len(lookups) > 0:
             joined = lookups[0]
