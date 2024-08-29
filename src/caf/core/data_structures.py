@@ -1770,7 +1770,49 @@ class DVector:
             other_sum = other
         return math.isclose(self.sum(), other_sum, rel_tol=rel_tol, abs_tol=abs_tol)
 
+    def concat(self, data: DVector):
+        """
+        Analogous to pandas dataframe concat method.
+
+        The DVector being concatenated must have the same zoning system, and the same segmentation
+        levels. The segmentations of each must not overlap, meaning that in the case of enum
+        segments used, both must contain subsets.
+        """
+        new_seg = self.segmentation.copy()
+        intersection = self.data.index.intersection(data.data.index)
+        # if data.segmentation != self.segmentation:
+        #     raise ValueError("Additional data has incorrect segmentation.")
+        if data.zoning_system != self.zoning_system:
+            raise ValueError("Zoning systems don't match.")
+        if len(intersection) > 0:
+            raise ValueError("There is an overlap in indices.")
+        new_data = data.data.reorder_levels(self.segmentation.naming_order)
+        for name in self.segmentation.naming_order:
+            own_vals = self.segmentation.seg_dict[name].int_values
+            new_vals = data.segmentation.seg_dict[name].int_values
+            additional = [i for i in new_vals if i not in own_vals]
+            if len(additional) > 0:
+                try:
+                    new_seg.input.subsets[name] += additional
+                    if new_seg.input.subsets[name] == list(
+                        SegmentsSuper(name).get_segment().values.keys()
+                    ):
+                        del new_seg.input.subsets[name]
+                except KeyError:
+                    continue
+        new_data = pd.concat([self.data, new_data])
+        return DVector(
+            import_data=new_data,
+            segmentation=new_seg.reinit(),
+            zoning_system=self.zoning_system,
+            time_format=self.time_format,
+        )
+
     def add_value_to_subset(self, segment: str, value: int, data: pd.DataFrame):
+        warnings.warn(
+            "This method is being deprecated and won't be available in future."
+            "Please use the concat method instead."
+        )
         new_seg = self.segmentation.copy()
         new_seg.input.subsets[segment].append(value)
         new_seg = new_seg.reinit()
