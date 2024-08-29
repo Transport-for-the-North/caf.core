@@ -1193,7 +1193,7 @@ class DVector:
             contain a subset of the segment.
         """
         new_data = self.data.copy()
-        if isinstance(self.segmentation.ind, pd.MultiIndex):
+        if isinstance(self.segmentation.ind(), pd.MultiIndex):
             if isinstance(segment_values, list):
                 new_data = new_data[
                     new_data.index.get_level_values(level=segment_name).isin(segment_values)
@@ -1205,7 +1205,7 @@ class DVector:
         if isinstance(segment_values, int):
             new_seg = self.segmentation.remove_segment(segment_name)
         else:
-            new_seg = self.segmentation.update_subsets({segment_name, segment_values})
+            new_seg = self.segmentation.update_subsets({segment_name: segment_values})
         return DVector(
             import_data=new_data,
             segmentation=new_seg,
