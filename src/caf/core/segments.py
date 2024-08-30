@@ -288,8 +288,7 @@ class SegConverter(enum.Enum):
 
     def get_conversion(self):
         """Get a conversion for the enum."""
-        match self:
-            case SegConverter.AG_G:
+        if self == SegConverter.AG_G:
                 from_ind = pd.MultiIndex.from_tuples(
                     [
                         (1, 1),
@@ -334,8 +333,7 @@ class SegConverter(enum.Enum):
                     3,
                 ]
                 return pd.DataFrame(index=from_ind, data={"gender_3": to_vals})
-        match self:
-            case SegConverter.APOPEMP_AWS:
+        elif self == SegConverter.APOPEMP_AWS:
                 from_ind = pd.MultiIndex.from_tuples(
                     [
                         (9, 1),
@@ -427,8 +425,7 @@ class SegConverter(enum.Enum):
 
                 return pd.DataFrame(index=from_ind, data={"aws": to_vals})
 
-        match self:
-            case SegConverter.CARADULT_HHTYPE:
+        elif self == SegConverter.CARADULT_HHTYPE:
                 from_ind = pd.MultiIndex.from_tuples(
                     [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 1), (3, 2), (3, 3)],
                     names=["adults", "car_availability"],
@@ -437,8 +434,7 @@ class SegConverter(enum.Enum):
 
                 return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
 
-        match self:
-            case SegConverter.NSSEC_ADULT:
+        elif self == SegConverter.NSSEC_ADULT:
                 from_ind = pd.MultiIndex.from_product(
                     [range(1, 6), range(1, 4)], names=["ns_sec", "adults"]
                 )
