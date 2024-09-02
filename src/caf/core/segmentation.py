@@ -88,7 +88,7 @@ class SegmentationInput(BaseConfig):
             return values
         v = values["custom_segments"]
         for seg in v:
-            if seg['name'] in SegmentsSuper.values():
+            if seg.name in SegmentsSuper.values():
                 raise ValueError(
                     "There is already a segment defined with name "
                     f"{seg.name}. Segment names must be unique "
