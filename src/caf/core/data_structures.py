@@ -1786,7 +1786,10 @@ class DVector:
             raise ValueError("Zoning systems don't match.")
         if len(intersection) > 0:
             raise ValueError("There is an overlap in indices.")
-        new_data = data.data.reorder_levels(self.segmentation.naming_order)
+        try:
+            new_data = data.data.reorder_levels(self.segmentation.naming_order)
+        except TypeError:
+            new_data = data.data
         for name in self.segmentation.naming_order:
             own_vals = self.segmentation.seg_dict[name].int_values
             new_vals = data.segmentation.seg_dict[name].int_values
