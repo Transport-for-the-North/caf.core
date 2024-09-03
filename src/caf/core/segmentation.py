@@ -542,6 +542,31 @@ class Segmentation:
             return set(self.names).intersection(other.names)
         return set(self.names).intersection(other)
 
+    def subset_difference(self, other: Segmentation):
+        if (self.input.subsets is None) & (other.input.subsets is None):
+            return None
+        self_subsets = [i for i in self.input.subsets.keys() if i in other.names]
+        other_subsets = [j for j in other.input.subsets.keys() if j in self.names]
+        if (len(self_subsets) == 0) & (len(other_subsets) == 0):
+            return None
+        missing_other = {}
+        for name in other_subsets:
+            full = SegmentsSuper(name).get_segment()
+            if name not in self.input.subsets.keys():
+                missing_other[name] = [i for i in full.int_values if i not in other.input.subsets[name]]
+            elif self.input.subsets[name] != other.input.subsets[name]:
+                missing_other[name] = [i for i in self.input.subsets[name] if i not in other.input.subsets[name]]
+        missing_self = {}
+        for name in self_subsets:
+            full = SegmentsSuper(name).get_segment()
+            if name not in self.input.subsets.keys():
+                missing_self[name] = [i for i in full.int_values if
+                                       i not in self.input.subsets[name]]
+            elif self.input.subsets[name] != other.input.subsets[name]:
+                missing_self[name] = [i for i in other.input.subsets[name] if
+                                       i not in self.input.subsets[name]]
+        return missing_self, missing_other
+
     def is_subset(self, other: Segmentation):
         """Check whether self is a subset of other."""
         return bool(self.overlap(other) == set(self.names))

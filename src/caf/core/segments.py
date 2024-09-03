@@ -96,7 +96,7 @@ class Segment(BaseConfig):
     # pylint: enable=inconsistent-return-statements
 
     @property
-    def int_values(self):
+    def int_values(self) -> list:
         """Return integer values of segment."""
         return list(self.values.keys())
 
@@ -289,157 +289,157 @@ class SegConverter(enum.Enum):
     def get_conversion(self):
         """Get a conversion for the enum."""
         if self == SegConverter.AG_G:
-                from_ind = pd.MultiIndex.from_tuples(
-                    [
-                        (1, 1),
-                        (2, 1),
-                        (3, 1),
-                        (1, 2),
-                        (2, 2),
-                        (3, 2),
-                        (4, 1),
-                        (5, 1),
-                        (6, 1),
-                        (7, 1),
-                        (8, 1),
-                        (9, 1),
-                        (4, 2),
-                        (5, 2),
-                        (6, 2),
-                        (7, 2),
-                        (8, 2),
-                        (9, 2),
-                    ],
-                    names=["age_9", "g"],
-                )
-                to_vals = [
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    2,
-                    2,
-                    2,
-                    2,
-                    2,
-                    2,
-                    3,
-                    3,
-                    3,
-                    3,
-                    3,
-                    3,
-                ]
-                return pd.DataFrame(index=from_ind, data={"gender_3": to_vals})
+            from_ind = pd.MultiIndex.from_tuples(
+                [
+                    (1, 1),
+                    (2, 1),
+                    (3, 1),
+                    (1, 2),
+                    (2, 2),
+                    (3, 2),
+                    (4, 1),
+                    (5, 1),
+                    (6, 1),
+                    (7, 1),
+                    (8, 1),
+                    (9, 1),
+                    (4, 2),
+                    (5, 2),
+                    (6, 2),
+                    (7, 2),
+                    (8, 2),
+                    (9, 2),
+                ],
+                names=["age_9", "g"],
+            )
+            to_vals = [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                2,
+                2,
+                2,
+                2,
+                2,
+                2,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+            ]
+            return pd.DataFrame(index=from_ind, data={"gender_3": to_vals})
         elif self == SegConverter.APOPEMP_AWS:
-                from_ind = pd.MultiIndex.from_tuples(
-                    [
-                        (9, 1),
-                        (9, 2),
-                        (9, 3),
-                        (9, 4),
-                        (9, 5),
-                        (1, 1),
-                        (1, 2),
-                        (1, 3),
-                        (1, 4),
-                        (1, 5),
-                        (2, 1),
-                        (2, 2),
-                        (2, 3),
-                        (2, 4),
-                        (2, 5),
-                        (3, 1),
-                        (3, 2),
-                        (3, 3),
-                        (3, 4),
-                        (3, 5),
-                        (4, 1),
-                        (5, 1),
-                        (6, 1),
-                        (7, 1),
-                        (8, 1),
-                        (4, 2),
-                        (5, 2),
-                        (6, 2),
-                        (7, 2),
-                        (8, 2),
-                        (4, 3),
-                        (5, 3),
-                        (6, 3),
-                        (7, 3),
-                        (8, 3),
-                        (4, 4),
-                        (5, 4),
-                        (6, 4),
-                        (7, 4),
-                        (8, 4),
-                    ],
-                    names=["age_9", "pop_emp"],
-                )
+            from_ind = pd.MultiIndex.from_tuples(
+                [
+                    (9, 1),
+                    (9, 2),
+                    (9, 3),
+                    (9, 4),
+                    (9, 5),
+                    (1, 1),
+                    (1, 2),
+                    (1, 3),
+                    (1, 4),
+                    (1, 5),
+                    (2, 1),
+                    (2, 2),
+                    (2, 3),
+                    (2, 4),
+                    (2, 5),
+                    (3, 1),
+                    (3, 2),
+                    (3, 3),
+                    (3, 4),
+                    (3, 5),
+                    (4, 1),
+                    (5, 1),
+                    (6, 1),
+                    (7, 1),
+                    (8, 1),
+                    (4, 2),
+                    (5, 2),
+                    (6, 2),
+                    (7, 2),
+                    (8, 2),
+                    (4, 3),
+                    (5, 3),
+                    (6, 3),
+                    (7, 3),
+                    (8, 3),
+                    (4, 4),
+                    (5, 4),
+                    (6, 4),
+                    (7, 4),
+                    (8, 4),
+                ],
+                names=["age_9", "pop_emp"],
+            )
 
-                to_vals = [
-                    6,
-                    6,
-                    6,
-                    6,
-                    6,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    1,
-                    2,
-                    2,
-                    2,
-                    2,
-                    2,
-                    3,
-                    3,
-                    3,
-                    3,
-                    3,
-                    5,
-                    5,
-                    5,
-                    5,
-                    5,
-                    4,
-                    4,
-                    4,
-                    4,
-                    4,
-                ]
+            to_vals = [
+                6,
+                6,
+                6,
+                6,
+                6,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                2,
+                2,
+                2,
+                2,
+                2,
+                3,
+                3,
+                3,
+                3,
+                3,
+                5,
+                5,
+                5,
+                5,
+                5,
+                4,
+                4,
+                4,
+                4,
+                4,
+            ]
 
-                return pd.DataFrame(index=from_ind, data={"aws": to_vals})
+            return pd.DataFrame(index=from_ind, data={"aws": to_vals})
 
         elif self == SegConverter.CARADULT_HHTYPE:
-                from_ind = pd.MultiIndex.from_tuples(
-                    [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 1), (3, 2), (3, 3)],
-                    names=["adults", "car_availability"],
-                )
-                to_vals = [1, 2, 2, 3, 4, 5, 6, 7, 8]
+            from_ind = pd.MultiIndex.from_tuples(
+                [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 1), (3, 2), (3, 3)],
+                names=["adults", "car_availability"],
+            )
+            to_vals = [1, 2, 2, 3, 4, 5, 6, 7, 8]
 
-                return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
+            return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
 
         elif self == SegConverter.NSSEC_ADULT:
-                from_ind = pd.MultiIndex.from_product(
-                    [range(1, 6), range(1, 4)], names=["ns_sec", "adults"]
-                )
-                to_vals = range(1, 16)
-                return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
+            from_ind = pd.MultiIndex.from_product(
+                [range(1, 6), range(1, 4)], names=["ns_sec", "adults"]
+            )
+            to_vals = range(1, 16)
+            return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
 
 
 # if __name__ == "__main__":
