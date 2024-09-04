@@ -716,13 +716,12 @@ class DVector:
                 "possible."
             )
 
-
     def _generic_dunder(
         self,
         other,
         df_method,
         series_method,
-        how: str = 'inner',
+        how: str = "inner",
         escalate_warnings: bool = False,
         _bypass_validation: bool = False,
     ):
@@ -752,17 +751,26 @@ class DVector:
         subset_diff = self.segmentation.subset_difference(other.segmentation)
         if subset_diff is not None:
             missing_other = subset_diff[1]
-            if how == 'inner':
-                SegmentationWarning("There are subsets in other's segmentation not in self."
-                                    "This will lead to rows present in self being cut in the product."
-                                    f"Missing values are {missing_other}")
+            if how == "inner":
+                warnings.warn(
+                    "There are subsets in other's segmentation not in self. "
+                    "This will lead to rows present in self being cut in the product. "
+                    f"Missing values are {missing_other}",
+                    SegmentationWarning,
+                )
                 drop_na = True
             else:
-                if self.segmentation.overlap(other.segmentation) != set(other.segmentation.naming_order):
-                    excess = [i for i in other.segmentation.names if i not in self.segmentation.names]
-                    raise SegmentationError("An outer dunder method cannot be performed where other "
-                                            f"contains segments not present in self. {excess} in "
-                                            f"other but not in self.")
+                if self.segmentation.overlap(other.segmentation) != set(
+                    other.segmentation.naming_order
+                ):
+                    excess = [
+                        i for i in other.segmentation.names if i not in self.segmentation.names
+                    ]
+                    raise SegmentationError(
+                        "An outer dunder method cannot be performed where other "
+                        f"contains segments not present in self. {excess} in "
+                        f"other but not in self."
+                    )
 
         out = self.copy()
         # Takes exclusions into account before operating
@@ -896,26 +904,44 @@ class DVector:
             cut_read=self._cut_read,
         )
 
-    def __mul__(self, other, _bypass_validation: bool = False):
+    def __mul__(self, other, _bypass_validation: bool = False, how: str = "inner"):
         """Multiply dunder method for DVector."""
         return self._generic_dunder(
-            other, pd.DataFrame.mul, pd.Series.mul, _bypass_validation=_bypass_validation
+            other,
+            pd.DataFrame.mul,
+            pd.Series.mul,
+            _bypass_validation=_bypass_validation,
+            how=how,
         )
 
-    def __add__(self, other):
+    def __add__(self, other, _bypass_validation: bool = False, how: str = "inner"):
         """Add dunder method for DVector."""
-        return self._generic_dunder(other, pd.DataFrame.add, pd.Series.add)
+        return self._generic_dunder(
+            other,
+            pd.DataFrame.add,
+            pd.Series.add,
+            _bypass_validation=_bypass_validation,
+            how=how,
+        )
 
-    def __sub__(self, other, _bypass_validation: bool = False):
+    def __sub__(self, other, _bypass_validation: bool = False, how: str = "inner"):
         """Subtract dunder method for DVector."""
         return self._generic_dunder(
-            other, pd.DataFrame.sub, pd.Series.sub, _bypass_validation=_bypass_validation
+            other,
+            pd.DataFrame.sub,
+            pd.Series.sub,
+            _bypass_validation=_bypass_validation,
+            how=how,
         )
 
-    def __truediv__(self, other, _bypass_validation: bool = False):
+    def __truediv__(self, other, _bypass_validation: bool = False, how: str = "inner"):
         """Division dunder method for DVector."""
         return self._generic_dunder(
-            other, pd.DataFrame.div, pd.Series.div, _bypass_validation=_bypass_validation
+            other,
+            pd.DataFrame.div,
+            pd.Series.div,
+            _bypass_validation=_bypass_validation,
+            how=how,
         )
 
     def __eq__(self, other):
@@ -939,6 +965,9 @@ class DVector:
         New Segmentation must be a subset of the current segmentation. Currently
         this method is essentially a pandas 'groupby.sum()', but other methods
         could be called if needed (e.g. mean())
+
+        This method ignores 'subsets' in segs, if segs is provided as a Segmentation
+        rather than a list of strings. Subsets must be accounted for separately.
 
         Parameters
         ----------
@@ -1216,6 +1245,7 @@ class DVector:
             contain a subset of the segment.
         """
         new_data = self.data.copy()
+        new_seg = self.segmentation.copy()
         if isinstance(self.segmentation.ind(), pd.MultiIndex):
             if isinstance(segment_values, list):
                 new_data = new_data[
@@ -1226,9 +1256,9 @@ class DVector:
         else:
             new_data = new_data.loc[segment_values]
         if isinstance(segment_values, int):
-            new_seg = self.segmentation.remove_segment(segment_name)
+            new_seg = new_seg.remove_segment(segment_name)
         else:
-            new_seg = self.segmentation.update_subsets({segment_name: segment_values})
+            new_seg = new_seg.update_subsets({segment_name: segment_values})
         return DVector(
             import_data=new_data,
             segmentation=new_seg,
@@ -1561,7 +1591,7 @@ class DVector:
                             reverse=True,
                             _bypass_validation=bypass,
                         )
-                new_dvec = new_dvec.__mul__(factor, _bypass_validation=bypass)
+                new_dvec = new_dvec.__mul__(factor, _bypass_validation=bypass, how="outer")
 
             rmse = new_dvec.calc_rmse(targets)
             LOG.info(f"RMSE = {rmse} after {i + 1} iterations.")
