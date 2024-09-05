@@ -422,23 +422,25 @@ class DVector:
 
         if expand_to_read:
             expander = pd.DataFrame(index=seg.ind(), data={"dummy": 1})
+            if isinstance(sorted_data, pd.Series):
+                sorted_data = sorted_data.to_frame()
             sorted_data = (
                 sorted_data.join(expander, how="outer").fillna(0).drop("dummy", axis=1)
             )
 
         if self._cut_read:
             full_sum = sorted_data.values.sum()
-            import_data = sorted_data.reindex(
+            sorted_data = sorted_data.reindex(
                 seg.ind(), axis="index", method=None
             ).sort_index()
-            cut_sum = import_data.values.sum()
+            cut_sum = sorted_data.values.sum()
             warnings.warn(f"{full_sum - cut_sum} dropped on seg validation.")
 
         if self.zoning_system is None:
-            if isinstance(import_data, pd.DataFrame):
-                import_data = import_data.squeeze()
-            import_data.name = self.val_col
-            return import_data, seg
+            if isinstance(sorted_data, pd.DataFrame):
+                sorted_data = sorted_data.squeeze()
+            sorted_data.name = self.val_col
+            return sorted_data, seg
 
         # TODO: consider replacing with alternative checks that allow string IDs
         ### This chunk of code requires the zone names to be integers
@@ -454,12 +456,12 @@ class DVector:
         #         f"to zone IDs not {import_data.columns.dtype}"
         #     ) from exc
 
-        if set(import_data.columns) != set(self.zoning_system.zone_ids):
+        if set(sorted_data.columns) != set(self.zoning_system.zone_ids):
             missing = self.zoning_system.zone_ids[
-                ~np.isin(self.zoning_system.zone_ids, import_data.columns)
+                ~np.isin(self.zoning_system.zone_ids, sorted_data.columns)
             ]
-            extra = import_data.columns.values[
-                ~np.isin(import_data.columns.values, self.zoning_system.zone_ids)
+            extra = sorted_data.columns.values[
+                ~np.isin(sorted_data.columns.values, self.zoning_system.zone_ids)
             ]
             if len(extra) > 0:
                 raise ValueError(
@@ -475,7 +477,7 @@ class DVector:
                     f" e.g. you are using a subset of a zoning system."
                 )
 
-        return import_data, seg
+        return sorted_data, seg
 
     def save(self, out_path: PathLike):
         """
