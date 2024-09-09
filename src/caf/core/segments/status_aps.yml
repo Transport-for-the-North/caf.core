@@ -1,0 +1,6 @@
+name: status_aps
+values:
+  1: Economically active employed
+  2: Economically active unemployed
+  3: Economically inactive
+  -8: Other
