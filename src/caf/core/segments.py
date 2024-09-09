@@ -247,6 +247,7 @@ class SegmentsSuper(enum.Enum):
     SIC_1 = "sic_1_digit"
     SIC_2 = "sic_2_digit"
     SIC_4 = "sic_4_digit"
+    STATUS_APS = "status_aps"
 
     @classmethod
     def values(cls):
