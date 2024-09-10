@@ -754,12 +754,13 @@ class DVector:
         if subset_diff is not None:
             missing_other = subset_diff[1]
             if how == "inner":
-                warnings.warn(
-                    "There are subsets in other's segmentation not in self. "
-                    "This will lead to rows present in self being cut in the product. "
-                    f"Missing values are {missing_other}",
-                    SegmentationWarning,
-                )
+                if len(missing_other) > 0:
+                    warnings.warn(
+                        "There are subsets in other's segmentation not in self. "
+                        "This will lead to rows present in self being cut in the product. "
+                        f"Missing values are {missing_other}",
+                        SegmentationWarning,
+                    )
                 drop_na = True
             else:
                 if self.segmentation.overlap(other.segmentation) != set(

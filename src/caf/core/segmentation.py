@@ -563,7 +563,7 @@ class Segmentation:
         missing_self = {}
         for name in self_subsets:
             full = SegmentsSuper(name).get_segment()
-            if name not in self.input.subsets.keys():
+            if name not in other.input.subsets.keys():
                 missing_self[name] = [
                     i for i in full.int_values if i not in self.input.subsets[name]
                 ]
