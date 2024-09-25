@@ -10,9 +10,10 @@ import os
 import re
 from os import PathLike
 from pathlib import Path
+import warnings
 from typing import Literal, Optional, Union, Any
 from typing_extensions import Self
-import warnings
+
 
 import h5py
 import numpy as np
@@ -254,10 +255,12 @@ class ZoningSystem:
 
     @property
     def id_to_internal(self) -> dict:
+        """Produce lookup to convert id to internal."""
         return self.internal().to_dict()
 
     @property
     def id_to_external(self) -> dict:
+        """Produce lookup to convert id to external."""
         return self.external().to_dict()
 
     @property
@@ -314,9 +317,11 @@ class ZoningSystem:
         return self._get_column(self._name_column)
 
     def internal(self) -> pd.Series:
+        """Getter for internal column."""
         return self._get_column("internal")
 
     def external(self) -> pd.Series:
+        """Getter for external column."""
         return self._get_column("external")
 
     def _get_mask_column(self, name: str) -> pd.Series:

@@ -334,7 +334,7 @@ class SegConverter(enum.Enum):
                 3,
             ]
             return pd.DataFrame(index=from_ind, data={"gender_3": to_vals})
-        elif self == SegConverter.APOPEMP_AWS:
+        if self == SegConverter.APOPEMP_AWS:
             from_ind = pd.MultiIndex.from_tuples(
                 [
                     (9, 1),
@@ -426,7 +426,7 @@ class SegConverter(enum.Enum):
 
             return pd.DataFrame(index=from_ind, data={"aws": to_vals})
 
-        elif self == SegConverter.CARADULT_HHTYPE:
+        if self == SegConverter.CARADULT_HHTYPE:
             from_ind = pd.MultiIndex.from_tuples(
                 [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 1), (3, 2), (3, 3)],
                 names=["adults", "car_availability"],
@@ -435,12 +435,13 @@ class SegConverter(enum.Enum):
 
             return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
 
-        elif self == SegConverter.NSSEC_ADULT:
+        if self == SegConverter.NSSEC_ADULT:
             from_ind = pd.MultiIndex.from_product(
                 [range(1, 6), range(1, 4)], names=["ns_sec", "adults"]
             )
             to_vals = range(1, 16)
             return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
+        raise ValueError("Invalid input segment.")
 
 
 # if __name__ == "__main__":
