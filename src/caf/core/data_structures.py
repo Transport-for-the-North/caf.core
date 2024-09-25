@@ -510,6 +510,9 @@ class DVector:
         ----------
         in_path: PathLike
             Path to where the DVector is saved. This should be a single hdf file.
+
+        cut_read: bool = False
+            If True, the read in data will be cut to match the expected segmentation.
         """
         in_path = Path(in_path)
         zoning = ZoningSystem.load(in_path, "hdf")
@@ -530,6 +533,7 @@ class DVector:
         trans_vector: pd.DataFrame = None,
         weighting: str | TranslationWeighting = TranslationWeighting.SPATIAL,
         check_totals: bool = True,
+        no_factors: bool = False,
         one_to_one: bool = False,
         _bypass_validation: bool = False,
     ) -> DVector:
@@ -544,6 +548,10 @@ class DVector:
         cache_path: Optional[PathLike]
             Path to a cache containing zoning translations.
 
+        trans_vector: pd.DataFrame = None
+            If provided this is the translation vector which will be used. If not
+            provided this method will attempt to find one from cache_path.
+
         weighting : str | TranslationWeighting = TranslationWeighting.SPATIAL
             The weighting to use when building the zone_translation. Must be
             one of TranslationWeighting.
@@ -552,11 +560,15 @@ class DVector:
             Whether to raise a warning if the translated total doesn't match the
             input total. Should be set to False for one-to-one translations.
 
-        one-to-one: bool = False
+        no_factors: bool = False
             Whether to run as a one-to-one zone_translation, e.g. all data will be
             multiplied by one, and zone numbers will change. This should only be
             used for perfectly nesting zone systems when disaggregating, e.g.
             msoa to lsoa.
+
+        one_to_one: bool = False
+            If True will force a one-to-one translation, where the largest factor is
+            chosen for each zone combination. This will turn on no_factors as well.
 
         Returns
         -------
@@ -598,6 +610,12 @@ class DVector:
         # factors equal one to propagate perfectly
         # This only works for perfect nesting
         if one_to_one:
+            idx = trans_vector.groupby(f"{normalise_column_name(self.zoning_system.name)}_id")[
+                factor_col
+            ].idxmax()
+            trans_vector = trans_vector.loc[idx]
+            no_factors = True
+        if no_factors:
             trans_vector[factor_col] = 1
         # Use a simple replace and group for nested zoning
         if trans_vector[
@@ -711,7 +729,7 @@ class DVector:
     def overlap(self, other):
         """Call segmentation overlap method to check two DVectors contain overlapping segments."""
         overlap = self.segmentation.overlap(other.segmentation)
-        if overlap == []:
+        if not overlap:
             raise NotImplementedError(
                 "There are no common segments between the "
                 "two DVectors so this operation is not "
@@ -723,7 +741,7 @@ class DVector:
         other,
         df_method,
         series_method,
-        how: str = "inner",
+        how: Literal["inner", "outer"] = "inner",
         escalate_warnings: bool = False,
         _bypass_validation: bool = False,
     ):
@@ -731,6 +749,18 @@ class DVector:
         Stop telling me to use the imperative mood pydocstyle.
 
         A generic dunder method which is called by each of the dunder methods.
+
+        Parameters
+        ----------
+        df_method:
+            A pd.DataFrame method to be called on self.data with other.data.
+        series_method:
+            The equivalent series method to df_method.
+        how: Literal["inner", "outer"] = "inner"
+            Whether the method should implicitly join inner or outer. If outer
+            the non-matching indices will be infilled with zeros
+        escalate_warnings:
+            Whether to escalate warnings to errors.
         """
         drop_na = False
         if isinstance(other, Number):
@@ -882,6 +912,7 @@ class DVector:
                 f"rows have been dropped from the pure product."
             )
             prod = prod.loc[new_seg.ind()]
+
         return DVector(
             segmentation=new_seg,
             import_data=prod,
@@ -1074,7 +1105,7 @@ class DVector:
         new_segs: list[Segment],
         new_naming_order: Optional[list[str]] = None,
         split_method: Literal["split", "duplicate"] = "duplicate",
-        splitter: pd.Series = None,
+        splitter: pd.Series | None = None,
     ):
         """
         Add a segment to a DVector.
@@ -1100,6 +1131,10 @@ class DVector:
             split values into the new segment, conserving the sum of the current
             DVector. Duplicate will keep all values the same and duplicate them
             into the new DVector.
+
+        splitter: pd.Series | None = None
+            A series with the expanded index. Self.data will be multiplied by this
+            to expand its segmentation. If this isn't provided it will be all ones.
 
         Returns
         -------
@@ -1258,10 +1293,12 @@ class DVector:
                 new_data = new_data.xs(segment_values, level=segment_name)
         else:
             new_data = new_data.loc[segment_values]
+
         if isinstance(segment_values, int):
             new_seg = new_seg.remove_segment(segment_name)
         else:
             new_seg = new_seg.update_subsets({segment_name: segment_values})
+
         return DVector(
             import_data=new_data,
             segmentation=new_seg,
@@ -1289,6 +1326,7 @@ class DVector:
             new_data = new_data.drop[segment_values]
 
         new_seg = self.segmentation.update_subsets({segment_name, segment_values}, remove=True)
+
         return DVector(
             import_data=new_data,
             segmentation=new_seg,
@@ -1341,6 +1379,7 @@ class DVector:
             if drop_from:
                 new_data.drop(from_seg, axis=1, inplace=True)
             new_data = new_data.groupby(new_segmentation.naming_order).sum()
+
         return DVector(
             import_data=new_data,
             segmentation=new_segmentation,
@@ -1547,6 +1586,8 @@ class DVector:
             before stopping. Can also stop if consecutive iterations score the same.
         max_iters: int = 100
             The max number of iterations which can run before the process will stop.
+        zone_trans_cache: Path | None = None
+            The cache to look for translations in
 
         Returns
         -------
@@ -1556,6 +1597,7 @@ class DVector:
         targets = self.validate_ipf_targets(targets, zone_trans_cache)
         new_dvec = self.copy()
         prev_rmse = np.inf
+        rmse = np.inf
         bypass = False
         for i in range(max_iters):
             for target in targets:
@@ -1583,8 +1625,8 @@ class DVector:
                     factor = factor.translate_zoning(
                         self.zoning_system,
                         trans_vector=target.zone_translation,
-                        one_to_one=True,
                         check_totals=False,
+                        no_factors=True,
                     )
                 if target.segment_translations is not None:
                     for targ_seg, seed_seg in target.segment_translations.items():
@@ -1674,16 +1716,36 @@ class DVector:
     @classmethod
     def concat_from_dir(
         cls,
-        dir: PathLike,
+        folder: PathLike,
         zoning: ZoningSystem | None = None,
         segmentation: Segmentation | None = None,
     ):
-        dir = Path(dir)
+        """
+        Load all DVectors in a directort and concatenate them into a single DVector.
+
+        Parameters
+        ----------
+        folder: PathLike
+            The dir containing DVectors to be concatenated.
+        zoning: ZoningSystem | None = None
+            The zoning of the resulting DVector. If not provided this will be inferred
+            from the first DVector read in, and subsequent DVectors will be translated
+            to this zoning if they don't match.
+        segmentation: Segmentation | None = None
+            The Segmentation of the resulting DVector. If not provided this will be inferred
+            from the first DVector read in, and subsequent DVectors will be aggregated
+            to this segmentation if necessary and possible.
+
+        Returns
+        -------
+        DVector
+        """
+        folder = Path(folder)
         dvecs = []
-        for file in listdir(dir):
+        for file in listdir(folder):
             if file.endswith("hdf"):
                 try:
-                    dvec = cls.load(dir / file)
+                    dvec = cls.load(folder / file)
                 except:
                     continue
                 if zoning is None:
@@ -1715,10 +1777,12 @@ class DVector:
         return self.remove_zoning()
 
     def to_ie(self):
+        """Convert zoning to internal/external."""
         new_data = self.data.rename(columns=self.zoning_system.id_to_external)
         new_data = new_data.T.groupby(level=0).sum().T
         new_data.columns = [int(i) + 1 for i in new_data.columns]
         new_zoning = ZoningSystem.get_zoning("ie_sector")
+
         return DVector(
             import_data=new_data,
             zoning_system=new_zoning,
@@ -1826,7 +1890,7 @@ class DVector:
             other_sum = other
         return math.isclose(self.sum(), other_sum, rel_tol=rel_tol, abs_tol=abs_tol)
 
-    def concat(self, data: DVector):
+    def concat(self, other: DVector):
         """
         Analogous to pandas dataframe concat method.
 
@@ -1835,20 +1899,20 @@ class DVector:
         segments used, both must contain subsets.
         """
         new_seg = self.segmentation.copy()
-        intersection = self.data.index.intersection(data.data.index)
+        intersection = self.data.index.intersection(other.data.index)
         # if data.segmentation != self.segmentation:
         #     raise ValueError("Additional data has incorrect segmentation.")
-        if data.zoning_system != self.zoning_system:
+        if other.zoning_system != self.zoning_system:
             raise ValueError("Zoning systems don't match.")
         if len(intersection) > 0:
             raise ValueError("There is an overlap in indices.")
         try:
-            new_data = data.data.reorder_levels(self.segmentation.naming_order)
+            new_data = other.data.reorder_levels(self.segmentation.naming_order)
         except TypeError:
-            new_data = data.data
+            new_data = other.data
         for name in self.segmentation.naming_order:
             own_vals = self.segmentation.seg_dict[name].int_values
-            new_vals = data.segmentation.seg_dict[name].int_values
+            new_vals = other.segmentation.seg_dict[name].int_values
             additional = [i for i in new_vals if i not in own_vals]
             if len(additional) > 0:
                 try:
@@ -1868,6 +1932,23 @@ class DVector:
         )
 
     def add_value_to_subset(self, segment: str, value: int, data: pd.DataFrame):
+        """
+        Add a value to a subset segment in a DVector
+
+        Parameters
+        ----------
+        segment: str
+            The target segment in self.Segmentation
+        value: int
+            The value to add to the target subset
+        data:
+            The data associated with the new value to be added. This data should
+            contain the same segment names as self.
+
+        Returns
+        -------
+        DVector
+        """
         warnings.warn(
             "This method is being deprecated and won't be available in future."
             "Please use the concat method instead."
