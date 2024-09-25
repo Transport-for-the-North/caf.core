@@ -69,17 +69,6 @@ class SegmentationInput(BaseConfig):
     custom_segments: list[Segment] = pydantic.Field(default_factory=list)
     subsets: dict[str, list[int]] = pydantic.Field(default_factory=dict)
 
-    # @pydantic.field_validator("enum_segments")
-    # @classmethod
-    # def make_enum(cls, v):
-    #     out = []
-    #     for val in v:
-    #         if isinstance(val, SegmentsSuper):
-    #             out.append(val)
-    #         else:
-    #             out.append(SegmentsSuper(val))
-    #     return out
-
     @pydantic.model_validator(mode="before")
     @classmethod
     def no_copied_names(cls, values):
@@ -189,7 +178,7 @@ class Segmentation:
         return [seg.values.keys() for seg in self.segments]
 
     def lookup_ind(self):
-        """Produce and index from the lookups of the segments."""
+        """Produce an index from the lookups of the segments."""
         lookups = []
         no_prod = []
         copy_iterator = self.segments.copy()
@@ -287,6 +276,10 @@ class Segmentation:
             segmentation should not form the index.
         segmentation : Segmentation
             The segmentation you expect 'source' to match.
+        escalate_warning: bool = False
+            Whether to escalate warnings to errors.
+        cut_read: bool = False
+            Whether to cut the read in Segmentation to the expected one.
 
         Returns
         -------
@@ -543,6 +536,21 @@ class Segmentation:
         return set(self.names).intersection(other)
 
     def subset_difference(self, other: Segmentation):
+        """
+        Return the difference between self and other's subsets.
+
+        Parameters
+        ----------
+        other: Segmentation
+            Segmentation to compare to self.
+
+        Returns
+        -------
+        missing_self: dict[str, int]
+            Subset values in other but not in self
+        missing_other: dict[str, int]
+            Subset values in self but not in other
+        """
         if (self.input.subsets is None) & (other.input.subsets is None):
             return None
         self_subsets = [i for i in self.input.subsets.keys() if i in other.names]
