@@ -6,36 +6,34 @@ Currently this is only the DVector class, but this may be expanded in the future
 """
 from __future__ import annotations
 
-import tempfile
-from numbers import Number
-from collections.abc import Collection
 import enum
 import itertools
 import logging
 import math
 import operator
+import tempfile
 import warnings
+from collections.abc import Collection
+from dataclasses import dataclass
+from numbers import Number
 from os import PathLike, listdir
 from pathlib import Path
-from typing import Optional, Union, Callable, Literal
-from dataclasses import dataclass
+from typing import Callable, Literal, Optional, Union
 
-
+import caf.toolkit as ctk
 import numpy as np
 import pandas as pd
-import caf.toolkit as ctk
-
 
 # pylint: disable=no-name-in-module,import-error
-from caf.core.segmentation import Segmentation, SegmentationWarning, SegmentationError
+from caf.core.segmentation import Segmentation, SegmentationError, SegmentationWarning
+from caf.core.segments import SegConverter, Segment, SegmentsSuper
 from caf.core.zoning import (
-    ZoningSystem,
-    TranslationWeighting,
-    TranslationError,
     BalancingZones,
+    TranslationError,
+    TranslationWeighting,
+    ZoningSystem,
     normalise_column_name,
 )
-from caf.core.segments import Segment, SegmentsSuper, SegConverter
 
 # pylint: enable=no-name-in-module,import-error
 
@@ -497,7 +495,7 @@ class DVector:
         None
         """
         out_path = Path(out_path)
-        if '.' not in out_path.name:
+        if "." not in out_path.name:
             out_path.name = out_path.name
 
         self._data.to_hdf(out_path, key="data", mode="w", complevel=1)
@@ -1474,7 +1472,12 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-    def validate_ipf_targets(self, targets: Collection[IpfTarget], rel_tol: float = 1e-5, cache_path: None | PathLike = None):
+    def validate_ipf_targets(
+        self,
+        targets: Collection[IpfTarget],
+        rel_tol: float = 1e-5,
+        cache_path: None | PathLike = None,
+    ):
         """
         Check targets for ipf will work, raises errors if not.
 

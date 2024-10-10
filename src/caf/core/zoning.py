@@ -8,17 +8,17 @@ import itertools
 import logging
 import os
 import re
+import warnings
 from os import PathLike
 from pathlib import Path
-import warnings
-from typing import Literal, Optional, Union, Any
-from typing_extensions import Self
+from typing import Any, Literal, Optional, Union
 
-
+import caf.toolkit as ctk
 import h5py
 import numpy as np
 import pandas as pd
-import caf.toolkit as ctk
+from typing_extensions import Self
+
 from caf.core.segmentation import Segmentation, SegmentationInput
 
 pd.set_option("future.no_silent_downcasting", True)
