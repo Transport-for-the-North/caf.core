@@ -483,7 +483,9 @@ class DVector:
         """
         Save the DVector.
 
-        DVector will be saved to a hdf file containing the DVector.
+        DVector will be saved to a hdf file containing the DVector. The preferred
+        extension for DVectors is .dvec for clarity, but this isn't enforced
+        anywhere
 
         Parameters
         ----------
@@ -495,6 +497,8 @@ class DVector:
         None
         """
         out_path = Path(out_path)
+        if '.' not in out_path.name:
+            out_path.name = out_path.name
 
         self._data.to_hdf(out_path, key="data", mode="w", complevel=1)
         if self.zoning_system is not None:
