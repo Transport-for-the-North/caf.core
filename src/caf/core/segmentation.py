@@ -409,6 +409,9 @@ class Segmentation:
                 to_seg = SegmentsSuper(to_seg).get_segment()
         if isinstance(from_seg, str):
             from_seg = self.get_segment(from_seg)
+        if from_seg not in self.segments:
+            raise SegmentationError("The segment being translated from is not in the current "
+                                    "segmentation.")
         to_seg, lookup = from_seg.translate_segment(to_seg, reverse=reverse)
         new_conf = self.input.model_copy(deep=True)
         if drop_from:
@@ -722,6 +725,9 @@ class Segmentation:
         """
         if isinstance(segment_name, Segment):
             segment_name = segment_name.name
+        if segment_name not in self.names:
+            raise SegmentationError(f"{segment_name} is not in the current segmentation, so "
+                                    f"cannot be removed.")
         if inplace:
             self.input.naming_order.remove(segment_name)
             if SegmentsSuper(segment_name) in self.input.enum_segments:
