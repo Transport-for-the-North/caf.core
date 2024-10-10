@@ -940,7 +940,9 @@ class DVector:
             cut_read=self._cut_read,
         )
 
-    def __mul__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
+    def __mul__(
+        self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"
+    ):
         """Multiply dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -950,7 +952,9 @@ class DVector:
             how=how,
         )
 
-    def __add__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
+    def __add__(
+        self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"
+    ):
         """Add dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -960,7 +964,9 @@ class DVector:
             how=how,
         )
 
-    def __sub__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
+    def __sub__(
+        self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"
+    ):
         """Subtract dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -970,7 +976,9 @@ class DVector:
             how=how,
         )
 
-    def __truediv__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
+    def __truediv__(
+        self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"
+    ):
         """Division dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -1151,7 +1159,7 @@ class DVector:
         new_segmentation = new_segmentation.add_segment(
             new_segs[-1], new_naming_order=new_naming_order
         )
-  
+
         if splitter is None:
             splitter = pd.Series(index=new_segmentation.ind(), data=1)
         if split_method == "split":
