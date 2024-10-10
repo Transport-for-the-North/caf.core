@@ -1,6 +1,6 @@
 ![Transport for the North Logo](https://github.com/Transport-for-the-North/caf.toolkit/blob/main/docs/TFN_Landscape_Colour_CMYK.png)
 
-<h1 align="center">CAF template</h1>
+<h1 align="center">CAF core</h1>
 
 [//]: # (Use the below and update URLs to add more badges when deploying)
 
@@ -27,8 +27,14 @@ stuff from
 [NorMITs Demand](https://github.com/Transport-for-the-North/NorMITs-Demand)
 more widely available and easily accessible.
 
+Caf.core is a successor to the core module within NorMITs Demand. The class central 
+to caf.core is the DVector, which is used for storing and manipulating vectors 
+often used in transport modelling and analysis, such as trip end and land use data. 
+See documentation on the DVector, and it's constituent parts ZoningSystem and Segmentation 
+for more details.
+
 ## Contributing
-CAF.Toolkit happily accepts contributions.
+CAF.core happily accepts contributions.
 The best way to contribute to this project is to go to the issues tab and 
 report bugs or submit a feature request. This helps CAF.Core become more 
 stable and full-featured. Please check the closed bugs before 
