@@ -1474,7 +1474,7 @@ class DVector:
             mse += diff.sum() / len(target.data)
         return mse**0.5
 
-    def validate_ipf_targets(self, targets: Collection[IpfTarget], cache_path=None):
+    def validate_ipf_targets(self, targets: Collection[IpfTarget], rel_tol: float = 1e-5, cache_path: None | PathLike = None):
         """
         Check targets for ipf will work, raises errors if not.
 
@@ -1482,6 +1482,12 @@ class DVector:
         ----------
         targets: list[IpfTarget]
             List of IPF targets to validate.
+
+        rel_tol: float = 1e-5
+            The tolerance for relative difference in sums of targets.
+
+        cache_path: None | PathLike = None
+            Translations cache path, if None reverts to default.
 
         Returns
         -------
@@ -1495,7 +1501,7 @@ class DVector:
                 target_sum = target.data.sum()
             else:
                 # TODO don't hard code this
-                if not math.isclose(target_sum, target.data.sum(), abs_tol=target_sum / 1e5):
+                if not math.isclose(target_sum, target.data.sum(), rel_tol=1e5):
                     raise ValueError(
                         "Input target DVectors do not have consistent "
                         f"sums, so ipf will fail target at position {position} doesn't match "
