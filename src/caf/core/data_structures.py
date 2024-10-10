@@ -940,7 +940,7 @@ class DVector:
             cut_read=self._cut_read,
         )
 
-    def __mul__(self, other, _bypass_validation: bool = False, how: str = "inner"):
+    def __mul__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
         """Multiply dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -950,7 +950,7 @@ class DVector:
             how=how,
         )
 
-    def __add__(self, other, _bypass_validation: bool = False, how: str = "inner"):
+    def __add__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
         """Add dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -960,7 +960,7 @@ class DVector:
             how=how,
         )
 
-    def __sub__(self, other, _bypass_validation: bool = False, how: str = "inner"):
+    def __sub__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
         """Subtract dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -970,7 +970,7 @@ class DVector:
             how=how,
         )
 
-    def __truediv__(self, other, _bypass_validation: bool = False, how: str = "inner"):
+    def __truediv__(self, other, _bypass_validation: bool = False, how: Literal["inner", "outer"] = "inner"):
         """Division dunder method for DVector."""
         return self._generic_dunder(
             other,
@@ -1143,18 +1143,15 @@ class DVector:
         DVector
         """
         new_segmentation = self.segmentation.copy()
-        iterator = iter(new_segs)
-        iterator, lookahead = itertools.tee(iterator, 2)
+        if len(new_segs) == 0:
+            raise ValueError("no new segments provided")
 
-        next(lookahead, None)
-
-        for seg in iterator:
-            if next(lookahead, None) is None:
-                new_segmentation = new_segmentation.add_segment(
-                    seg, new_naming_order=new_naming_order
-                )
-            else:
-                new_segmentation = new_segmentation.add_segment(seg)
+        for seg in new_segs[:-1]:
+            new_segmentation = new_segmentation.add_segment(seg)
+        new_segmentation = new_segmentation.add_segment(
+            new_segs[-1], new_naming_order=new_naming_order
+        )
+  
         if splitter is None:
             splitter = pd.Series(index=new_segmentation.ind(), data=1)
         if split_method == "split":
@@ -1515,7 +1512,7 @@ class DVector:
             if np.sum(zeros) > 0:
                 warnings.warn(
                     f"There are {np.sum(zeros)} zeros in the target data, making "
-                    f"up {np.sum(zeros) * 100 / (zeros.shape[0] * zeros.shape[1])}% of "
+                    f"up {np.sum(zeros) / zeros.size:.0%} of "
                     f"the target data. The more zeros, the worse the IPF process will work."
                 )
             # Check segmentations are compatible.
@@ -1734,7 +1731,7 @@ class DVector:
         segmentation: Segmentation | None = None,
     ):
         """
-        Load all DVectors in a directort and concatenate them into a single DVector.
+        Load all DVectors in a directory and concatenate them into a single DVector.
 
         Parameters
         ----------
