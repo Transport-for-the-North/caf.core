@@ -1,0 +1,116 @@
+# Segment config written on 2024-06-28 at 11:07
+name: pop_econ
+values:
+  1: Economically active employees
+  2: Economically active unemployed
+  3: Economically inactive
+  4: Students
+exclusions:
+- other_name: pop_emp
+  exclusions:
+    1:
+    - 3
+    - 4
+    - 5
+    2:
+    - 1
+    - 2
+    - 4
+    - 5
+    3:
+    - 1
+    - 2
+    - 3
+    - 4
+    4:
+    - 1
+    - 2
+    - 3
+    - 5
+- other_name: soc
+  exclusions:
+    1:
+    - 4
+    2:
+    - 1
+    - 2
+    - 3
+    3:
+    - 1
+    - 2
+    - 3
+    4:
+    - 1
+    - 2
+    - 3
+- other_name: age_9
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+    - 9
+    2:
+    - 1
+    - 2
+    - 3
+    - 9
+    4:
+    - 1
+    - 2
+    - 3
+    - 9
+- other_name: age_ntem
+  exclusions:
+    1:
+    - 1
+    - 3
+    2:
+    - 1
+    - 3
+    4:
+    - 1
+    - 3
+- other_name: age_11
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+    - 10
+    - 11
+    2:
+    - 1
+    - 2
+    - 3
+    - 10
+    - 11
+    4:
+    - 1
+    - 2
+    - 3
+    - 10
+    - 11
+- other_name: age_5
+  exclusions:
+    1:
+    - 1
+    2:
+    - 1
+    4:
+    - 1
+- other_name: adult_nssec
+  exclusions:
+    1:
+      - 10
+    2:
+      - 10
+    3:
+      - 1
+      - 4
+      - 7
+    4:
+      - 1
+      - 4
+      - 7
+      - 10

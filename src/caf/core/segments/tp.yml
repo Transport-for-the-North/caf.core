@@ -1,0 +1,11 @@
+# Segment config written on 2024-06-28 at 11:07
+name: tp
+values:
+  1: Weekday AM peak period (0700 - 0959)
+  2: Weekday Inter peak period (1000 - 1559)
+  3: Weekday PM peak period (1600 - 1859)
+  4: Weekday Off peak (0000 - 0659 and 1900 - 2359)
+  5: Saturdays (all times of day)
+  6: Sundays (all times of day)
+  7: Average Weekday
+  8: Average Day

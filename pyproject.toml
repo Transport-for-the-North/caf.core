@@ -8,19 +8,20 @@ dynamic = ["version"]
 description = "Package Description"
 readme = "README.md"
 license = {"file"= "LICENSE"}
-requires-python = ">=3.10, <3.12"
+requires-python = ">=3.9, <3.12"
 authors = [
     { name = "Transport for the North" },
 ]
 classifiers = [
     "Programming Language :: Python3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
-    "numpy>=1.19.0",
-    "pandas<2.0.0" ,
+    "numpy>=1.24.3, <2",
+    "pandas>=2.0.0" ,
     "caf.toolkit>=0.4.0",
     "h5py>=3.9.0",
     "pydantic>=1.10.12",
@@ -60,7 +61,7 @@ Source = "https://github.com/Transport-for-the-North/caf.toolkit"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"caf.core" = ["py.typed"]
+"caf.core" = ["py.typed", "seg_translations/*.csv", "segments/*.yml"]
 
 # Linters
 [tool.black]

@@ -1,0 +1,8 @@
+# Segment config written on 2024-06-28 at 11:07
+name: ns_sec
+values:
+  1: HRP managerial / professional
+  2: HRP intermediate / technical
+  3: HRP semi-routine / routine
+  4: HRP never worked / long-term unemployed
+  5: HRP no category, inc. full-time student

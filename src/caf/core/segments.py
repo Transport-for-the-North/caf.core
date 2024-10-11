@@ -1,39 +1,38 @@
 # -*- coding: utf-8 -*-
 """Module defining Segments class and enumeration."""
 import enum
-from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 import pydantic
-from pydantic import ConfigDict
 from caf.toolkit import BaseConfig
+from pydantic import ConfigDict, dataclasses
 
 
 # # # CLASSES # # #
-@dataclass
+@dataclasses.dataclass
 class Exclusion:
     """
     Class to define exclusions between segments.
 
     Parameters
     ----------
-    seg_name: str
+    other_name: str
         Name of the other segment this exclusion applies to
-    own_val: int
+    exclusions: int
         The value for self segmentation which has exclusions in other
-    other_vals: set[int]
-        Values in other segmentation incompatible with 'own_val'.
     """
 
-    seg_name: str
-    own_val: int
-    other_vals: set[int]
+    other_name: str
+    exclusions: dict[int, set[int]]
 
     def build_index(self):
         """Return an index formed of the exclusions."""
-        tups = [(self.own_val, other) for other in self.other_vals]
-        return pd.MultiIndex.from_tuples(tups)
+        frame = pd.DataFrame.from_dict(self.exclusions, orient="index").stack().reset_index()
+        frame[0] = frame[0].astype(int)
+        frame.drop("level_1", axis=1, inplace=True)
+        return pd.MultiIndex.from_frame(frame, names=["dummy", self.other_name])
 
 
 class Segment(BaseConfig):
@@ -50,31 +49,159 @@ class Segment(BaseConfig):
         descriptions, e.g. for 'p', 1: 'HB work'. Descriptions don't tend to
         get used in DVectors so can be as verbose as desired for clarity.
     exclusions: list[Exclusion]
-        Define incompatibilities between segments. See Exclusion class
+        Define incompatibilities between segments. See Correspondence class
+    lookups: list[Exclusion]
+        Define lookups between segments, essentially the reverse of exclusions.
+        More efficient for segments with mappings, e.g. different defintions of age.
     """
 
     name: str
     values: dict[int, str]
     exclusions: list[Exclusion] = pydantic.Field(default_factory=list)
+    lookups: list[Exclusion] = pydantic.Field(default_factory=list)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # pylint: disable=too-few-public-methods
     # pylint: disable=not-an-iterable
     # Pylint doesn't seem to understand pydantic.Field
     @property
-    def _exclusion_segs(self):
-        return [seg.seg_name for seg in self.exclusions]
+    def exclusion_segs(self):
+        """List the names of segs excluded by this one."""
+        return [seg.other_name for seg in self.exclusions]
 
-    def _drop_indices(self, other_seg: str):
-        if other_seg not in self._exclusion_segs:
+    @property
+    def lookup_segs(self):
+        """List names of segs with lookups from self."""
+        return [seg.other_name for seg in self.lookups]
+
+    # Worth reviewing but I think this is fine
+    # pylint: disable=inconsistent-return-statements
+    def drop_indices(self, other_seg: str):
+        """Return indices to drop based on exclusions."""
+        if other_seg not in self.exclusion_segs:
             return None
-        ind_tuples = []
         for excl in self.exclusions:
-            if excl.seg_name == other_seg:
-                for other in excl.other_vals:
-                    ind_tuples.append((excl.own_val, other))
-        drop_ind = pd.MultiIndex.from_tuples(ind_tuples)
-        return drop_ind
+            if excl.other_name == other_seg:
+                return excl.build_index()
+
+    def lookup_indices(self, other_seg: str):
+        """Return indices to include based on lookups."""
+        if other_seg not in self.lookup_segs:
+            return None
+        for lookup in self.lookups:
+            if lookup.other_name == other_seg:
+                return lookup.build_index()
+
+    # pylint: enable=inconsistent-return-statements
+
+    @property
+    def int_values(self) -> list:
+        """Return integer values of segment."""
+        return list(self.values.keys())
+
+    def __len__(self):
+        """Return length of segment."""
+        return len(self.values)
+
+    def translate_segment(self, new_seg, reverse: bool = False):
+        """
+        Translate self to new_seg.
+
+        Parameters
+        ----------
+        new_seg: Segment | SegmentsSuper
+            The segment to translate to
+        reverse: bool = False
+            Whether to return reverse names when finding the lookup
+
+        Returns
+        -------
+        new_seg: Segment
+            The segment being converted to
+        lookup: pd.Series
+            A lookup describing how to convert from self to new_seg
+        """
+        lookup_dir = Path(__file__).parent / "seg_translations"
+        if not isinstance(new_seg, (str, Segment, SegmentsSuper)):
+            raise TypeError(
+                "translate_method expects either an instance of the Segment "
+                "class, or a str contained within the SegmentsSuper enum class. "
+                f"{type(new_seg)} cannot be handled."
+            )
+        if isinstance(new_seg, str):
+            new_seg = SegmentsSuper(new_seg).get_segment()
+        if isinstance(new_seg, SegmentsSuper):
+            new_seg = new_seg.get_segment()
+        new_name = new_seg.name
+        name_1 = self.name
+        name_2 = new_name
+        if reverse:
+            name_1, name_2 = name_2, name_1
+        lookup = pd.read_csv(lookup_dir / f"{name_1}_to_{name_2}.csv", index_col=0).squeeze()
+        return new_seg, lookup
+
+    def translate_exclusion(self, new_seg: str):
+        """
+        Translate an exclusion from one segment to another.
+
+        Parameters
+        ----------
+        new_seg: str
+            The segment to translate exclusions to. A lookup must exist.
+        """
+        segs_dir = Path(__file__).parent / "segments"
+        new_seg, lookup = self.translate_segment(new_seg)
+        update_seg = new_seg.copy()
+        exclusions = []
+        for exc in self.exclusions:
+            from_exc = (
+                pd.DataFrame(index=exc.build_index())
+                .reset_index()
+                .rename(columns={"dummy": self.name})
+                .set_index(self.name)
+            )
+            joined = (
+                from_exc.join(lookup)
+                .groupby([new_seg.name, exc.other_name])
+                .sum()
+                .reset_index(level=exc.other_name)
+            )
+            new_exc = {}
+            for ind in joined.index.unique():
+                new_exc[ind] = joined.loc[ind].squeeze().to_list()
+            exclusions.append(Exclusion(other_name=exc.other_name, exclusions=new_exc))
+        if len(update_seg.exclusions) == 0:
+            update_seg.exclusions = exclusions
+        else:
+            update_seg.exclusions += exclusions
+        update_seg.save_yaml(segs_dir / f"{new_seg.name}.yml")
+
+    def add_corr_from_df(self, to_seg, exclusion: bool = False):
+        """
+        Add either a lookup or exclusion to a segment from a lookup file.
+
+        Parameters
+        ----------
+        to_seg: Segment
+            The segment the correlation relates to
+        exclusions: bool = False
+            Whether to translate as an exclusion or a lookup
+        """
+        to_seg, lookup = self.translate_segment(to_seg)
+        lookup = lookup.squeeze()
+        grouped = lookup.groupby(lookup.index)
+        corr_dic = {i: group.to_list() for i, group in grouped}
+        corr = Exclusion(other_name=to_seg.name, exclusions=corr_dic)
+        if exclusion:
+            if len(self.exclusions) == 0:
+                self.exclusions = [corr]
+            else:
+                self.exclusions.append(corr)
+        else:
+            if len(self.lookups) == 0:
+                self.lookups = [corr]
+            else:
+                self.lookups.append(corr)
 
     # pylint: enable=not-an-iterable
 
@@ -98,7 +225,28 @@ class SegmentsSuper(enum.Enum):
     TFN_AT = "tfn_at"
     TFN_TT = "tfn_tt"
     USERCLASS = "uc"
-    NS = "ns"
+    ACCOMODATION_TYPE_H = "accom_h"
+    ACCOMODATION_TYPE_HR = "accom_hr"
+    ADULTS = "adults"
+    CHILDREN = "children"
+    CAR_AVAILABILITY = "car_availability"
+    AGE = "age_9"
+    AGE_11 = "age_11"
+    AGE_AGG = "age_5"
+    AGE_NTEM = "age_ntem"
+    AGE_EDGE = "age_edge"
+    GENDER_3 = "gender_3"
+    ECONOMIC_STATUS = "economic_status"
+    POP_EMP = "pop_emp"
+    POP_ECON = "pop_econ"
+    NS_SEC = "ns_sec"
+    AWS = "aws"
+    HH_TYPE = "hh_type"
+    ADULT_NSSEC = "adult_nssec"
+    SIC_1 = "sic_1_digit"
+    SIC_2 = "sic_2_digit"
+    SIC_4 = "sic_4_digit"
+    STATUS_APS = "status_aps"
 
     @classmethod
     def values(cls):
@@ -114,86 +262,15 @@ class SegmentsSuper(enum.Enum):
         subset: Define a subset of the segment being got. The integers in subset
         must appear in the asked for segment.
         """
-        seg = None
-        match self:
-            case SegmentsSuper.PURPOSE:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "HB Work",
-                        2: "HB Employers Business (EB)",
-                        3: "HB Education",
-                        4: "HB Shopping",
-                        5: "HB Personal Business (PB)",
-                        6: "HB Recreation / Social",
-                        7: "HB Visiting friends and relatives",
-                        8: "HB Holiday / Day trip",
-                        11: "NHB Work",
-                        12: "NHB Employers Business (EB)",
-                        13: "NHB Education",
-                        14: "NHB Shopping",
-                        15: "NHB Personal Business (PB)",
-                        16: "NHB Recreation / Social",
-                        18: "NHB Holiday / Day trip",
-                    },
-                )
-            case SegmentsSuper.TIMEPERIOD:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Weekday AM peak period (0700 - 0959)",
-                        2: "Weekday Inter peak period (1000 - 1559)",
-                        3: "Weekday PM peak period (1600 - 1859)",
-                        4: "Weekday Off peak (0000 - 0659 and 1900 - 2359)",
-                        5: "Saturdays (all times of day)",
-                        6: "Sundays (all times of day)",
-                        7: "Average Weekday",
-                        8: "Average Day",
-                    },
-                )
-            case SegmentsSuper.MODE:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "Walk",
-                        2: "Cycle",
-                        3: "Car driver",
-                        4: "Car passenger",
-                        5: "Bus / Coach",
-                        6: "Rail / underground",
-                    },
-                )
-            case SegmentsSuper.GENDER:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "Child", 2: "Male", 3: "Female"},
-                    exclusions=[
-                        Exclusion(
-                            seg_name=SegmentsSuper.SOC.value,
-                            own_val=1,
-                            other_vals={1, 2, 3},
-                        )
-                    ],
-                )
-            case SegmentsSuper.SOC:
-                seg = Segment(
-                    name=self.value,
-                    values={
-                        1: "High Skilled",
-                        2: "High Skilled",
-                        3: "High Skilled",
-                        4: "Skilled",
-                    },
-                )
-            case SegmentsSuper.CA:
-                seg = Segment(name=self.value, values={1: "dummy", 2: "dummy"})
-            case SegmentsSuper.NS:
-                seg = Segment(
-                    name=self.value,
-                    values={1: "dummy", 2: "dummy", 3: "dummy", 4: "dummy", 5: "dummy"},
-                )
-            case SegmentsSuper.TFN_TT:
-                seg = Segment(name=self.value, values={i: "no desc" for i in range(1, 761)})
+        segs_dir = Path(__file__).parent / "segments"
+        try:
+            seg = Segment.load_yaml(segs_dir / f"{self.value}.yml")
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"Could not find a segment saved at {segs_dir / self.value}.yml."
+                f"This means an enum has been defined, but a segment has not, so this "
+                f"is probably a placeholder."
+            ) from exc
 
         if subset:
             if seg is not None:
@@ -201,4 +278,182 @@ class SegmentsSuper(enum.Enum):
         return seg
 
 
+class SegConverter(enum.Enum):
+    """Enum class for converting segment combos."""
+
+    AG_G = "ag_g"
+    APOPEMP_AWS = "apopemp_aws"
+    CARADULT_HHTYPE = "caradult_hhtype"
+    NSSEC_ADULT = "nssec_adult"
+
+    def get_conversion(self):
+        """Get a conversion for the enum."""
+        if self == SegConverter.AG_G:
+            from_ind = pd.MultiIndex.from_tuples(
+                [
+                    (1, 1),
+                    (2, 1),
+                    (3, 1),
+                    (1, 2),
+                    (2, 2),
+                    (3, 2),
+                    (4, 1),
+                    (5, 1),
+                    (6, 1),
+                    (7, 1),
+                    (8, 1),
+                    (9, 1),
+                    (4, 2),
+                    (5, 2),
+                    (6, 2),
+                    (7, 2),
+                    (8, 2),
+                    (9, 2),
+                ],
+                names=["age_9", "g"],
+            )
+            to_vals = [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                2,
+                2,
+                2,
+                2,
+                2,
+                2,
+                3,
+                3,
+                3,
+                3,
+                3,
+                3,
+            ]
+            return pd.DataFrame(index=from_ind, data={"gender_3": to_vals})
+        if self == SegConverter.APOPEMP_AWS:
+            from_ind = pd.MultiIndex.from_tuples(
+                [
+                    (9, 1),
+                    (9, 2),
+                    (9, 3),
+                    (9, 4),
+                    (9, 5),
+                    (1, 1),
+                    (1, 2),
+                    (1, 3),
+                    (1, 4),
+                    (1, 5),
+                    (2, 1),
+                    (2, 2),
+                    (2, 3),
+                    (2, 4),
+                    (2, 5),
+                    (3, 1),
+                    (3, 2),
+                    (3, 3),
+                    (3, 4),
+                    (3, 5),
+                    (4, 1),
+                    (5, 1),
+                    (6, 1),
+                    (7, 1),
+                    (8, 1),
+                    (4, 2),
+                    (5, 2),
+                    (6, 2),
+                    (7, 2),
+                    (8, 2),
+                    (4, 3),
+                    (5, 3),
+                    (6, 3),
+                    (7, 3),
+                    (8, 3),
+                    (4, 4),
+                    (5, 4),
+                    (6, 4),
+                    (7, 4),
+                    (8, 4),
+                ],
+                names=["age_9", "pop_emp"],
+            )
+
+            to_vals = [
+                6,
+                6,
+                6,
+                6,
+                6,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                2,
+                2,
+                2,
+                2,
+                2,
+                3,
+                3,
+                3,
+                3,
+                3,
+                5,
+                5,
+                5,
+                5,
+                5,
+                4,
+                4,
+                4,
+                4,
+                4,
+            ]
+
+            return pd.DataFrame(index=from_ind, data={"aws": to_vals})
+
+        if self == SegConverter.CARADULT_HHTYPE:
+            from_ind = pd.MultiIndex.from_tuples(
+                [(1, 1), (1, 2), (1, 3), (2, 1), (2, 2), (2, 3), (3, 1), (3, 2), (3, 3)],
+                names=["adults", "car_availability"],
+            )
+            to_vals = [1, 2, 2, 3, 4, 5, 6, 7, 8]
+
+            return pd.DataFrame(index=from_ind, data={"hh_type": to_vals})
+
+        if self == SegConverter.NSSEC_ADULT:
+            from_ind = pd.MultiIndex.from_product(
+                [range(1, 6), range(1, 4)], names=["ns_sec", "adults"]
+            )
+            to_vals = range(1, 16)
+            return pd.DataFrame(index=from_ind, data={"adult_nssec": to_vals})
+        raise ValueError("Invalid input segment.")
+
+
+# if __name__ == "__main__":
+# import os
+# from pathlib import Path
+#
+# cwd = Path(os.getcwd())
+# for seg in SegmentsSuper:
+#     try:
+#         segment = seg.get_segment()
+#     except AttributeError:
+#         continue
+#
+#     if segment is not None:
+#         segment.save_yaml(cwd / "segments" / f"{seg.value}.yml")
 # # # FUNCTIONS # # #

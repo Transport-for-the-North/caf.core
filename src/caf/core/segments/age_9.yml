@@ -1,0 +1,119 @@
+# Segment config written on 2024-06-28 at 11:07
+name: age_9
+values:
+  1: 0 to 4 years
+  2: 5 to 9 years
+  3: 10 to 15 years
+  4: 16 to 19 years
+  5: 20 to 34 years
+  6: 35 to 49 years
+  7: 50 to 64 years
+  8: 65 to 74 years
+  9: 75+ years
+exclusions:
+- other_name: economic_status
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    2:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    3:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    4:
+    - -8
+    5:
+    - -8
+    6:
+    - -8
+    7:
+    - -8
+    8:
+    - -8
+    9:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - -8
+- other_name: soc
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+    2:
+    - 1
+    - 2
+    - 3
+    3:
+    - 1
+    - 2
+    - 3
+    9:
+    - 1
+    - 2
+    - 3
+- other_name: aws
+  exclusions:
+    1:
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    2:
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    3:
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    4:
+    - 1
+    - 6
+    5:
+    - 1
+    - 6
+    6:
+    - 1
+    - 6
+    7:
+    - 1
+    - 6
+    8:
+    - 1
+    - 6
+    9:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+#- other_name: adult_nssec
+#  exclusions:
+#    9:
+#    - 1
+#    - 4
+#    - 7
+#    - 13

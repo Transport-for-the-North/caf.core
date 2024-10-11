@@ -1,0 +1,12 @@
+# Segment config written on 2024-06-28 at 11:07
+name: g
+values:
+  1: male
+  2: female
+exclusions:
+- other_name: gender_3
+  exclusions:
+    1:
+    - 3
+    2:
+    - 2

@@ -1,0 +1,31 @@
+# Segment config written on 2024-06-28 at 11:07
+name: aws
+values:
+  1: Child
+  2: FTE
+  3: PTE
+  4: Student
+  5: NEET
+  6: 75+
+exclusions:
+  -   other_name: adult_nssec
+      exclusions:
+        2:
+          - 10
+        3:
+          - 10
+        4:
+          - 1
+          - 4
+          - 7
+          - 10
+#        5:
+#          - 1
+#          - 4
+#          - 7
+#          - 13
+#        6:
+#          - 1
+#          - 4
+#          - 7
+#          - 13

@@ -1,0 +1,18 @@
+# Segment config written on 2024-06-28 at 11:07
+name: p
+values:
+  1: HB Work
+  2: HB Employers Business (EB)
+  3: HB Education
+  4: HB Shopping
+  5: HB Personal Business (PB)
+  6: HB Recreation / Social
+  7: HB Visiting friends and relatives
+  8: HB Holiday / Day trip
+  11: NHB Work
+  12: NHB Employers Business (EB)
+  13: NHB Education
+  14: NHB Shopping
+  15: NHB Personal Business (PB)
+  16: NHB Recreation / Social
+  18: NHB Holiday / Day trip

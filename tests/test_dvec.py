@@ -17,9 +17,11 @@ translate
 # Built-Ins
 from pathlib import Path
 import pytest
+from math import isclose
 
 # Third Party
 from caf.core import data_structures, segmentation
+from caf.core.segments import SegmentsSuper
 import pandas as pd
 import numpy as np
 
@@ -122,6 +124,26 @@ def fix_exp_trans(basic_dvec_1, min_zoning_2):
 
 # # # FUNCTIONS # # #
 class TestDvec:
+    @pytest.mark.parametrize("dvec", ["basic_dvec_1", "basic_dvec_2"])
+    @pytest.mark.parametrize("subset", [None, [1, 2, 3]])
+    @pytest.mark.parametrize("method", ["split", "duplicate"])
+    def test_add_segments(self, dvec, subset, method, request):
+        dvec_arg = request.getfixturevalue(dvec).copy()
+        segment = SegmentsSuper("tp").get_segment(subset=subset)
+        out_dvec = dvec_arg.add_segments([segment], split_method=method)
+        new_seg_len = len(segment)
+        if method == "split":
+            assert isclose(out_dvec.data.values.sum(), dvec_arg.data.values.sum())
+        else:
+            assert isclose(
+                out_dvec.data.values.sum(), dvec_arg.data.values.sum() * new_seg_len
+            )
+
+    def test_add_segment_exclusion(self, basic_dvec_1):
+        segment = SegmentsSuper("soc").get_segment()
+        out_dvec = basic_dvec_1.add_segments([segment], split_method="split")
+        assert isclose(out_dvec.data.values.sum(), basic_dvec_1.data.values.sum())
+
     @pytest.mark.parametrize("dvec", ["basic_dvec_1", "basic_dvec_2", "single_seg_dvec"])
     def test_io(self, dvec, main_dir, request):
         dvec = request.getfixturevalue(dvec)
@@ -149,7 +171,7 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     @pytest.mark.parametrize(
         "dvec_1_str", ["basic_dvec_1", "basic_dvec_2", "no_zone_dvec_1", "no_zone_dvec_2"]
@@ -171,7 +193,7 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     @pytest.mark.parametrize(
         "dvec_1_str", ["basic_dvec_1", "basic_dvec_2", "no_zone_dvec_1", "no_zone_dvec_2"]
@@ -193,7 +215,7 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     @pytest.mark.parametrize(
         "dvec_1_str", ["basic_dvec_1", "basic_dvec_2", "no_zone_dvec_1", "no_zone_dvec_2"]
@@ -215,13 +237,14 @@ class TestDvec:
             added_df.index = added_df.index.reorder_levels(
                 added_dvec.segmentation.naming_order
             )
-        assert added_dvec.data.equals(added_df)
+        assert added_dvec.data.sort_index().equals(added_df.sort_index())
 
     def test_trans(self, basic_dvec_1, test_trans, min_zoning_2, expected_trans, main_dir):
         translation = basic_dvec_1.translate_zoning(min_zoning_2, cache_path=main_dir)
+        back_trans = translation.translate_zoning(basic_dvec_1.zoning_system, cache_path=main_dir)
         assert translation == expected_trans
 
     def test_agg(self, basic_dvec_1):
-        aggregated = basic_dvec_1.aggregate(["g"])
-        grouped = basic_dvec_1.data.groupby(level="g").sum()
+        aggregated = basic_dvec_1.aggregate(["gender_3"])
+        grouped = basic_dvec_1.data.groupby(level="gender_3").sum()
         assert grouped.equals(aggregated.data)

@@ -1,0 +1,11 @@
+# Segment config written on 2024-06-28 at 11:07
+name: m
+values:
+  1: Walk
+  2: Cycle
+  3: Car driver
+  4: Car passenger
+  5: Bus / Coach
+  6: Rail / underground
+#  7: dummy
+#  8: dummy

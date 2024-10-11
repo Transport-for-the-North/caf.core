@@ -1,0 +1,23 @@
+# Segment config written on 2024-06-28 at 11:07
+name: economic_status
+values:
+  1: Economically active employment
+  2: Economically active unemployed
+  3: Economically active student employment
+  4: Economically active student unemployed
+  5: Economically inactive student
+  6: Economically inactive
+  -8: Other
+exclusions:
+- other_name: adult_nssec
+  exclusions:
+    1:
+      - 10
+    3:
+      - 10
+    5:
+      - 1
+      - 4
+      - 7
+      - 10
+

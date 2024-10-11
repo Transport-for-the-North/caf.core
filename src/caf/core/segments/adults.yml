@@ -1,0 +1,6 @@
+# Segment config written on 2024-06-28 at 11:07
+name: adults
+values:
+  1: No adults or 1 adult in household
+  2: 2 adults in household
+  3: 3 or more adults in household

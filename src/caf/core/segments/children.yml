@@ -1,0 +1,30 @@
+# Segment config written on 2024-06-28 at 11:07
+name: children
+values:
+  1: Household with no children or all children non-dependent
+  2: Household with one or more dependent children
+exclusions:
+- other_name: age_11
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+- other_name: age_9
+  exclusions:
+    1:
+    - 1
+    - 2
+    - 3
+- other_name: age_ntem
+  exclusions:
+    1:
+    - 1
+- other_name: age_5
+  exclusions:
+    1:
+    - 1
+- other_name: economic_status
+  exclusions:
+    1:
+    - -8
