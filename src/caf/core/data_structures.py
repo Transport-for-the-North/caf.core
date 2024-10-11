@@ -697,6 +697,12 @@ class DVector:
             trans = self.zoning_system.translate(agg_zoning)
         else:
             trans = self.zoning_system.validate_translation_data(agg_zoning, trans)
+        # not nested
+        if trans[f"{self.zoning_system}_id"].nunique() < len(trans):
+            raise TranslationError("split_by_agg_zoning only works when the current "
+                                   "zone system nests perfectly within the agg zone system, i.e. "
+                                   "each zone in the current zone system corresponds to only 1 "
+                                   "zone in the agg zone system.")
         out_dvecs = {}
         for zone in trans[agg_zoning.column_name].unique():
             zones = trans[trans[agg_zoning.column_name] == zone][
