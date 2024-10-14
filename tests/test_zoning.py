@@ -10,7 +10,7 @@ import pytest
 from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal, assert_series_equal
 
-from caf.core.zoning import ZoningSystem, ZoningSystemMetaData
+from caf.base.zoning import ZoningSystem, ZoningSystemMetaData
 
 
 @dataclasses.dataclass

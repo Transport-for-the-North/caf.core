@@ -20,8 +20,8 @@ import pytest
 from math import isclose
 
 # Third Party
-from caf.core import data_structures, segmentation
-from caf.core.segments import SegmentsSuper
+from caf.base import data_structures, segmentation
+from caf.base.segments import SegmentsSuper
 import pandas as pd
 import numpy as np
 

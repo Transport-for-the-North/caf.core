@@ -15,7 +15,7 @@ add segmentations
 import pytest
 import pandas as pd
 import numpy as np
-from caf.core import segmentation
+from caf.base import segmentation
 
 # Local Imports
 # pylint: disable=import-error,wrong-import-position

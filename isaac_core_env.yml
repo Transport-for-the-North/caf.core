@@ -1,4 +1,4 @@
-name: core
+name: base
 channels:
   - defaults
   - conda-forge
@@ -132,7 +132,7 @@ dependencies:
   - pip:
       - annotated-types==0.6.0
       - blosc2==2.6.2
-      - caf-core==0.0.1+106.g0f6a9c3
+      - caf-base==0.0.1+106.g0f6a9c3
       - caf-toolkit==0.7.1
       - h5py==3.11.0
       - llvmlite==0.42.0
@@ -145,7 +145,7 @@ dependencies:
       - psutil==5.9.8
       - py-cpuinfo==9.0.0
       - pydantic==2.7.1
-      - pydantic-core==2.18.2
+      - pydantic-base==2.18.2
       - python-dateutil==2.9.0.post0
       - sparse==0.15.1
       - strictyaml==1.7.3

@@ -25,9 +25,9 @@ import numpy as np
 import pandas as pd
 
 # pylint: disable=no-name-in-module,import-error
-from caf.core.segmentation import Segmentation, SegmentationError, SegmentationWarning
-from caf.core.segments import SegConverter, Segment, SegmentsSuper
-from caf.core.zoning import (
+from caf.base.segmentation import Segmentation, SegmentationError, SegmentationWarning
+from caf.base.segments import SegConverter, Segment, SegmentsSuper
+from caf.base.zoning import (
     BalancingZones,
     TranslationError,
     TranslationWeighting,
@@ -277,13 +277,13 @@ class DVector:
         if zoning_system is not None:
             if not isinstance(zoning_system, ZoningSystem):
                 raise ValueError(
-                    "Given zoning_system is not a caf.core.ZoningSystem object."
+                    "Given zoning_system is not a caf.base.ZoningSystem object."
                     f"Got a {type(zoning_system)} object instead."
                 )
 
         if not isinstance(segmentation, Segmentation):
             raise ValueError(
-                "Given segmentation is not a caf.core.SegmentationLevel object."
+                "Given segmentation is not a caf.base.SegmentationLevel object."
                 f"Got a {type(segmentation)} object instead."
             )
 
