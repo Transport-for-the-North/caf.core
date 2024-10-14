@@ -3,7 +3,7 @@ requires = ["setuptools>=64.0.0", "versioningit"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "caf.core"
+name = "caf.base"
 dynamic = ["version"]
 description = "Package Description"
 readme = "README.md"
@@ -61,7 +61,7 @@ Source = "https://github.com/Transport-for-the-North/caf.toolkit"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"caf.core" = ["py.typed", "seg_translations/*.csv", "segments/*.yml"]
+"caf.base" = ["py.typed", "seg_translations/*.csv", "segments/*.yml"]
 
 # Linters
 [tool.black]
@@ -89,14 +89,14 @@ max-attributes = 15
 max-statements = 100
 
 [tool.mypy]
-packages = ["caf.core"]
+packages = ["caf.base"]
 namespace_packages = true
 ignore_missing_imports = true
 allow_redefinition = true
 
 [[tool.mypy.overrides]]
 module = [
-  "caf.core._version",
+  "caf.base._version",
 ]
 ignore_errors = true
 
@@ -108,7 +108,7 @@ add-ignore = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=caf.core --cov-report=xml --doctest-modules -n auto"
+addopts = "--cov=caf.base --cov-report=xml --doctest-modules -n auto"
 doctest_optionflags = "NORMALIZE_WHITESPACE"
 pythonpath = "src"
 
@@ -122,8 +122,8 @@ match = ["v*"]
 default-tag = "0.0.1"
 
 [tool.versioningit.onbuild]
-source-file = "src/caf/core/_version.py"
-build-file = "caf/core/_version.py"
+source-file = "src/caf/base/_version.py"
+build-file = "caf/base/_version.py"
 
 [tool.versioningit.format]
 distance = "{base_version}+{distance}.{vcs}{rev}"
