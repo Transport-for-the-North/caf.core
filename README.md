@@ -1,4 +1,4 @@
-![Transport for the North Logo](https://github.com/Transport-for-the-North/caf.toolkit/blob/main/docs/TFN_Landscape_Colour_CMYK.png)
+![Transport for the North Logo](https://github.com/Transport-for-the-North/caf.base/blob/main/docs/TFN_Landscape_Colour_CMYK.png)
 
 <h1 align="center">CAF base</h1>
 
@@ -8,7 +8,7 @@
 
 [//]: # (<a href="https://pypi.org/project/caf.base/"><img alt="Latest release" src="https://img.shields.io/github/release/transport-for-the-north/caf.package.svg?style=flat-square&maxAge=86400"></a>)
 
-[//]: # (<a href="https://app.codecov.io/gh/Transport-for-the-North/caf.toolkit"><img alt="Coverage" src="https://img.shields.io/codecov/c/github/transport-for-the-north/caf.package.svg?branch=master&style=flat-square&logo=CodeCov"></a>)
+[//]: # (<a href="https://app.codecov.io/gh/Transport-for-the-North/caf.base"><img alt="Coverage" src="https://img.shields.io/codecov/c/github/transport-for-the-north/caf.package.svg?branch=master&style=flat-square&logo=CodeCov"></a>)
 
 [//]: # (<a href="https://github.com/Transport-for-the-North/caf.base/actions?query=event%3Apush"><img alt="Testing Badge" src="https://img.shields.io/github/actions/workflow/status/transport-for-the-north/caf.base/tests.yml?style=flat-square&logo=GitHub&label=Tests"></a>)
 
