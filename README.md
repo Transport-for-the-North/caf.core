@@ -5,6 +5,7 @@
 <p align="center">
 <a href="https://pypi.org/project/caf.base/"><img alt="Supported Python versions" src="https://img.shields.io/pypi/pyversions/caf.base.svg?style=flat-square"></a>
 <a href="https://pypi.org/project/caf.base/"><img alt="Latest release" src="https://img.shields.io/github/release/transport-for-the-north/caf.base.svg?style=flat-square&maxAge=86400"></a>
+<a href="https://anaconda.org/conda-forge/caf.base"><img alt="Conda" src="https://img.shields.io/conda/v/conda-forge/caf.base?style=flat-square&logo=condaforge"></a>
 <a href="https://app.codecov.io/gh/Transport-for-the-North/caf.base"><img alt="Coverage" src="https://img.shields.io/codecov/c/github/transport-for-the-north/caf.base.svg?branch=master&style=flat-square&logo=CodeCov"></a>
 <a href="https://github.com/Transport-for-the-North/caf.base/actions?query=event%3Apush"><img alt="Testing Badge" src="https://img.shields.io/github/actions/workflow/status/transport-for-the-north/caf.base/tests.yml?style=flat-square&logo=GitHub&label=Tests"></a>
 </p>
