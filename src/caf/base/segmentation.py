@@ -2,8 +2,8 @@
 """
 Module for handling segmentation objects.
 
-This imports the Segment class from caf.core.segments, and the SegmentsSuper
-enumeration from caf.core.segments. Both are used for building segmentations.
+This imports the Segment class from caf.base.segments, and the SegmentsSuper
+enumeration from caf.base.segments. Both are used for building segmentations.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from caf.toolkit import BaseConfig
 # Local Imports
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
-from caf.core.segments import Segment, SegmentsSuper
+from caf.base.segments import Segment, SegmentsSuper
 
 # pylint: enable=import-error,wrong-import-position
 
@@ -84,7 +84,7 @@ class SegmentationInput(BaseConfig):
                     "even if the existing segment isn't in this "
                     "segmentation. This error is raised on the "
                     "first occurrence so it is possible there is "
-                    "more than one clash. 'caf.core.SegmentsSuper.values' "
+                    "more than one clash. 'caf.base.SegmentsSuper.values' "
                     "will list all existing segment names."
                 )
         return values
@@ -375,7 +375,7 @@ class Segmentation:
             "The read in segmentation does not match the given parameters. The segment names"
             " are correct, but segment values don't match. This could be due to an incompatibility"
             " between segments which isn't reflected in the loaded in the segmentation, or it could be"
-            " an out of date in built segmentation in the caf.core package. The first place to "
+            " an out of date in built segmentation in the caf.base package. The first place to "
             "look is the SegmentsSuper class."
         )
 

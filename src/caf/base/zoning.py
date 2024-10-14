@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 from typing_extensions import Self
 
-from caf.core.segmentation import Segmentation, SegmentationInput
+from caf.base.segmentation import Segmentation, SegmentationInput
 
 pd.set_option("future.no_silent_downcasting", True)
 LOG = logging.getLogger(__name__)
@@ -786,7 +786,7 @@ class ZoningSystem:
         Parameters
         ----------
         old_dir: Directory containing the zoning data in the old format (i.e.
-        in normits_demand/core/definitions/zoning_systems
+        in normits_demand/base/definitions/zoning_systems
         new_dir: Directory for the reformatted zoning to be saved in. It will
         be saved in a sub-directory named for the zoning system.
         mode: Whether to save as a csv or HDF. Passed directly to save method

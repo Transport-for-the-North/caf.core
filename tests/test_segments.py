@@ -21,7 +21,7 @@ import numpy as np
 # pylint: disable=import-error,wrong-import-position
 # Local imports here
 # pylint: enable=import-error,wrong-import-position
-from caf.core import segments
+from caf.base import segments
 
 # # # CONSTANTS # # #
 

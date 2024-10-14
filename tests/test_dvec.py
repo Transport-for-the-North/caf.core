@@ -20,8 +20,8 @@ import pytest
 from math import isclose
 
 # Third Party
-from caf.core import data_structures, segmentation
-from caf.core.segments import SegmentsSuper
+from caf.base import data_structures, segmentation
+from caf.base.segments import SegmentsSuper
 import pandas as pd
 import numpy as np
 
@@ -241,7 +241,9 @@ class TestDvec:
 
     def test_trans(self, basic_dvec_1, test_trans, min_zoning_2, expected_trans, main_dir):
         translation = basic_dvec_1.translate_zoning(min_zoning_2, cache_path=main_dir)
-        back_trans = translation.translate_zoning(basic_dvec_1.zoning_system, cache_path=main_dir)
+        back_trans = translation.translate_zoning(
+            basic_dvec_1.zoning_system, cache_path=main_dir
+        )
         assert translation == expected_trans
 
     def test_agg(self, basic_dvec_1):
