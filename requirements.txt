@@ -1,5 +1,5 @@
 numpy>=1.24.3, <2
-pandas>=2.0
+pandas>=2.2
 caf.toolkit>=0.4.0
 h5py>=3.9.0
 pydantic>=2.7
